@@ -1,5 +1,4 @@
 import asyncio
-from urllib.parse import quote_plus
 from rapidfuzz import fuzz
 from playwright.async_api import async_playwright
 import re
@@ -9,46 +8,55 @@ from site_configs import get_site_configs
 
 FUZZY_MATCH_THRESHOLD = 76
 
-async def manipulate_side_filter(page, site_side_filter_selectors, user_filters):
-    side_filter_sections = await page.query_selector_all(site_side_filter_selectors["sections"])
+async def manipulate_side_filter(page, side_filter_selectors, user_filters):
+    side_filter_sections = await page.query_selector_all(side_filter_selectors["sections"])
     website_filters = {}
 
-    min_price = int(user_filters.get("min_price", 0))
-    max_price = int(user_filters.get("max_price", float("inf")))
+    min_price = int(user_filters["price"].get("min_price", 0))
+    max_price = int(user_filters["price"].get("max_price", float("inf")))
     price_ranges = []
 
     for section in side_filter_sections:
-        title_element = await section.query_selector(site_side_filter_selectors["titles"])
+        title_element = await section.query_selector(side_filter_selectors["titles"])
         if not title_element:
             continue
 
         title_text = await title_element.inner_text()
         normalized_title_text = title_text.replace("\u00a0", " ").strip()
 
-        if normalized_title_text == "Цена":
-            price_elements = await section.query_selector_all(site_side_filter_selectors["values"])
-            for element in price_elements:
-                range_text = await element.inner_text()
-                normalized_range_text = range_text.replace("\u00a0", " ").strip()
-                cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
+        support_custom_price_inputs = side_filter_selectors["support_custom_price_inputs"]
+        if support_custom_price_inputs == True:
+            custom_price_inputs = await section.query_selector_all(side_filter_selectors["custom_price_inputs_selector"])  
+            if custom_price_inputs:
+                await custom_price_inputs[0].fill(str(min_price))
+                await page.wait_for_timeout(50)
+                await custom_price_inputs[1].fill(str(max_price))
+                await custom_price_inputs[1].press("Enter")
+        else:
+            if normalized_title_text == "Цена":
+                price_elements = await section.query_selector_all(side_filter_selectors["values"])
+                for element in price_elements:
+                    range_text = await element.inner_text()
+                    normalized_range_text = range_text.replace("\u00a0", " ").strip()
+                    cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
 
-                match = re.search(r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)", cleaned_text)
-                if not match:
-                    continue
-                lower = int(match.group(1).replace(".", ""))
-                upper = int(match.group(2).replace(".", ""))
-                if lower <= max_price and upper >= min_price:
-                    print(f"✅ Matched website filter range: {cleaned_text}")
-                    price_ranges.append(cleaned_text)
-            print("Those ranges might not represent your defined price range entirely, but this is the closest we can currently get!")
+                    match = re.search(r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)", cleaned_text)
+                    if not match:
+                        continue
+                    lower = int(match.group(1).replace(".", ""))
+                    upper = int(match.group(2).replace(".", ""))
+                    if lower <= max_price and upper >= min_price:
+                        print(f"✅ Matched website filter range: {cleaned_text}")
+                        price_ranges.append(cleaned_text)
+                print("Those ranges might not represent your defined price range entirely, but this is the closest we can get for the given website!")
     if price_ranges:
         website_filters["Цена"] = price_ranges
 
     return website_filters
 
-async def click_matching_filter(page, site_side_filter_selectors, filter):
+async def click_matching_filter(page, side_filter_selectors, filter):
     try:
-        elements = page.locator(site_side_filter_selectors["values"])
+        elements = page.locator(side_filter_selectors["values"])
         count = await elements.count()
         for i in range(count):
             text = await elements.nth(i).inner_text()
@@ -60,24 +68,22 @@ async def click_matching_filter(page, site_side_filter_selectors, filter):
         print(f" Failed to click price filter: {e}")
     return False
 
-async def apply_user_filters(page, site_side_filter_selectors, user_filters):
+async def apply_user_filters(page, side_filter_selectors, user_filters):
     if not user_filters:
         return
 
-    print(" Applying filters...")
-
-    website_filters = await manipulate_side_filter(page, site_side_filter_selectors, user_filters)
+    website_filters = await manipulate_side_filter(page, side_filter_selectors, user_filters)
 
     for key, values in website_filters.items():
         for filter in values:
             print(f" Clicking filter: {key} = {filter}")
-            await page.wait_for_selector(site_side_filter_selectors["values"])
-            clicked = await click_matching_filter(page, site_side_filter_selectors, filter)
+            await page.wait_for_selector(side_filter_selectors["values"])
+            clicked = await click_matching_filter(page, side_filter_selectors, filter)
             if clicked:
                 await page.wait_for_timeout(50)
             else:
                 print(f"❌ Could not find and click filter: {filter}")
-    await page.wait_for_timeout(800)
+    await page.wait_for_timeout(1000)
 
 async def search_and_get_all_results(
         page,
@@ -85,7 +91,7 @@ async def search_and_get_all_results(
         base_url,
         search_url,
         product_card_selector,
-        site_side_filter_selectors=None,
+        side_filter_selectors=None,
         pagination_next_button_selector=None,
         user_input=None,
         user_filters=None,
@@ -93,10 +99,9 @@ async def search_and_get_all_results(
     ):
     print(f"\n Searching on {site_name}: {search_url}")
     await page.goto(search_url)
-    await page.wait_for_timeout(100)
 
     if user_filters:
-        await apply_user_filters(page, site_side_filter_selectors, user_filters)
+        await apply_user_filters(page, side_filter_selectors, user_filters)
 
     product_urls = []
     seen_titles = set()
@@ -156,14 +161,17 @@ async def main():
     user_input = "Samsung Galaxy S25"
 
     user_filters = {
-        "min_price": input("Min price? (Optional): ") or None,
-        "max_price": input("Max price? (Optional): ") or None,
+        "price": {
+            "min_price": input("Min price? (Optional): ") or None,
+            "max_price": input("Max price? (Optional): ") or None,
+        }
     }
     user_filters = {k: v for k, v in user_filters.items() if v}
 
     site_configs = get_site_configs(user_input, user_filters)
 
     start_time = time.perf_counter()
+
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=False)
         pages = [await browser.new_page() for _ in site_configs]
@@ -175,7 +183,7 @@ async def main():
                 site["base_url"],
                 site["search_url"],
                 site["product_card_selector"],
-                site["site_side_filter_selectors"],
+                site["side_filter_selectors"],
                 site["pagination_next_button_selector"],
                 site["user_input"],
                 site["user_filters"],
