@@ -14,43 +14,71 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
     min_price = user_filters["price"].get("min_price")
     max_price = user_filters["price"].get("max_price")
 
-    if min_price is not None and max_price is not None:
-        price_ranges = []
+    # Get internal storage values (keeping spaces intact, case-insensitive match)
+    internal_storage_values = [
+        val.strip()
+        for val in user_filters.get("internal_storage", "").split(",")
+        if val.strip()
+    ]
+    
+    price_ranges = []
+    matched_storage_values = []
 
-        for section in side_filter_sections:
-            title_element = await section.query_selector(side_filter_selectors["titles"])
-            if not title_element:
-                continue
+    for section in side_filter_sections:
+        title_element = await section.query_selector(side_filter_selectors["titles"])
+        if not title_element:
+            continue
 
-            title_text = await title_element.inner_text()
-            normalized_title_text = title_text.replace("\u00a0", " ").strip()
+        title_text = await title_element.inner_text()
+        normalized_title_text = title_text.replace("\u00a0", " ").strip()
 
-            if side_filter_selectors.get("support_custom_price_inputs"):
-                custom_price_inputs = await section.query_selector_all(side_filter_selectors["custom_price_inputs_selector"])
-                if custom_price_inputs:
-                    await custom_price_inputs[0].fill(str(min_price))
-                    await page.wait_for_timeout(50)
-                    await custom_price_inputs[1].fill(str(max_price))
-                    await custom_price_inputs[1].press("Enter")
-            elif normalized_title_text == "Цена":
-                price_elements = await section.query_selector_all(side_filter_selectors["values"])
-                for element in price_elements:
-                    range_text = await element.inner_text()
-                    normalized_range_text = range_text.replace("\u00a0", " ").strip()
-                    cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
-                    match = re.search(r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)", cleaned_text)
+        if side_filter_selectors.get("support_custom_price_inputs"):
+            custom_price_inputs = await section.query_selector_all(side_filter_selectors["custom_price_inputs_selector"])
+            if custom_price_inputs:
+                await custom_price_inputs[0].fill(str(min_price))
+                await page.wait_for_timeout(50)
+                await custom_price_inputs[1].fill(str(max_price))
+                await custom_price_inputs[1].press("Enter")
 
-                    if match:
-                        lower = int(match.group(1).replace(".", ""))
-                        upper = int(match.group(2).replace(".", ""))
+        elif normalized_title_text == "Цена":
+            price_elements = await section.query_selector_all(side_filter_selectors["values"])
+            for element in price_elements:
+                range_text = await element.inner_text()
+                normalized_range_text = range_text.replace("\u00a0", " ").strip()
+                cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
+                match = re.search(r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)", cleaned_text)
+
+                if match:
+                    lower = int(match.group(1).replace(".", ""))
+                    upper = int(match.group(2).replace(".", ""))
+                    if min_price is not None and max_price is not None:
                         if lower <= int(max_price) and upper >= int(min_price):
-                            print(f"✅ Matched website filter range: {cleaned_text}")
+                            print(f"✅ Matched website price range: {cleaned_text}")
                             price_ranges.append(cleaned_text)
 
-        if price_ranges:
-            website_filters["Цена"] = price_ranges
+        if normalized_title_text == "Вътрешна памет":
+            internal_storage_elements = await section.query_selector_all(side_filter_selectors["values"])
+            for element in internal_storage_elements:
+                range_text = await element.inner_text()
+                normalized_range_text = range_text.replace("\u00a0", " ").strip()
+                cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
+
+                match = re.search(r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)", cleaned_text, re.IGNORECASE)
+                if match:
+                    site_value = f"{match.group(1)} {match.group(2).upper()}"  # Format like: "128 GB"
+                    for user_value in internal_storage_values:
+                        if site_value.lower() == user_value.lower():
+                            print(f"✅ Matched internal storage: {site_value}")
+                            matched_storage_values.append(cleaned_text)
+
+    if price_ranges:
+        website_filters["Цена"] = price_ranges
+    if matched_storage_values:
+        website_filters["Вътрешна памет"] = matched_storage_values
 
     return website_filters
+
+
 
 
 async def click_matching_filter(page, side_filter_selectors, filter):
@@ -83,7 +111,6 @@ async def apply_user_filters(page, side_filter_selectors, user_filters):
                 await page.wait_for_timeout(50)
             else:
                 print(f"❌ Could not find and click filter: {filter}")
-    await page.wait_for_timeout(1000)
 
 
 async def extract_product_category_link_from_breadcrumb(
@@ -214,18 +241,19 @@ async def main():
     user_input = "Samsung Galaxy S25"
     min_price = input("Min price? (Optional): ") or None
     max_price = input("Max price? (Optional): ") or None
-
+    internal_storage = input("Internal storage? (Optional): ") or None
     user_filters = {
         "price": {
             "min_price": min_price,
             "max_price": max_price
-        }
+        },
+        "internal_storage": internal_storage
     }
 
     site_configs = get_site_configs(user_input, user_filters)
     start_time = time.perf_counter()
-
-    # launch browser and use anit-bot detection mecahnism
+    
+    # launch browser and use common anti-bot detection mechanism
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
         headless=False,
@@ -233,15 +261,19 @@ async def main():
             "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
             "--no-sandbox",
+            "--enable-webgl",
+            "--use-gl=swiftshader",
+            "--enable-accelerated-2d-canvas",
+            "--disable-infobars",
+            "--no-first-run",
     ]
 )
         browser_context = await browser.new_context(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
         locale="en-US",
         timezone_id="Europe/Sofia",
         viewport={"width": 1280, "height": 800},
 )
-       # Hide webdriver
         await browser_context.add_init_script("""() => {
             Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
             window.chrome = { runtime: {} };
@@ -250,7 +282,6 @@ async def main():
         }""")
 
         pages = [await browser_context.new_page() for _ in site_configs]
-
         tasks = [
             search_and_get_all_results(
                 page,

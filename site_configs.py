@@ -15,23 +15,24 @@ def get_site_configs(user_input, user_filters):
     user_query = quote_plus(user_input)
     
     return [
-        {
-            "site_name": "Ozone.bg",
-            "base_url": "https://www.ozone.bg",
-            "search_url": f"https://www.ozone.bg/instantsearchplus/result/?q={user_query}",
-            "breadcrumb_selector": 'nav.breadcrumbs',
-            "search_product_card_selector": "a.isp_product_image_href",
-            "category_product_card_selector": "a.product-box",
-            "side_filter_selectors": {
-                "values": ".isp_facet_value_name",
-                "sections": ".isp_single_facet_wrapper",
-                "titles": ".isp_facet_title span.isp_facet_title_name",
-                "support_custom_price_inputs": False,
-            },
-            "pagination_next_button_selector": ".bottom-toolbar .toolbar .pager .pages .next",
-            "user_input": user_input,
-            "user_filters": user_filters,
-        },
+        # {
+        #     "site_name": "Ozone.bg",
+        #     "base_url": "https://www.ozone.bg",
+        #     "search_url": f"https://www.ozone.bg/instantsearchplus/result/?q={user_query}",
+        #     "breadcrumb_selector": 'nav.breadcrumbs',
+        #     "search_product_card_selector": "a.isp_product_image_href",
+        #     "category_product_card_selector": "a.product-box",
+        #     "side_filter_selectors": {
+        #         "sections": "div.drop-down.multiselect",
+        #         "titles": "a.open-item",
+        #         "values": "span.link.clever-link-filter",
+        #         "support_custom_price_inputs": True,
+        #         "custom_price_inputs_selector": ".price-slider-inputs input"
+        #     },
+        #     "pagination_next_button_selector": ".bottom-toolbar .toolbar .pager .pages .next",
+        #     "user_input": user_input,
+        #     "user_filters": user_filters,
+        # },
         {
             "site_name": "Emag.bg",
             "base_url": "https://www.emag.bg",
@@ -44,7 +45,7 @@ def get_site_configs(user_input, user_filters):
                 "sections": "div.filter.filter-default",
                 "titles": "a.ph-widget span.filter-name",
                 # if the site supports custom price ranges via inputs
-                "support_custom_price_inputs": False,
+                "support_custom_price_inputs": True,
                 "custom_price_inputs_selector": "div.custom-price-slider-container div.input-group input"
             },
             "pagination_next_button_selector": "ul.pagination li a.js-change-page",
