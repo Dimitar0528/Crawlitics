@@ -2,26 +2,25 @@ import asyncio
 from rapidfuzz import fuzz
 from playwright.async_api import async_playwright
 import time
+import json
 
 from site_configs import get_site_configs 
 from helpers import extract_and_match_filter_values, click_matching_filter
 FUZZY_MATCH_THRESHOLD = 76
 
-async def manipulate_side_filter(page, side_filter_selectors, user_filters):
+async def manipulate_side_filter(page, side_filter_selectors, user_filters,product_category_name):
     side_filter_sections = await page.query_selector_all(side_filter_selectors["sections"])
     website_filters = {}
 
     min_price = user_filters["price"].get("min_price")
     max_price = user_filters["price"].get("max_price")
-
+    filter_names = set()
     internal_storage_values = [
         val.strip()
         for val in user_filters.get("internal_storage").split(",")
         if val.strip()
     ]
     
-    price_ranges = []
-    matched_storage_values = []
 
     for section in side_filter_sections:
         title_element = await section.query_selector(side_filter_selectors["titles"])
@@ -30,6 +29,9 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
 
         title_text = await title_element.inner_text()
         normalized_title_text = title_text.replace("\u00a0", " ").strip()
+        filter_names.add(normalized_title_text)
+        matched_values = []
+
         if side_filter_selectors.get("support_custom_price_inputs"):
             custom_price_inputs = await section.query_selector_all(side_filter_selectors["custom_price_inputs_selector"])
             if custom_price_inputs:
@@ -45,10 +47,8 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
                 return (min_price is not None and max_price is not None) and lower <= int(max_price) and upper >= int(min_price)
 
             price_regex = r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)"
-            price_ranges = await extract_and_match_filter_values(section, side_filter_selectors["values"], price_regex, price_filter)
+            matched_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], price_regex, price_filter)
 
-        for price in price_ranges:
-            print(f"✅ Matched website price range: {price}")
 
         if normalized_title_text == "Вътрешна памет":
             storage_regex = r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)"
@@ -56,23 +56,23 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
                 site_value = f"{match.group(1)} {match.group(2).upper()}"
                 return any(site_value.lower() == val.lower() for val in internal_storage_values)
 
-            matched_storage_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], storage_regex, storage_filter)
+            matched_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], storage_regex, storage_filter)
 
-    for val in matched_storage_values:
-        print(f"✅ Matched internal storage: {val}")
+        if matched_values:
+            website_filters[normalized_title_text] = matched_values
 
-    if price_ranges:
-        website_filters["Цена"] = price_ranges
-    if matched_storage_values:
-        website_filters["Вътрешна памет"] = matched_storage_values
-
+    schema = {
+        product_category_name: sorted(filter_names)
+    }
+    with open("all_filter_names_per_category", "w", encoding="utf-8") as f:
+        json.dump(schema, f, ensure_ascii=False, indent=2)
     return website_filters
 
-async def apply_user_filters(page, side_filter_selectors, user_filters):
+async def apply_user_filters(page, side_filter_selectors, user_filters,product_category_name):
     if not user_filters:
         return
 
-    website_filters = await manipulate_side_filter(page, side_filter_selectors, user_filters)
+    website_filters = await manipulate_side_filter(page, side_filter_selectors, user_filters,product_category_name)
 
     for key, values in website_filters.items():
         for filter in values:
@@ -109,19 +109,29 @@ async def extract_product_category_link_from_breadcrumb(
         href = base_url + href
     print(f" Opening first product:")
     await page.goto(href)
-    product_category_link = None
 
+    product_category_link = None
+    product_category_name = None
     breadcrumb_links = await page.query_selector_all(f"{breadcrumb_selector} a")
+
     if breadcrumb_links:
         last_link = breadcrumb_links[-1]
         product_category_link = await last_link.get_attribute("href")
+
         if not product_category_link.startswith("http"):
             product_category_link = base_url + product_category_link
+
         print(f"\n Searching on {site_name}: {product_category_link}")
         await page.goto(product_category_link)
+
+        product_categories = await page.query_selector_all(f"{breadcrumb_selector}:not(a)")
+        for product_category in product_categories:
+            text = await product_category.inner_text()
+            print(text)
+            product_category_name = text.split(" ")[-1]
     else:
         print("⚠️ No <a> links found in breadcrumb to click.")
-    return product_category_link
+    return product_category_name
 
 
 async def search_and_get_all_results(
@@ -138,7 +148,7 @@ async def search_and_get_all_results(
     user_filters=None,
     max_pages=3
 ):
-    await extract_product_category_link_from_breadcrumb(
+    product_category_name = await extract_product_category_link_from_breadcrumb(
         page,
         site_name,
         base_url,
@@ -148,10 +158,9 @@ async def search_and_get_all_results(
     )
 
     if user_filters:
-        await apply_user_filters(page, side_filter_selectors, user_filters)
-        await page.wait_for_timeout(1000)
+        await apply_user_filters(page, side_filter_selectors, user_filters,product_category_name)
+        await page.wait_for_timeout(2000)
     product_urls = []
-    seen_titles = set()
 
     for page_num in range(1, max_pages + 1):
         try:
@@ -162,14 +171,13 @@ async def search_and_get_all_results(
                 href = await element.get_attribute("href")
                 title = await element.inner_text()
 
-                if href and title and title not in seen_titles:
-                    seen_titles.add(title)
+                if href:
                     if not href.startswith("http"):
                         href = base_url + href
 
                     similarity = fuzz.partial_ratio(user_input.lower(), title.lower())
                     if similarity >= FUZZY_MATCH_THRESHOLD:
-                        product_urls.append((href, title))
+                        product_urls.append(href)
                         print(f" Matched ({similarity}%)")
 
             print(f" Page {page_num}: Scraped {len(product_elements)} products on {site_name}.")
@@ -190,7 +198,6 @@ async def search_and_get_all_results(
         except Exception as e:
             print(f" Error on page {page_num} of {site_name}: {e}")
             break
-
     return product_urls
 
 
@@ -273,7 +280,7 @@ async def main():
         await browser_context.close()
         await browser.close()
 
-        all_urls = [url for sublist in results for (url, _) in sublist]
+        all_urls = [url for sublist in results for url in sublist]
         print(f"\n All Found Product URLs ({len(all_urls)} total)")
 
         filtered_urls = filter_urls_by_query_relaxed(all_urls, user_input)

@@ -48,6 +48,7 @@ async def click_matching_filter(page, side_filter_selectors, filter):
             text = await elements.nth(i).inner_text()
             normalized = text.replace("\u00a0", " ").strip()
             if filter in normalized:
+                await page.wait_for_timeout(50)
                 await elements.nth(i).click()
                 return True
     except Exception as e:
