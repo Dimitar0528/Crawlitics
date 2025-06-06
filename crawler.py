@@ -1,10 +1,10 @@
 import asyncio
 from rapidfuzz import fuzz
 from playwright.async_api import async_playwright
-import re
 import time
-from site_configs import get_site_configs 
 
+from site_configs import get_site_configs 
+from helpers import extract_and_match_filter_values, click_matching_filter
 FUZZY_MATCH_THRESHOLD = 76
 
 async def manipulate_side_filter(page, side_filter_selectors, user_filters):
@@ -14,10 +14,9 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
     min_price = user_filters["price"].get("min_price")
     max_price = user_filters["price"].get("max_price")
 
-    # Get internal storage values (keeping spaces intact, case-insensitive match)
     internal_storage_values = [
         val.strip()
-        for val in user_filters.get("internal_storage", "").split(",")
+        for val in user_filters.get("internal_storage").split(",")
         if val.strip()
     ]
     
@@ -31,7 +30,6 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
 
         title_text = await title_element.inner_text()
         normalized_title_text = title_text.replace("\u00a0", " ").strip()
-
         if side_filter_selectors.get("support_custom_price_inputs"):
             custom_price_inputs = await section.query_selector_all(side_filter_selectors["custom_price_inputs_selector"])
             if custom_price_inputs:
@@ -41,35 +39,27 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
                 await custom_price_inputs[1].press("Enter")
 
         elif normalized_title_text == "Цена":
-            price_elements = await section.query_selector_all(side_filter_selectors["values"])
-            for element in price_elements:
-                range_text = await element.inner_text()
-                normalized_range_text = range_text.replace("\u00a0", " ").strip()
-                cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
-                match = re.search(r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)", cleaned_text)
+            def price_filter(match):
+                lower = int(match.group(1).replace(".", ""))
+                upper = int(match.group(2).replace(".", ""))
+                return (min_price is not None and max_price is not None) and lower <= int(max_price) and upper >= int(min_price)
 
-                if match:
-                    lower = int(match.group(1).replace(".", ""))
-                    upper = int(match.group(2).replace(".", ""))
-                    if min_price is not None and max_price is not None:
-                        if lower <= int(max_price) and upper >= int(min_price):
-                            print(f"✅ Matched website price range: {cleaned_text}")
-                            price_ranges.append(cleaned_text)
+            price_regex = r"(?:лв\.)?([\d.]+)\s*-\s*(?:лв\.)?([\d.]+)"
+            price_ranges = await extract_and_match_filter_values(section, side_filter_selectors["values"], price_regex, price_filter)
+
+        for price in price_ranges:
+            print(f"✅ Matched website price range: {price}")
 
         if normalized_title_text == "Вътрешна памет":
-            internal_storage_elements = await section.query_selector_all(side_filter_selectors["values"])
-            for element in internal_storage_elements:
-                range_text = await element.inner_text()
-                normalized_range_text = range_text.replace("\u00a0", " ").strip()
-                cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_range_text)
+            storage_regex = r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)"
+            def storage_filter(match):
+                site_value = f"{match.group(1)} {match.group(2).upper()}"
+                return any(site_value.lower() == val.lower() for val in internal_storage_values)
 
-                match = re.search(r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)", cleaned_text, re.IGNORECASE)
-                if match:
-                    site_value = f"{match.group(1)} {match.group(2).upper()}"  # Format like: "128 GB"
-                    for user_value in internal_storage_values:
-                        if site_value.lower() == user_value.lower():
-                            print(f"✅ Matched internal storage: {site_value}")
-                            matched_storage_values.append(cleaned_text)
+            matched_storage_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], storage_regex, storage_filter)
+
+    for val in matched_storage_values:
+        print(f"✅ Matched internal storage: {val}")
 
     if price_ranges:
         website_filters["Цена"] = price_ranges
@@ -77,24 +67,6 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters):
         website_filters["Вътрешна памет"] = matched_storage_values
 
     return website_filters
-
-
-
-
-async def click_matching_filter(page, side_filter_selectors, filter):
-    try:
-        elements = page.locator(side_filter_selectors["values"])
-        count = await elements.count()
-        for i in range(count):
-            text = await elements.nth(i).inner_text()
-            normalized = text.replace("\u00a0", " ").strip()
-            if filter in normalized:
-                await elements.nth(i).click()
-                return True
-    except Exception as e:
-        print(f" Failed to click price filter: {e}")
-    return False
-
 
 async def apply_user_filters(page, side_filter_selectors, user_filters):
     if not user_filters:
@@ -107,12 +79,9 @@ async def apply_user_filters(page, side_filter_selectors, user_filters):
             print(f" Clicking filter: {key} = {filter}")
             await page.wait_for_selector(side_filter_selectors["values"])
             clicked = await click_matching_filter(page, side_filter_selectors, filter)
-            if clicked:
-                await page.wait_for_timeout(50)
-            else:
+            if not clicked:
                 print(f"❌ Could not find and click filter: {filter}")
-
-
+                
 async def extract_product_category_link_from_breadcrumb(
     page,
     site_name,
@@ -180,7 +149,7 @@ async def search_and_get_all_results(
 
     if user_filters:
         await apply_user_filters(page, side_filter_selectors, user_filters)
-
+        await page.wait_for_timeout(1000)
     product_urls = []
     seen_titles = set()
 
