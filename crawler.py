@@ -15,11 +15,11 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters,produ
     min_price = user_filters["price"].get("min_price")
     max_price = user_filters["price"].get("max_price")
     filter_names = set()
-    internal_storage_values = [
-        val.strip()
-        for val in user_filters.get("internal_storage").split(",")
-        if val.strip()
-    ]
+    # internal_storage_values = [
+    #     val.strip()
+    #     for val in user_filters.get("internal_storage").split(",")
+    #     if val.strip()
+    # ]
     
 
     for section in side_filter_sections:
@@ -50,22 +50,22 @@ async def manipulate_side_filter(page, side_filter_selectors, user_filters,produ
             matched_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], price_regex, price_filter)
 
 
-        if normalized_title_text == "Вътрешна памет":
-            storage_regex = r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)"
-            def storage_filter(match):
-                site_value = f"{match.group(1)} {match.group(2).upper()}"
-                return any(site_value.lower() == val.lower() for val in internal_storage_values)
+        # if normalized_title_text == "Вътрешна памет":
+        #     storage_regex = r"(\d+(?:\.\d+)?)\s*(TB|GB|MB)"
+        #     def storage_filter(match):
+        #         site_value = f"{match.group(1)} {match.group(2).upper()}"
+        #         return any(site_value.lower() == val.lower() for val in internal_storage_values)
 
-            matched_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], storage_regex, storage_filter)
+        #     matched_values = await extract_and_match_filter_values(section, side_filter_selectors["values"], storage_regex, storage_filter)
 
         if matched_values:
             website_filters[normalized_title_text] = matched_values
 
-    schema = {
-        product_category_name: sorted(filter_names)
-    }
-    with open("all_filter_names_per_category", "w", encoding="utf-8") as f:
-        json.dump(schema, f, ensure_ascii=False, indent=2)
+    # schema = {
+    #     product_category_name: sorted(filter_names)
+    # }
+    # with open("all_filter_names_per_category.json", "w", encoding="utf-8") as f:
+    #     json.dump(schema, f, ensure_ascii=False, indent=2)
     return website_filters
 
 async def apply_user_filters(page, side_filter_selectors, user_filters,product_category_name):
@@ -213,43 +213,62 @@ def filter_urls_by_query_relaxed(urls, query):
     return filtered_urls
 
 
+async def scrape_and_close_page(page, site):
+    try:
+        return await search_and_get_all_results(
+            page,
+            site["site_name"],
+            site["base_url"],
+            site["search_url"],
+            site["breadcrumb_selector"],
+            site["search_product_card_selector"],
+            site["category_product_card_selector"],
+            site["side_filter_selectors"],
+            site["pagination_next_button_selector"],
+            site["user_input"],
+            site["user_filters"],
+            max_pages=3
+        )
+    finally:
+        await page.close()
+
+
 async def main():
     user_input = "Samsung Galaxy S25"
     min_price = input("Min price? (Optional): ") or None
     max_price = input("Max price? (Optional): ") or None
-    internal_storage = input("Internal storage? (Optional): ") or None
+
     user_filters = {
         "price": {
             "min_price": min_price,
             "max_price": max_price
-        },
-        "internal_storage": internal_storage
+        }
     }
 
     site_configs = get_site_configs(user_input, user_filters)
     start_time = time.perf_counter()
     
-    # launch browser and use common anti-bot detection mechanism
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
-        headless=False,
-        args=[
-            "--disable-blink-features=AutomationControlled",
-            "--disable-dev-shm-usage",
-            "--no-sandbox",
-            "--enable-webgl",
-            "--use-gl=swiftshader",
-            "--enable-accelerated-2d-canvas",
-            "--disable-infobars",
-            "--no-first-run",
-    ]
-)
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--enable-webgl",
+                "--use-gl=swiftshader",
+                "--enable-accelerated-2d-canvas",
+                "--disable-infobars",
+                "--no-first-run",
+            ]
+        )
         browser_context = await browser.new_context(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-        locale="en-US",
-        timezone_id="Europe/Sofia",
-        viewport={"width": 1280, "height": 800},
-)
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            locale="en-US",
+            timezone_id="Europe/Sofia",
+            viewport={"width": 1280, "height": 800},
+        )
+
         await browser_context.add_init_script("""() => {
             Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
             window.chrome = { runtime: {} };
@@ -257,26 +276,14 @@ async def main():
             Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
         }""")
 
-        pages = [await browser_context.new_page() for _ in site_configs]
-        tasks = [
-            search_and_get_all_results(
-                page,
-                site["site_name"],
-                site["base_url"],
-                site["search_url"],
-                site["breadcrumb_selector"],
-                site["search_product_card_selector"],
-                site["category_product_card_selector"],
-                site["side_filter_selectors"],
-                site["pagination_next_button_selector"],
-                site["user_input"],
-                site["user_filters"],
-                max_pages=3
-            )
-            for page, site in zip(pages, site_configs)
-        ]
+        tasks = []
+        for site in site_configs:
+            page = await browser_context.new_page()
+            task = scrape_and_close_page(page, site)
+            tasks.append(task)
 
         results = await asyncio.gather(*tasks)
+
         await browser_context.close()
         await browser.close()
 
