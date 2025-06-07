@@ -26,6 +26,7 @@ def get_site_configs(user_input, user_filters):
                 "sections": "div.drop-down.multiselect",
                 "titles": "a.open-item",
                 "values": "span.link.clever-link-filter",
+                # if the site supports custom price ranges via inputs
                 "support_custom_price_inputs": True,
                 "custom_price_inputs_selector": ".price-slider-inputs input"
             },
@@ -44,11 +45,28 @@ def get_site_configs(user_input, user_filters):
                 "values": "a.js-filter-item",
                 "sections": "div.filter.filter-default",
                 "titles": "a.ph-widget span.filter-name",
-                # if the site supports custom price ranges via inputs
                 "support_custom_price_inputs": True,
                 "custom_price_inputs_selector": "div.custom-price-slider-container div.input-group input"
             },
             "pagination_next_button_selector": "ul.pagination li a.js-change-page",
+            "user_input": user_input,
+            "user_filters": user_filters,
+        },
+         {
+            "site_name": "Technomarket.bg",
+            "base_url": "https://www.technomarket.bg",
+            "search_url": f"https://www.technomarket.bg/search?query={user_query}",
+            "breadcrumb_selector": "section.section.breadcrumb",
+            "search_product_card_selector": "a.title",
+            "category_product_card_selector": "a.title",
+            "side_filter_selectors": {
+                "values": "a.tm-button",
+                "sections": "div.facet",
+                "titles": "button.tm-button span.button-text",
+                "support_custom_price_inputs": True,
+                "custom_price_inputs_selector": "div.price-range input"
+            },
+            "pagination_next_button_selector": "div.pages a:last-of-type",
             "user_input": user_input,
             "user_filters": user_filters,
         },
