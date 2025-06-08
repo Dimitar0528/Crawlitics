@@ -9,10 +9,11 @@ from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
 
+from crawler import crawl_urls
 # ----------------------------------------
 # CONFIG
 # ----------------------------------------
-LLM_CONCURRENCY = 1
+LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
 PRODUCT_SCHEMA = {
@@ -136,29 +137,6 @@ async def extract_from_results(results):
 # MAIN
 # ----------------------------------------
 async def main():
-    urls = [
-        ## See which of the popular tech ecommerces can i scrape
-        # OZONE [V]
-        # "https://www.ozone.bg/product/smartfon-samsung-galaxy-a16-lte-6-7-8gb-256gb-light-green/",
-         
-        # ARDES [V]
-        # "https://ardes.bg/product/xiaomi-redmi-a3-3gb-64gb-forest-green-mzb0glceu-397451?rlv_rid=35f9f4a6-b908-4aee-aa60-d0596130420f&rlv_rpid=397451&rlv_rpos=1"
-        
-        # TECHNOMARKET [V]
-        # "https://www.technomarket.bg/telefoni/samsung-galaxy-z-flip-6-256gb-5g-blue-f741-09222997"
-
-        # TECHOPOLIS [X - CAN'T CRAWL BECAUSE OF ROBOTS.TXT]
-        # "https://www.technopolis.bg/bg/Laptopi/Laptop-2-v-1-LENOVO-IdeaPad-Flex-5-14ABR8-82XX004MBM-S-PISALKA-V-KOMPLEKTA/p/501296"
-
-        # BUY-BEST [v]
-        # "https://www.buybest.bg/samsung-galaxy-a16-5g-128gb-4gb-ram-dual-sim"
-
-        # EMAG [NOT QUITE- IT DOESNT PROPERLY WORK WHEN SHOWING LEV / EUR - MUST FIX IN NEXT 6 MONTHS]
-        # "https://www.emag.bg/smartfon-xiaomi-redmi-note-14-8gb-ram-256gb-mist-purple-mzb0j0leu/pd/D6H3DGYBM/"
-
-        # ZORA [X - SHITTY SITE]
-        # "https://zora.bg/product/iphone-13-128gb-midnight-128-gb-4-gb"
-    ]
     browser_config = BrowserConfig(
         headless=True,
         verbose=True,
@@ -168,7 +146,7 @@ async def main():
     prune_filter = PruningContentFilter(threshold_type="dynamic")
     md_generator = DefaultMarkdownGenerator(content_filter=prune_filter)
     config = CrawlerRunConfig(
-        cache_mode=CacheMode.WRITE_ONLY,
+        cache_mode=CacheMode.BYPASS,
         markdown_generator=md_generator,
         verbose=True,
         table_score_threshold=8,
@@ -177,21 +155,24 @@ async def main():
         exclude_all_images=True,
         override_navigator=True,
         check_robots_txt=True,
-        user_agent = "NeurobuyBot/1.0"
-
+        user_agent="Crawlitics/1.0"
     )
 
     dispatcher = MemoryAdaptiveDispatcher(
+        memory_threshold_percent=98.0,
+        check_interval=1.0, 
+        max_session_permit=30,
         rate_limiter=RateLimiter(
-            base_delay=(1.0, 2.5), 
-            max_delay=30.0, 
+            base_delay=(1.0, 3.0),
+            max_delay=30.0,
             max_retries=3,
             rate_limit_codes=[429, 503]
         ),
-        max_session_permit=30,
     )
 
     start_time = time.perf_counter()
+    urls = await crawl_urls()
+
     async with AsyncWebCrawler(config=browser_config) as crawler:
         container = await crawler.arun_many(urls=urls, config=config, dispatcher=dispatcher)
 
@@ -205,7 +186,7 @@ async def main():
         await extract_from_results(results)
 
     elapsed = time.perf_counter() - start_time
-    print(f"\n⏱️ All crawling + extraction done in {elapsed:.2f} seconds")
+    print(f"\n✅ All crawling + scraping + extraction done in: {elapsed:.2f} seconds")
 
 if __name__ == "__main__":
     asyncio.run(main())

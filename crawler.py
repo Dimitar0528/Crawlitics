@@ -233,7 +233,7 @@ async def scrape_and_close_page(page, site):
         await page.close()
 
 
-async def main():
+async def crawl_urls():
     user_input = "Samsung Galaxy S25"
     min_price = input("Min price? (Optional): ") or None
     max_price = input("Max price? (Optional): ") or None
@@ -298,7 +298,4 @@ async def main():
 
     elapsed = time.perf_counter() - start_time
     print(f"\n✅ Done in {elapsed:.2f} seconds")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    return filtered_urls
