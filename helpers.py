@@ -1,56 +1,69 @@
 import re
+from typing import List, Callable, Optional
+from playwright.async_api import Page, ElementHandle
 
-async def extract_and_match_filter_values(section, value_selector, regex_pattern, filter_func=None):
+async def extract_and_match_filter_values(
+    section: ElementHandle,
+    selector: str,
+    regex: Optional[str] = None,
+    match_logic: Optional[Callable] = None
+) -> List[str]:
     """
-    Extracts filter values from a webpage section using a selector, applies a regex to match the values,
-    and optionally filters them using a custom function.
+    Extracts text from filter value elements and returns those that match a given logic.
+    Can use either a regex with a matcher function or a simple text-based match_logic.
 
     Args:
-        section (ElementHandle): The section element containing the filter options.
-        value_selector (str): The CSS selector used to target individual filter values within the section.
-        regex_pattern (str): The regular expression pattern used to extract and validate the text content.
-        filter_func (Callable, optional): A function that takes a regex match object and returns True if the value
-                                          should be included. Defaults to None (include all matches).
+        section: The ElementHandle for the filter section (e.g., "Price", "Brand").
+        selector: The CSS selector for the individual filter options (checkboxes/links).
+        regex: An optional regex pattern to extract parts of the option text.
+        match_logic: A callable that returns True for a desired match.
+                     It receives a regex match object if `regex` is used,
+                     otherwise it receives the full option text.
 
     Returns:
-        list[str]: A list of cleaned and matched filter values (text) from the section.
+        A list of matching option texts.
     """
-    elements = await section.query_selector_all(value_selector)
     matched_values = []
-
-    for element in elements:
-        raw_text = await element.inner_text()
-        normalized_text = raw_text.replace("\u00a0", " ").strip()
-        cleaned_text = re.sub(r"\s*\(\d+\)$", "", normalized_text)
-        match = re.search(regex_pattern, cleaned_text, re.IGNORECASE)
-
-        if match and (filter_func is None or filter_func(match)):
-            matched_values.append(cleaned_text)
-
+    value_elements = await section.query_selector_all(selector)
+    for element in value_elements:
+        text = (await element.inner_text()).strip()
+        if not text:
+            continue
+            
+        if regex and match_logic:
+            match = re.search(regex, text, re.IGNORECASE)
+            if match and match_logic(match):
+                matched_values.append(text)
+        elif match_logic and match_logic(text):
+             matched_values.append(text)
+             
     return matched_values
 
-async def click_matching_filter(page, side_filter_selectors, filter):
-    """
-    Attempts to find and click a filter option on a webpage that matches the specified text.
 
-    Args:
-        page (Page): The Playwright page instance to operate on.
-        side_filter_selectors (dict): A dictionary of selectors, where "values" corresponds to the filter value items.
-        filter (str): The normalized filter text to match and click.
-
-    Returns:
-        bool: True if a matching filter was found and clicked, False otherwise.
-    """
+async def click_matching_filter(page: Page, selectors: dict, text_to_match: str) -> bool:
+    """Finds a filter option by its exact text and clicks it."""
     try:
-        elements = page.locator(side_filter_selectors["values"])
-        count = await elements.count()
-        for i in range(count):
-            text = await elements.nth(i).inner_text()
-            normalized = text.replace("\u00a0", " ").strip()
-            if filter in normalized:
-                await page.wait_for_timeout(50)
-                await elements.nth(i).click()
-                return True
+        # A more specific locator that finds the element by its text content.
+        # This is more robust than iterating and checking inner_text.
+        locator = page.locator(f"{selectors['values']}:has-text('{text_to_match}')").first
+        await locator.scroll_into_view_if_needed()
+        await locator.click()
+        return True
     except Exception as e:
-        print(f" Failed to click price filter: {e}")
-    return False
+        print(f"DEBUG: Could not click '{text_to_match}' using locator. Error: {e}")
+        return False
+
+
+def filter_urls_by_query_relaxed(urls: List[str], query: str) -> List[str]:
+    """Filters a list of URLs to ensure all parts of the query are present in the URL path."""
+    query_tokens = [token for token in query.lower().split() if token]
+    if not query_tokens:
+        return urls
+        
+    filtered_urls = []
+    for url in urls:
+        # Check against a normalized version of the URL
+        url_path = url.lower().replace('-', ' ').replace('_', ' ')
+        if all(token in url_path for token in query_tokens):
+            filtered_urls.append(url)
+    return filtered_urls
