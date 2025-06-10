@@ -13,27 +13,8 @@ from helpers import (
     filter_urls_by_query_relaxed,
 )
 
-FUZZY_MATCH_THRESHOLD = 80
-FUZZY_TITLE_MATCH_THRESHOLD = 85
-
-async def find_matching_filter_section(
-    user_filter_name: str, sections: List[ElementHandle], selectors: Dict
-) -> Optional[ElementHandle]:
-    """Finds the webpage filter section that best matches the user's filter name."""
-    for section in sections:
-        title_element = await section.query_selector(selectors["titles"])
-        if not title_element:
-            continue
-        
-        site_title_text = (await title_element.inner_text()).strip()
-        similarity = fuzz.ratio(user_filter_name.lower(), site_title_text.lower())
-        
-        if similarity >= FUZZY_TITLE_MATCH_THRESHOLD:
-            print(f"INFO: Matched filter section '{user_filter_name}' to site's '{site_title_text}' (Similarity: {similarity}%)")
-            return section
-    
-    print(f"WARN: Could not find a matching filter section for '{user_filter_name}'.")
-    return None
+FUZZY_PRODUCT_TITLE_MATCH_THRESHOLD = 55
+FUZZY_SECTION_TITLE_MATCH_THRESHOLD = 80
 
 async def _click_and_track_option(
     page: Page, selectors: Dict, option_text: str, applied_filters: Set[str]
@@ -47,7 +28,7 @@ async def _click_and_track_option(
     if clicked:
         applied_filters.add(option_text)
         # Give time for the page to update after a filter is applied
-        await page.wait_for_timeout(2000)
+        await page.wait_for_load_state('domcontentloaded', timeout=5000)
     else:
         print(f"ERROR: Failed to click filter option: '{option_text}'")
 
@@ -71,10 +52,9 @@ async def apply_price_filter(
         if len(inputs) >= 2:
             print(f"ACTION: Filling custom price range: {min_price} - {max_price}")
             await inputs[0].fill(str(min_price))
-            await page.wait_for_timeout(100)
+            await page.wait_for_timeout(50)
             await inputs[1].fill(str(max_price))
             await inputs[1].press("Enter")
-            await page.wait_for_load_state('domcontentloaded')
             return
 
     # Site has predefined price range checkboxes/links
@@ -104,7 +84,7 @@ async def apply_text_filter(
     
     def text_matcher(option_text: str) -> bool:
         return any(
-            fuzz.token_set_ratio(target.lower(), option_text.lower()) > 95
+            fuzz.token_set_ratio(target.lower(), option_text.lower()) > 90
             for target in target_values
         )
 
@@ -118,37 +98,56 @@ async def apply_text_filter(
 
 async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_filters: Dict[str, str]):
     """
-    Orchestrator function to iterate through user-defined filters and apply them.
+    Applies user filters using a non-mutating worklist strategy.
     """
     selectors = site_config.get("side_filter_selectors")
     if not user_filters or not selectors:
-        print("INFO: No user filters to apply or selectors not configured.")
+        print("INFO: No user filters or missing selectors.")
         return
 
     applied_filters = set()
+    applied_options = set()
+    max_passes = len(user_filters) + 1
 
-    for user_filter_name, user_filter_value in user_filters.items():
-        all_filter_sections = await page.query_selector_all(selectors["sections"])
-        print(f"\nINFO: Processing filter '{user_filter_name}: {user_filter_value}'")
-        
-        # Find the corresponding section on the webpage
-        matched_section = await find_matching_filter_section(
-            user_filter_name, all_filter_sections, selectors
-        )
-        if not matched_section:
-            continue
+    for _ in range(max_passes):
+        remaining_filters = {
+            name: value for name, value in user_filters.items()
+            if name not in applied_filters
+        }
 
-        # Dispatch to the correct filter-applying function
-        is_price_filter = "price" in user_filter_name.lower() or "цена" in user_filter_name.lower()
-        
-        if is_price_filter:
-            await apply_price_filter(
-                page, selectors, user_filter_value, matched_section, applied_filters
-            )
-        else: # Treat as a generic text filter
-            await apply_text_filter(
-                page, selectors, user_filter_value, matched_section, applied_filters
-            )
+        if not remaining_filters:
+            print("SUCCESS: All filters applied.")
+            break
+
+        print(f"\n--- Filter Pass. Remaining: {list(remaining_filters.keys())} ---")
+        sections = await page.query_selector_all(selectors["sections"])
+        if not sections:
+            print("ERROR: No filter sections found.")
+            break
+
+        for section in sections:
+            title_el = await section.query_selector(selectors["titles"])
+            title = (await title_el.inner_text()).strip() if title_el else ""
+            if not title:
+                continue
+
+            for filter_name, filter_value in remaining_filters.items():
+                score = fuzz.token_set_ratio(filter_name.lower(), title.lower())
+                if score < FUZZY_SECTION_TITLE_MATCH_THRESHOLD:
+                    continue
+
+                print(f"INFO: Matched '{filter_name}' → '{title}' ({score}%)")
+
+                if any(x in filter_name.lower() for x in ("цена", "price")):
+                    await apply_price_filter(page, selectors, filter_value, section, applied_options)
+                else:
+                    await apply_text_filter(page, selectors, filter_value, section, applied_options)
+
+                applied_filters.add(filter_name)
+                break  # Break from filters loop and refresh DOM
+            else:
+                continue
+            break  # Break from sections loop and refresh DOM
 
 async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) -> Optional[str]:
     """
@@ -157,7 +156,7 @@ async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) 
     """
     print(f"\n🔍 Searching on {site_config['site_name']}: {site_config['search_url']}")
     await page.goto(site_config['search_url'])
-    await page.wait_for_selector(site_config['search_product_card_selector'], timeout=10000)
+    await page.wait_for_selector(site_config['search_product_card_selector'], timeout=8000)
 
     first_product = await page.query_selector(site_config['search_product_card_selector'])
     if not first_product:
@@ -194,9 +193,9 @@ async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) 
     return category_url
 
 
-async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user_query: str, max_pages: int) -> List[str]:
+async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user_query: str, max_pages: int) -> Set[str]:
     """Scrapes product URLs from the category page, handling pagination."""
-    product_urls = []
+    product_urls = set()
     
     for page_num in range(1, max_pages + 1):
         print(f"\n--- Scraping Page {page_num} on {site_config['site_name']} ---")
@@ -217,12 +216,12 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
             title = await element.inner_text()
             if not href or not title:
                 continue
-
+            print(title[:50])
             full_url = href if href.startswith("http") else site_config['base_url'] + href
-            similarity = fuzz.partial_ratio(user_query.lower(), title.lower())
+            similarity = fuzz.partial_ratio(user_query.lower(), title[:50].lower())
             
-            if similarity >= FUZZY_MATCH_THRESHOLD:
-                product_urls.append(full_url)
+            if similarity >= FUZZY_PRODUCT_TITLE_MATCH_THRESHOLD:
+                product_urls.add(full_url)
                 page_matches += 1
                 print(f" Matched '{title[:50]}...' (Similarity: {similarity}%)")
 
@@ -238,7 +237,6 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
             print("ACTION: Clicking next page...")
             await next_button.scroll_into_view_if_needed()
             await next_button.click()
-            await page.wait_for_load_state('domcontentloaded', timeout=10000)
         else:
             print(f"INFO: Pagination ended on page {page_num}.")
             break
@@ -252,14 +250,14 @@ def get_user_criteria() -> Dict[str, Any]:
     """
     print("--- Product Search & Filter Setup ---")
     
-    # 1. Get the main search query
+    # Get the main search query
     while not (query := input(" What product are you looking for? (e.g., iPhone 15 Pro) \n   ").strip()):
         print("    Search query cannot be empty. Please try again.")
     print(f"    Searching for: {query}\n")
 
-    # 2. Get filters in a loop
+    # Get filters in a loop
     filters = {}
-    print(" Now, let's add some filters. (Press Enter on an empty filter name to finish)")
+    print(" Now, let's add some filters. (Press Enter on an empty filter name to finish / exit)")
     
     while True:
         # Prompt for the filter name (e.g., Цена, Цвят, Вътрешна памет)
@@ -276,7 +274,7 @@ def get_user_criteria() -> Dict[str, Any]:
         # Prompt for the filter value(s)
         print(f"     Enter value(s) for '{filter_name}'.")
         print("     - For price/range, use 'min-max' (e.g., 1500-2500).")
-        print("     - For multiple text values, separate with a comma (e.g., 128 GB, 256 GB).")
+        print("     - For single / multiple text value(s), separate with a comma (e.g., 128 GB, 256 GB).")
         filter_value = input("     Value(s): ").strip()
 
         if filter_value:
@@ -300,16 +298,16 @@ async def run_site_scrape(context: BrowserContext, site_config: Dict[str, Any], 
     print(f"\n{'='*20} Starting Scrape for: {site_name.upper()} {'='*20}")
     
     try:
-        # 1. Navigate to the correct category page
+        # Navigate to the correct category page
         category_url = await navigate_to_product_category(page, site_config)
         if not category_url:
             print(f"ERROR: Could not navigate to category page for {site_name}. Aborting.")
             return []
 
-        # 2. Apply all user-defined filters
+        # Apply all user-defined filters
         await apply_all_user_filters(page, site_config, user_criteria['filters'])
         
-        # 3. Scrape results from all pages
+        # Scrape results from all pages
         return await scrape_paginated_results(
             page, site_config, user_criteria['query'], max_pages=3
         )
@@ -364,5 +362,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    # The asyncio.run call remains the same
     asyncio.run(main())
