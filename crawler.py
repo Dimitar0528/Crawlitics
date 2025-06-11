@@ -3,6 +3,7 @@ import re
 import time
 from typing import Dict, Any, List, Optional, Set
 from playwright.async_api import async_playwright, Page, ElementHandle, BrowserContext
+from sentence_transformers import SentenceTransformer, util
 
 from site_configs import get_site_configs
 from helpers import (
@@ -12,6 +13,7 @@ from helpers import (
     get_semantic_similarity, 
 )
 SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.65
+MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 
 async def _click_and_track_option(
     page: Page, selectors: Dict, option_text: str, applied_filters: Set[str]
@@ -84,7 +86,7 @@ async def apply_text_filter(page: Page, selectors: Dict, user_values_str: str, f
 
     # For each user target value, find the best semantic match on the site
     for target_value in target_values:
-        similarities = get_semantic_similarity(target_value, site_option_texts)
+        similarities = get_semantic_similarity(target_value, site_option_texts, MODEL)
         
         # Find the best match above the threshold
         best_score = 0
@@ -102,6 +104,7 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
     """Applies filters by finding the best semantic match for each filter section."""
     selectors = site_config.get("side_filter_selectors")
     if not user_filters or not selectors:
+        print("INFO: No user filters or missing selectors.")
         return
 
     applied_filter_names = set()
@@ -116,9 +119,6 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
 
         print(f"\n--- Filter Pass. Remaining: {list(remaining_filters.keys())} ---")
         sections = await page.query_selector_all(selectors["sections"])
-       
-
-        # Get all filter titles from the site at once
         site_filter_titles = []
         section_map = {} # Map title back to its element
         for section in sections:
@@ -132,31 +132,52 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
         if not site_filter_titles:
             break
 
-        # Find the best semantic match among all remaining filters and all site filter titles
-        best_overall_score = -1
-        best_user_filter = None
-        best_site_filter_title = None
+        #  Parallel Similarity Scoring 
+        user_filter_names = list(remaining_filters.keys())
+        user_embeddings = MODEL.encode(user_filter_names, convert_to_tensor=True)
+        site_embeddings = MODEL.encode(site_filter_titles, convert_to_tensor=True)
+        similarity_matrix = util.cos_sim(user_embeddings, site_embeddings)
 
-        for user_filter_name in remaining_filters.keys():
-            similarities = get_semantic_similarity(user_filter_name, site_filter_titles)
-            for i, score in enumerate(similarities):
-                if score > best_overall_score:
-                    best_overall_score = score
-                    best_user_filter = user_filter_name
-                    best_site_filter_title = site_filter_titles[i]
-                    
-        print(f"INFO: Best match for this pass: '{best_user_filter}' -> '{best_site_filter_title}' (Similarity: {best_overall_score:.2f})")
-        
+        best_score = -1.0
+        best_user_index = None
+        best_site_index = None
+
+        for i in range(similarity_matrix.size(0)):  # each user filter
+            for j in range(similarity_matrix.size(1)):  # each site title
+                score = similarity_matrix[i][j].item()
+                if score > best_score:
+                    best_score = score
+                    best_user_index = i
+                    best_site_index = j
+
+        if best_user_index is None or best_site_index is None:
+            print("⚠️ WARN: No match found for any filter this round.")
+            break
+
+        # Get best matched filter and site section
+        best_user_filter = user_filter_names[best_user_index]
+        best_site_title = site_filter_titles[best_site_index]
         filter_value = remaining_filters[best_user_filter]
-        matched_section_element = section_map[best_site_filter_title]
-        
+        matched_section_element = section_map[best_site_title]
+
+        print(f"✅ Best Match: '{best_user_filter}' → '{best_site_title}' (Similarity: {best_score:.2f})")
+
         if "price" in best_user_filter.lower() or "цена" in best_user_filter.lower():
             await apply_price_filter(page, selectors, filter_value, matched_section_element, applied_options)
         else:
             await apply_text_filter(page, selectors, filter_value, matched_section_element, applied_options)
 
         applied_filter_names.add(best_user_filter)
+
+        # Wait for the page to update filters if DOM changes
         await page.wait_for_selector(selectors["sections"], state="visible", timeout=7000)
+
+    if len(applied_filter_names) < len(user_filters):
+        print("⚠️ Not all filters applied. Remaining:")
+        for f in user_filters:
+            if f not in applied_filter_names:
+                print(f"  - {f}: {user_filters[f]}")
+
 
 
 async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) -> Optional[str]:
@@ -223,7 +244,7 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
         page_matches = 0
         product_titles = [(await el.inner_text())[:50].strip() for el in product_elements]
         
-        similarities = get_semantic_similarity(user_query, product_titles)
+        similarities = get_semantic_similarity(user_query, product_titles, MODEL)
         for i, element in enumerate(product_elements):
             score = similarities[i]
             title = product_titles[i]

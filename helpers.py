@@ -70,11 +70,8 @@ def filter_urls_by_query_relaxed(urls: List[str], query: str) -> List[str]:
             filtered_urls.append(url)
     return filtered_urls
 
-print("Loading sentence-transformer model...")
-MODEL = SentenceTransformer('all-MiniLM-L6-v2')
-print("Model loaded.")
 
-def get_semantic_similarity(query: str, corpus: List[str]) -> List[float]:
+def get_semantic_similarity(query: str, corpus: List[str], MODEL: SentenceTransformer) -> List[float]:
     """
     Calculates the cosine similarity between a single query string and a list of other strings.
     
@@ -97,6 +94,3 @@ def get_semantic_similarity(query: str, corpus: List[str]) -> List[float]:
 
     # Convert the result to a simple list of floats
     return cosine_scores[0].cpu().numpy().tolist()
-
-# You can keep your other helper functions like click_matching_filter here too.
-# ...
