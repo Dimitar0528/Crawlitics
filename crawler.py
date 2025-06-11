@@ -2,8 +2,6 @@ import asyncio
 import re
 import time
 from typing import Dict, Any, List, Optional, Set
-
-from rapidfuzz import fuzz
 from playwright.async_api import async_playwright, Page, ElementHandle, BrowserContext
 
 from site_configs import get_site_configs
@@ -11,10 +9,9 @@ from helpers import (
     click_matching_filter,
     extract_and_match_filter_values,
     filter_urls_by_query_relaxed,
+    get_semantic_similarity, 
 )
-
-FUZZY_PRODUCT_TITLE_MATCH_THRESHOLD = 55
-FUZZY_SECTION_TITLE_MATCH_THRESHOLD = 80
+SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.65
 
 async def _click_and_track_option(
     page: Page, selectors: Dict, option_text: str, applied_filters: Set[str]
@@ -51,6 +48,7 @@ async def apply_price_filter(
         inputs = await price_section.query_selector_all(selectors["custom_price_inputs_selector"])
         if len(inputs) >= 2:
             print(f"ACTION: Filling custom price range: {min_price} - {max_price}")
+            await page.wait_for_timeout(50)
             await inputs[0].fill(str(min_price))
             await page.wait_for_timeout(50)
             await inputs[1].fill(str(max_price))
@@ -72,82 +70,94 @@ async def apply_price_filter(
         await _click_and_track_option(page, selectors, option, applied_filters)
 
 
-async def apply_text_filter(
-    page: Page,
-    selectors: Dict,
-    user_values_str: str,
-    filter_section: ElementHandle,
-    applied_filters: Set[str],
-):
-    """Handles simple text matching for filters like storage, color, etc."""
-    target_values = {val.strip().lower() for val in user_values_str.split(',')}
+async def apply_text_filter(page: Page, selectors: Dict, user_values_str: str, filter_section: ElementHandle, applied_filters: Set[str]):
+    """Applies a text filter using semantic similarity."""
+    target_values = [val.strip() for val in user_values_str.split(',')]
     
-    def text_matcher(option_text: str) -> bool:
-        return any(
-            fuzz.token_set_ratio(target.lower(), option_text.lower()) > 90
-            for target in target_values
-        )
-
-    matched_options = await extract_and_match_filter_values(
-        filter_section, selectors["values"], match_logic=text_matcher
-    )
-
-    for option in matched_options:
-        await _click_and_track_option(page, selectors, option, applied_filters)
-
-
-async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_filters: Dict[str, str]):
-    """
-    Applies user filters using a non-mutating worklist strategy.
-    """
-    selectors = site_config.get("side_filter_selectors")
-    if not user_filters or not selectors:
-        print("INFO: No user filters or missing selectors.")
+    # Get all available filter options from the website for batch processing
+    option_elements = await filter_section.query_selector_all(selectors["values"])
+    site_option_texts = [(await el.inner_text()).strip() for el in option_elements]
+    
+    if not site_option_texts:
+        print("WARN: No text options found for this filter section.")
         return
 
-    applied_filters = set()
+    # For each user target value, find the best semantic match on the site
+    for target_value in target_values:
+        similarities = get_semantic_similarity(target_value, site_option_texts)
+        
+        # Find the best match above the threshold
+        best_score = 0
+        best_match_text = None
+        for i, score in enumerate(similarities):
+            if score > best_score:
+                best_score = score
+                best_match_text = site_option_texts[i]
+
+        print(f"INFO: Matched value '{target_value}' -> '{best_match_text}' (Similarity: {best_score:.2f})")
+        await _click_and_track_option(page, selectors, best_match_text, applied_filters)
+    
+
+async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_filters: Dict[str, str]):
+    """Applies filters by finding the best semantic match for each filter section."""
+    selectors = site_config.get("side_filter_selectors")
+    if not user_filters or not selectors:
+        return
+
+    applied_filter_names = set()
     applied_options = set()
+
     max_passes = len(user_filters) + 1
-
     for _ in range(max_passes):
-        remaining_filters = {
-            name: value for name, value in user_filters.items()
-            if name not in applied_filters
-        }
-
+        remaining_filters = {k: v for k, v in user_filters.items() if k not in applied_filter_names}
         if not remaining_filters:
             print("SUCCESS: All filters applied.")
             break
 
         print(f"\n--- Filter Pass. Remaining: {list(remaining_filters.keys())} ---")
         sections = await page.query_selector_all(selectors["sections"])
-        if not sections:
-            print("ERROR: No filter sections found.")
-            break
+       
 
+        # Get all filter titles from the site at once
+        site_filter_titles = []
+        section_map = {} # Map title back to its element
         for section in sections:
             title_el = await section.query_selector(selectors["titles"])
-            title = (await title_el.inner_text()).strip() if title_el else ""
-            if not title:
-                continue
+            if title_el:
+                title = (await title_el.inner_text()).strip()
+                if title:
+                    site_filter_titles.append(title)
+                    section_map[title] = section
 
-            for filter_name, filter_value in remaining_filters.items():
-                score = fuzz.token_set_ratio(filter_name.lower(), title.lower())
-                if score < FUZZY_SECTION_TITLE_MATCH_THRESHOLD:
-                    continue
+        if not site_filter_titles:
+            break
 
-                print(f"INFO: Matched '{filter_name}' → '{title}' ({score}%)")
+        # Find the best semantic match among all remaining filters and all site filter titles
+        best_overall_score = -1
+        best_user_filter = None
+        best_site_filter_title = None
 
-                if any(x in filter_name.lower() for x in ("цена", "price")):
-                    await apply_price_filter(page, selectors, filter_value, section, applied_options)
-                else:
-                    await apply_text_filter(page, selectors, filter_value, section, applied_options)
+        for user_filter_name in remaining_filters.keys():
+            similarities = get_semantic_similarity(user_filter_name, site_filter_titles)
+            for i, score in enumerate(similarities):
+                if score > best_overall_score:
+                    best_overall_score = score
+                    best_user_filter = user_filter_name
+                    best_site_filter_title = site_filter_titles[i]
+                    
+        print(f"INFO: Best match for this pass: '{best_user_filter}' -> '{best_site_filter_title}' (Similarity: {best_overall_score:.2f})")
+        
+        filter_value = remaining_filters[best_user_filter]
+        matched_section_element = section_map[best_site_filter_title]
+        
+        if "price" in best_user_filter.lower() or "цена" in best_user_filter.lower():
+            await apply_price_filter(page, selectors, filter_value, matched_section_element, applied_options)
+        else:
+            await apply_text_filter(page, selectors, filter_value, matched_section_element, applied_options)
 
-                applied_filters.add(filter_name)
-                break  # Break from filters loop and refresh DOM
-            else:
-                continue
-            break  # Break from sections loop and refresh DOM
+        applied_filter_names.add(best_user_filter)
+        await page.wait_for_selector(selectors["sections"], state="visible", timeout=7000)
+
 
 async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) -> Optional[str]:
     """
@@ -211,19 +221,18 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
             break
             
         page_matches = 0
-        for element in product_elements:
-            href = await element.get_attribute("href")
-            title = await element.inner_text()
-            if not href or not title:
-                continue
-            print(title[:50])
-            full_url = href if href.startswith("http") else site_config['base_url'] + href
-            similarity = fuzz.partial_ratio(user_query.lower(), title[:50].lower())
-            
-            if similarity >= FUZZY_PRODUCT_TITLE_MATCH_THRESHOLD:
-                product_urls.add(full_url)
-                page_matches += 1
-                print(f" Matched '{title[:50]}...' (Similarity: {similarity}%)")
+        product_titles = [(await el.inner_text())[:50].strip() for el in product_elements]
+        
+        similarities = get_semantic_similarity(user_query, product_titles)
+        for i, element in enumerate(product_elements):
+            score = similarities[i]
+            title = product_titles[i]
+            if score >= SEMANTIC_PRODUCT_TITLE_THRESHOLD:
+                href = await element.get_attribute("href")
+                if href:
+                    full_url = href if href.startswith("http") else site_config['base_url'] + href
+                    product_urls.add(full_url)
+                    print(f"  ✅ Matched '{title[:50]}...' (Similarity: {score:.2f})")
 
         print(f"INFO: Page {page_num}: Found {page_matches} matching products from {len(product_elements)} total.")
 

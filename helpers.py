@@ -1,6 +1,9 @@
 import re
 from typing import List, Callable, Optional
 from playwright.async_api import Page, ElementHandle
+from sentence_transformers import SentenceTransformer, util
+from typing import List
+import numpy as np
 
 async def extract_and_match_filter_values(
     section: ElementHandle,
@@ -43,8 +46,7 @@ async def extract_and_match_filter_values(
 async def click_matching_filter(page: Page, selectors: dict, text_to_match: str) -> bool:
     """Finds a filter option by its exact text and clicks it."""
     try:
-        # A more specific locator that finds the element by its text content.
-        # This is more robust than iterating and checking inner_text.
+        # A locator that finds the element by its text content.
         locator = page.locator(f"{selectors['values']}:has-text('{text_to_match}')").first
         await locator.scroll_into_view_if_needed()
         await locator.click()
@@ -67,3 +69,34 @@ def filter_urls_by_query_relaxed(urls: List[str], query: str) -> List[str]:
         if all(token in url_path for token in query_tokens):
             filtered_urls.append(url)
     return filtered_urls
+
+print("Loading sentence-transformer model...")
+MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+print("Model loaded.")
+
+def get_semantic_similarity(query: str, corpus: List[str]) -> List[float]:
+    """
+    Calculates the cosine similarity between a single query string and a list of other strings.
+    
+    Args:
+        query: The user's input string.
+        corpus: A list of strings from the website to compare against.
+
+    Returns:
+        A list of similarity scores (from -1 to 1), one for each item in the corpus.
+    """
+    if not corpus:
+        return []
+
+    # Encode the query and corpus into vector embeddings
+    query_embedding = MODEL.encode(query, convert_to_tensor=True)
+    corpus_embeddings = MODEL.encode(corpus, convert_to_tensor=True)
+
+    # Compute cosine similarity
+    cosine_scores = util.cos_sim(query_embedding, corpus_embeddings)
+
+    # Convert the result to a simple list of floats
+    return cosine_scores[0].cpu().numpy().tolist()
+
+# You can keep your other helper functions like click_matching_filter here too.
+# ...
