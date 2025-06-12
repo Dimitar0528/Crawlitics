@@ -4,7 +4,7 @@ import time
 from typing import Dict, Any, List, Optional, Set
 from playwright.async_api import async_playwright, Page, ElementHandle, BrowserContext
 from sentence_transformers import SentenceTransformer, util
-
+from rapidfuzz import fuzz
 from site_configs import get_site_configs
 from helpers import (
     click_matching_filter,
@@ -12,7 +12,7 @@ from helpers import (
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
 )
-SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.65
+SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.6
 MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 
 async def _click_and_track_option(
@@ -48,7 +48,7 @@ async def apply_price_filter(
     #  Site supports custom min/max price input fields
     if selectors.get("support_custom_price_inputs"):
         inputs = await price_section.query_selector_all(selectors["custom_price_inputs_selector"])
-        if len(inputs) >= 2:
+        if len(inputs) == 2:
             print(f"ACTION: Filling custom price range: {min_price} - {max_price}")
             await page.wait_for_timeout(50)
             await inputs[0].fill(str(min_price))
@@ -138,15 +138,23 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
         site_embeddings = MODEL.encode(site_filter_titles, convert_to_tensor=True)
         similarity_matrix = util.cos_sim(user_embeddings, site_embeddings)
 
+        # 2. Combine with fuzzy logic
+        COSINE_WEIGHT = 0.7
+        FUZZY_WEIGHT = 0.45
+
         best_score = -1.0
         best_user_index = None
         best_site_index = None
 
-        for i in range(similarity_matrix.size(0)):  # each user filter
-            for j in range(similarity_matrix.size(1)):  # each site title
-                score = similarity_matrix[i][j].item()
-                if score > best_score:
-                    best_score = score
+        for i, user_filter in enumerate(user_filter_names):
+            for j, site_title in enumerate(site_filter_titles):
+                cosine_score = similarity_matrix[i][j].item()
+                fuzzy_score = fuzz.partial_ratio(user_filter.lower(), site_title.lower()) / 100
+
+                # Final score is weighted combo
+                combined_filter_score = cosine_score * COSINE_WEIGHT + fuzzy_score * FUZZY_WEIGHT
+                if combined_filter_score > best_score:
+                    best_score = combined_filter_score
                     best_user_index = i
                     best_site_index = j
 
@@ -154,13 +162,13 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
             print("⚠️ WARN: No match found for any filter this round.")
             break
 
-        # Get best matched filter and site section
+        # 3. Match result
         best_user_filter = user_filter_names[best_user_index]
         best_site_title = site_filter_titles[best_site_index]
         filter_value = remaining_filters[best_user_filter]
         matched_section_element = section_map[best_site_title]
 
-        print(f"✅ Best Match: '{best_user_filter}' → '{best_site_title}' (Similarity: {best_score:.2f})")
+        print(f"✅ Best Match: '{best_user_filter}' → '{best_site_title}' (Score: {best_score:.2f})")
 
         if "price" in best_user_filter.lower() or "цена" in best_user_filter.lower():
             await apply_price_filter(page, selectors, filter_value, matched_section_element, applied_options)
@@ -253,6 +261,7 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
                 if href:
                     full_url = href if href.startswith("http") else site_config['base_url'] + href
                     product_urls.add(full_url)
+                    page_matches += 1
                     print(f"  ✅ Matched '{title[:50]}...' (Similarity: {score:.2f})")
 
         print(f"INFO: Page {page_num}: Found {page_matches} matching products from {len(product_elements)} total.")
@@ -263,7 +272,8 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
             break
 
         next_button = await page.query_selector(next_button_selector)
-        if next_button and await next_button.is_enabled():
+        next_button_css_disabled_class = await next_button.evaluate("el => /(disable|disabled)/.test(el.className)")
+        if next_button and not next_button_css_disabled_class:
             print("ACTION: Clicking next page...")
             await next_button.scroll_into_view_if_needed()
             await next_button.click()
@@ -304,7 +314,7 @@ def get_user_criteria() -> Dict[str, Any]:
         # Prompt for the filter value(s)
         print(f"     Enter value(s) for '{filter_name}'.")
         print("     - For price/range, use 'min-max' (e.g., 1500-2500).")
-        print("     - For single / multiple text value(s), separate with a comma (e.g., 128 GB, 256 GB).")
+        print("     - For single / multiple text value(s), separate with a comma (e.g. if the filter is internal storage: 128 GB, 256 GB).")
         filter_value = input("     Value(s): ").strip()
 
         if filter_value:

@@ -66,7 +66,7 @@ def get_site_configs(user_input, user_filters):
                 "support_custom_price_inputs": True,
                 "custom_price_inputs_selector": "div.price-range input"
             },
-            "pagination_next_button_selector": "div.pages a:last-of-type",
+            "pagination_next_button_selector": "div.pages > a:has(div.page-arrowN)",
             "user_input": user_input,
             "user_filters": user_filters,
         },
