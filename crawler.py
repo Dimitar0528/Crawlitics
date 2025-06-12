@@ -12,7 +12,7 @@ from helpers import (
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
 )
-SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.6
+SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.55
 MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 
 async def _click_and_track_option(
@@ -20,13 +20,12 @@ async def _click_and_track_option(
 ):
     """Helper to click a filter option, track it, and wait for the page update."""
     if option_text in applied_filters:
-        return # Avoid double-clicking
+        return
         
     print(f"ACTION: Clicking filter option '{option_text}'")
     clicked = await click_matching_filter(page, selectors, option_text)
     if clicked:
         applied_filters.add(option_text)
-        # Give time for the page to update after a filter is applied
         await page.wait_for_load_state('domcontentloaded', timeout=5000)
     else:
         print(f"ERROR: Failed to click filter option: '{option_text}'")
@@ -88,7 +87,6 @@ async def apply_text_filter(page: Page, selectors: Dict, user_values_str: str, f
     for target_value in target_values:
         similarities = get_semantic_similarity(target_value, site_option_texts, MODEL)
         
-        # Find the best match above the threshold
         best_score = 0
         best_match_text = None
         for i, score in enumerate(similarities):
@@ -138,7 +136,6 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
         site_embeddings = MODEL.encode(site_filter_titles, convert_to_tensor=True)
         similarity_matrix = util.cos_sim(user_embeddings, site_embeddings)
 
-        # 2. Combine with fuzzy logic
         COSINE_WEIGHT = 0.7
         FUZZY_WEIGHT = 0.45
 
@@ -150,8 +147,6 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
             for j, site_title in enumerate(site_filter_titles):
                 cosine_score = similarity_matrix[i][j].item()
                 fuzzy_score = fuzz.partial_ratio(user_filter.lower(), site_title.lower()) / 100
-
-                # Final score is weighted combo
                 combined_filter_score = cosine_score * COSINE_WEIGHT + fuzzy_score * FUZZY_WEIGHT
                 if combined_filter_score > best_score:
                     best_score = combined_filter_score
@@ -161,8 +156,7 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
         if best_user_index is None or best_site_index is None:
             print("⚠️ WARN: No match found for any filter this round.")
             break
-
-        # 3. Match result
+        
         best_user_filter = user_filter_names[best_user_index]
         best_site_title = site_filter_titles[best_site_index]
         filter_value = remaining_filters[best_user_filter]
@@ -176,8 +170,6 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
             await apply_text_filter(page, selectors, filter_value, matched_section_element, applied_options)
 
         applied_filter_names.add(best_user_filter)
-
-        # Wait for the page to update filters if DOM changes
         await page.wait_for_selector(selectors["sections"], state="visible", timeout=7000)
 
     if len(applied_filter_names) < len(user_filters):
@@ -215,7 +207,7 @@ async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) 
     breadcrumb_links = await page.query_selector_all(f"{site_config['breadcrumb_selector']} a")
     if not breadcrumb_links:
         print(" No breadcrumb links found. Staying on search results page.")
-        await page.goto(site_config['search_url']) # Go back to search results
+        await page.goto(site_config['search_url'])
         return page.url
 
     last_link = breadcrumb_links[-1]
@@ -272,11 +264,12 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
             break
 
         next_button = await page.query_selector(next_button_selector)
-        next_button_css_disabled_class = await next_button.evaluate("el => /(disable|disabled)/.test(el.className)")
-        if next_button and not next_button_css_disabled_class:
-            print("ACTION: Clicking next page...")
-            await next_button.scroll_into_view_if_needed()
-            await next_button.click()
+        if next_button:
+            next_button_css_disabled_class = await next_button.evaluate("el => /(disable|disabled)/.test(el.className)")
+            if not next_button_css_disabled_class:
+                print("ACTION: Clicking next page...")
+                await next_button.scroll_into_view_if_needed()
+                await next_button.click()
         else:
             print(f"INFO: Pagination ended on page {page_num}.")
             break
@@ -289,8 +282,6 @@ def get_user_criteria() -> Dict[str, Any]:
     constructs and returns the criteria dictionary.
     """
     print("--- Product Search & Filter Setup ---")
-    
-    # Get the main search query
     while not (query := input(" What product are you looking for? (e.g., iPhone 15 Pro) \n   ").strip()):
         print("    Search query cannot be empty. Please try again.")
     print(f"    Searching for: {query}\n")
@@ -300,10 +291,7 @@ def get_user_criteria() -> Dict[str, Any]:
     print(" Now, let's add some filters. (Press Enter on an empty filter name to finish / exit)")
     
     while True:
-        # Prompt for the filter name (e.g., Цена, Цвят, Вътрешна памет)
         filter_name = input("   - Filter Name (e.g., Цена, Color): ").strip()
-        
-        # If the user just hits Enter, they're done adding filters
         if not filter_name:
             if not filters:
                 print("    No filters were added.\n")
@@ -311,7 +299,6 @@ def get_user_criteria() -> Dict[str, Any]:
                 print("    Finished adding filters.\n")
             break
 
-        # Prompt for the filter value(s)
         print(f"     Enter value(s) for '{filter_name}'.")
         print("     - For price/range, use 'min-max' (e.g., 1500-2500).")
         print("     - For single / multiple text value(s), separate with a comma (e.g. if the filter is internal storage: 128 GB, 256 GB).")
@@ -323,7 +310,6 @@ def get_user_criteria() -> Dict[str, Any]:
         else:
             print(f"    Filter '{filter_name}' was not added because the value was empty.\n")
             
-    # 3. Construct the final dictionary
     criteria = {
         "query": query,
         "filters": filters
@@ -338,16 +324,13 @@ async def run_site_scrape(context: BrowserContext, site_config: Dict[str, Any], 
     print(f"\n{'='*20} Starting Scrape for: {site_name.upper()} {'='*20}")
     
     try:
-        # Navigate to the correct category page
         category_url = await navigate_to_product_category(page, site_config)
         if not category_url:
             print(f"ERROR: Could not navigate to category page for {site_name}. Aborting.")
             return []
 
-        # Apply all user-defined filters
         await apply_all_user_filters(page, site_config, user_criteria['filters'])
         
-        # Scrape results from all pages
         return await scrape_paginated_results(
             page, site_config, user_criteria['query'], max_pages=3
         )

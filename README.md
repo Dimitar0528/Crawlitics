@@ -14,9 +14,6 @@ It uses asynchronous parallel crawling and scraping techniques with Playwright a
 - Async scraping with dynamic concurrency tuning
 - Export or analyze structured product data
 - Built with Crawl4AI, Playwright, RapidFuzz, and Ollama
-
----
-
 ---
 
 ## Installation
@@ -36,8 +33,8 @@ python main.py
 ```
 
 ## Coming Soon
+- Support for multiple types of custom user filters (e.g. models, storage, colors and others) [✅]
 - More enhanced AI structured data extraction via dynamic JSON schemas []
-- Support for multiple types of custom filters (e.g. categories, models, brands and others) []
 - AI Data Analyst agent []
 - CSV/JSON data export []
 
