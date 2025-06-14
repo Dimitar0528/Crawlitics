@@ -9,34 +9,11 @@ from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
 
-from crawler import crawl_urls
-# ----------------------------------------
-# CONFIG
-# ----------------------------------------
+from product_schemas import SCHEMAS
 LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
-PRODUCT_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"},
-        "brand": {"type": "string"},
-        "model": {"type": "string"},
-        "specs": {
-            "type": "object",
-            "properties": {
-                "screen_size": {"type": "string"},
-                "processor": {"type": "string"},
-                "ram": {"type": "string"},
-                "storage": {"type": "string"},
-                "graphics": {"type": "string"}
-            },
-            "required": ["screen_size", "processor", "ram", "storage", "graphics"]
-        },
-        "price": {"type": "string"},
-    },
-    "required": ["name", "brand", "model", "specs", "price"]
-}
+KNOWN_CATEGORIES = [cat for cat in SCHEMAS if cat != "Unknown"]
 
 # ----------------------------------------
 # HELPERS
@@ -49,93 +26,130 @@ def truncate_markdown(content):
     return content
 
 def clean_json_output(raw):
+    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw, re.DOTALL)
+    if match:
+        return match.group(1).strip()
     return re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
 
-# ----------------------------------------
-# LLM Extraction Phase
-# ----------------------------------------
-async def extract_info_with_gemma_json(markdown_text):
-    schema_example = {
-        "name": "string",
-        "brand": "string",
-        "model": "string",
-        "specs": {
-            "screen_size": "string",
-            "processor": "string",
-            "ram": "string",
-            "storage": "string",
-            "graphics": "string"
-        },
-        "price": "string",
-    }
 
+# ----------------------------------------
+# DYNAMIC LLM EXTRACTION (Classify, Extract, Fallback)
+# ----------------------------------------
+async def classify_product(markdown_text: str) -> str:
+    """LLM Call #1: Classifies the product"""
     prompt = f"""
-You are a structured data extraction assistant.
+    You are a strict and precise data classification engine. Your sole purpose is to classify the product in the text below into one of the predefined categories.
 
-Your task is to extract accurate and complete information **ONLY about the primary product** described in the Markdown text below.
+    Follow these rules exactly:
+    1.  You MUST choose your answer from this exact list: {KNOWN_CATEGORIES}.
+    2.  If the product does NOT CLEARLY AND DIRECTLY fit into any of the categories on the list, you MUST respond with the single word "Unknown".
+    3.  Do NOT invent a new category or try to find the "closest" match if one does not exist.
 
-Here is the Markdown input:
---- START OF MARKDOWN INPUT ---
-{markdown_text}
--- END OF MARKDOWN INPUT ---
+    --- PRODUCT TEXT ---
+    {markdown_text}
+    --- END TEXT ---
 
-Extract the product data from the Markdown above and output it as raw JSON only.
-No markdown formatting, no explanations.
-Do not extract prices labeled as "ПЦД:".
-
-Use this format (all keys required):
-{json.dumps(schema_example, indent=2)}
-
-"""
-
+ Your response must be a single word, containing the category of the product.
+    """
     async with llm_semaphore:
-        stream = ollama.chat(
+        try:
+            response = await asyncio.to_thread(
+                ollama.chat,
+                model="gemma3",
+                messages=[{"role": "user", "content": prompt}],
+                options={'temperature': 0}
+            )
+            category = response['message']['content'].strip()
+            print(category)
+            return category if category in SCHEMAS else "Unknown"
+        except Exception as e:
+            print(f"  [Error] Classification failed: {e}")
+            return "Unknown"
+
+async def extract_structured_data(markdown_text: str, schema: dict) -> str:
+    """LLM Call #2: Extracts product data with real-time streaming to the console."""
+    prompt = f"""
+    You are a structured data extraction assistant.
+    Your task is to extract accurate and complete information **ONLY about the primary product** described in the Markdown text below.
+    
+    **Instructions:**
+    1.  **Adhere to the Schema:** The final JSON object MUST validate against the schema provided below.
+    2.  **Fill all `required` fields:** All fields listed as `required` in the schema MUST be present in your output.
+    3.  **Handle Missing Data:**  If a value is not found in the text, set that field to the string "null" (in quotes). Do not omit the key, and do not use the JSON null type — always use the string "null" instead.
+    4.  **Respect Data Types:** Ensure all values match the `type` specified in the schema (e.g., `string`, `object`).
+    5.  **Output Raw JSON:** Your entire response must be ONLY the raw JSON object, with no explanations or markdown formatting.
+
+    --- MARKDOWN INPUT ---
+    {markdown_text}
+    --- END OF MARKDOWN INPUT ---
+
+    Now, provide the JSON output, strictly following the provided schema.
+    --- SCHEMA (use this structure) ---
+    {json.dumps(schema, indent=2)}
+    The JSON keys should be in English.
+    """
+    
+    streamed_json = ""
+    print("  [LLM Stream] ", end="", flush=True) 
+    async with llm_semaphore:
+        stream_generator = await asyncio.to_thread(
+            ollama.chat,
             model="gemma3",
             messages=[
-                {"role": "system", "content": "You only output clean, structured JSON with no markdown formatting."},
+                {"role": "system", "content": "You only output raw, valid JSON."},
                 {"role": "user", "content": prompt}
             ],
             stream=True,
             options={
                 'num_ctx': 16384,
-                'temperature':0,
+                'temperature': 0,
             },
         )
 
-        streamed_json = ""
-        for chunk in stream:
+        for chunk in stream_generator:
             delta = chunk['message']['content']
             print(delta, end="", flush=True)
-            streamed_json += delta
+            streamed_json += delta      
 
+    print()
     return clean_json_output(streamed_json)
 
-# ----------------------------------------
-# Extract from crawled markdowns
-# ----------------------------------------
-async def extract_from_results(results):
-    for result in results:
-        url = result.url
-        if not result.success:
-            print(f"\n Failed to crawl: {url} \n Reason: {result.error_message}")
-            continue
+async def process_single_result(result):
+    """Orchestrates the full crawling workflow for a given page."""
+    url = result.url
+    if not result.success:
+        print(f"\n- Failed to crawl: {url} | Reason: {result.error_message}")
+        return
 
-        print(f"\n✅ Extracting: {url}")
-        markdown = truncate_markdown(result.markdown.raw_markdown)
-        print('RAW-MARKDOWN-START-----------------')
-        print(markdown)
-        print("RAW-MARKDOWN-END------------------")
-        try:
-            json_output = await extract_info_with_gemma_json(markdown)
-            parsed = json.loads(json_output)
-            validate(instance=parsed, schema=PRODUCT_SCHEMA)
-            print(f"\n✅ Valid JSON for {url}")
-        except (json.JSONDecodeError, ValidationError) as e:
-            print(f"\n❌ Invalid JSON for {url}:\n{e}\nRaw Output:\n{json_output}")
+    print(f"\n--- Processing: {url} ---")
+    markdown = truncate_markdown(result.markdown.raw_markdown)
 
-# ----------------------------------------
-# MAIN
-# ----------------------------------------
+    category = await classify_product(markdown)
+    print(f"  [Step 1] Detected Category: '{category}'")
+
+    selected_schema = SCHEMAS[category]
+
+    print(f"  [Step 2] Extracting data using '{category}' schema...")
+    json_output = await extract_structured_data(markdown, selected_schema)
+
+    print("  [Step 3] Validating and saving...")
+    try:
+        parsed_data = json.loads(json_output)
+        validate(instance=parsed_data, schema=selected_schema)
+        
+        parsed_data['source_url'] = url
+        parsed_data['detected_category'] = category
+        # save_result_to_jsonl(parsed_data)
+        
+        print(f" Success! Valid data for {url}.")
+    except (json.JSONDecodeError, ValidationError) as e:
+        print(f" FAILED for {url}: Validation error or bad JSON.")
+        print(f"   Error: {e}")
+
+async def process_crawled_results(results):
+    tasks = [process_single_result(result) for result in results]
+    await asyncio.gather(*tasks)
+
 async def main():
     browser_config = BrowserConfig(
         headless=True,
@@ -170,23 +184,32 @@ async def main():
         ),
     )
 
+
     start_time = time.perf_counter()
-    urls = await crawl_urls()
+    urls_to_crawl = [
+        "https://www.ozone.bg/product/smartfon-apple-iphone-15-pro-6-1-256gb-natural-titanium/"
+        ]
+
+    if not urls_to_crawl:
+        print("No URLs to crawl. Exiting.")
+        return
+
+    print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        container = await crawler.arun_many(urls=urls, config=config, dispatcher=dispatcher)
-
+        container = await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher)
+        
         results = []
         if isinstance(container, list):
             results = container
         else:
             async for res in container:
                 results.append(res)
-
-        await extract_from_results(results)
+        
+        await process_crawled_results(results)
 
     elapsed = time.perf_counter() - start_time
-    print(f"\n✅ All crawling + scraping + extraction done in: {elapsed:.2f} seconds")
+    print(f"\n✅ All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
 
 if __name__ == "__main__":
     asyncio.run(main())
