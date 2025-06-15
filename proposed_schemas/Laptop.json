@@ -1,0 +1,88 @@
+{
+    "Laptop": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string"
+            },
+            "brand": {
+                "type": "string"
+            },
+            "price": {
+                "type": "string"
+            },
+            "product_description": {
+                "type": "string",
+                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown."
+            },
+            "specs": {
+                "type": "object",
+                "properties": {
+                    "model_processor": {
+                        "type": "string"
+                    },
+                    "number_of_processor_cores": {
+                        "type": "string"
+                    },
+                    "processor_frequency": {
+                        "type": "string"
+                    },
+                    "model_graphics_card": {
+                        "type": "string"
+                    },
+                    "operational_memory": {
+                        "type": "string"
+                    },
+                    "memory_type": {
+                        "type": "string"
+                    },
+                    "ssd_gb": {
+                        "type": "string"
+                    },
+                    "ssd_interface": {
+                        "type": "string"
+                    },
+                    "screen_size_inch": {
+                        "type": "string"
+                    },
+                    "resolution": {
+                        "type": "string"
+                    },
+                    "display_frequency": {
+                        "type": "string"
+                    },
+                    "display_technology": {
+                        "type": "string"
+                    },
+                    "camera": {
+                        "type": "string"
+                    },
+                    "ports": {
+                        "type": "string"
+                    },
+                    "operating_system": {
+                        "type": "string"
+                    },
+                    "battery": {
+                        "type": "string"
+                    },
+                    "features": {
+                        "type": "string"
+                    },
+                    "warranty": {
+                        "type": "string"
+                    },
+                    "color": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "required": [
+            "name",
+            "brand",
+            "price",
+            "specs"
+        ]
+    }
+}

@@ -2,6 +2,7 @@ import asyncio
 import json
 import re
 import time
+import os
 import ollama
 from jsonschema import validate, ValidationError
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig, CacheMode
@@ -10,6 +11,7 @@ from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
 
 from product_schemas import SCHEMAS
+PROPOSED_SCHEMA_DIR = "proposed_schemas"
 LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
@@ -86,7 +88,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     Now, provide the JSON output, strictly following the provided schema.
     --- SCHEMA (use this structure) ---
     {json.dumps(schema, indent=2)}
-    The JSON keys should be in English.
+    The JSON keys, as well as the product category, should be in English.
     """
     
     streamed_json = ""
@@ -114,6 +116,55 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     print()
     return clean_json_output(streamed_json)
 
+def generate_and_save_schema(data: dict):
+    """
+    Analyzes an 'Unknown' product's data and saves a proposed JSON schema for it.
+    """
+    guessed_category = data.get("guessed_category", "new_product").strip()
+    if not guessed_category:
+        guessed_category = "unnamed_category"
+        
+    # Sanitize the category name to create a valid filename
+    filename = re.sub(r'[^\w-]', '_', guessed_category) + ".json"
+    filepath = os.path.join(PROPOSED_SCHEMA_DIR, filename)
+
+    print(f"  [Schema Gen] Generating a new schema proposal for '{guessed_category}'...")
+
+    attributes = data.get("attributes", {})
+    if not attributes:
+        print("  [Schema Gen] No attributes found to generate a schema.")
+        return
+
+    # Build the 'properties' part of the new schema
+    new_properties = {
+        "name": {"type": "string"},
+        "brand": {"type": "string"},
+        "price": {"type": "string"},
+        "product_description": {
+                "type": "string",
+                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown."
+            },
+        "specs": {
+            "type": "object",
+            "properties": {
+                key: {"type": "string"} for key in attributes.keys()
+            },
+        }
+    }
+
+    # Full schema structure
+    proposed_schema = {
+        guessed_category: {
+            "type": "object",
+            "properties": new_properties,
+            "required": ["name", "brand", "price", "specs"]
+        }
+    }
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(proposed_schema, f, indent=4, ensure_ascii=False)
+    
+    print(f"  [Schema Gen] ✅ Success! New schema saved to: {filepath}")
+    
 async def process_single_result(result):
     """Orchestrates the full crawling workflow for a given page."""
     url = result.url
@@ -132,14 +183,16 @@ async def process_single_result(result):
     print(f"  [Step 2] Extracting data using '{category}' schema...")
     json_output = await extract_structured_data(markdown, selected_schema)
 
-    print("  [Step 3] Validating and saving...")
+    print("  [Step 3] Validating...")
     try:
         parsed_data = json.loads(json_output)
         validate(instance=parsed_data, schema=selected_schema)
         
         parsed_data['source_url'] = url
         parsed_data['detected_category'] = category
-        # save_result_to_jsonl(parsed_data)
+
+        if category == "Unknown":
+            generate_and_save_schema(parsed_data)
         
         print(f" Success! Valid data for {url}.")
     except (json.JSONDecodeError, ValidationError) as e:
@@ -187,7 +240,7 @@ async def main():
 
     start_time = time.perf_counter()
     urls_to_crawl = [
-        "https://www.ozone.bg/product/smartfon-apple-iphone-15-pro-6-1-256gb-natural-titanium/"
+        "https://www.emag.bg/smartfon-apple-iphone-15-128gb-5g-black-mtp03rx-a/pd/DZ4H93YBM/"
         ]
 
     if not urls_to_crawl:
