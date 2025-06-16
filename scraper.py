@@ -10,6 +10,11 @@ from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
 
+import psycopg2
+
+from dotenv import load_dotenv
+load_dotenv()
+
 from product_schemas import SCHEMAS
 PROPOSED_SCHEMA_DIR = "proposed_schemas"
 LLM_CONCURRENCY = 2
@@ -17,6 +22,13 @@ llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
 KNOWN_CATEGORIES = [cat for cat in SCHEMAS if cat != "Unknown"]
 
+DB_CONFIG = {
+    'host': os.getenv("DB_HOST"),
+    'port': os.getenv("DB_PORT"),
+    'dbname': os.getenv("DB_NAME"),
+    'user': os.getenv("DB_USER"),
+    'password': os.getenv("DB_PASSWORD"),
+}
 # ----------------------------------------
 # HELPERS
 # ----------------------------------------
@@ -34,6 +46,17 @@ def clean_json_output(raw):
     return re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
 
 
+def get_db_connection():
+    """Establishes and returns a new database connection."""
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        print("✅ Successfully connected to PostgreSQL database.")
+        return conn
+    except psycopg2.OperationalError as e:
+        print(f"❌ Failed to connect to PostgreSQL. Please check your DB_CONFIG and ensure the server is running.")
+        print(f"Error: {e}")
+        return None
+
 # ----------------------------------------
 # DYNAMIC LLM EXTRACTION (Classify, Extract, Fallback)
 # ----------------------------------------
@@ -44,14 +67,14 @@ async def classify_product(markdown_text: str) -> str:
 
     Follow these rules exactly:
     1.  You MUST choose your answer from this exact list: {KNOWN_CATEGORIES}.
-    2.  If the product does NOT CLEARLY AND DIRECTLY fit into any of the categories on the list, you MUST respond with the single word "Unknown".
+    2.  If the product does NOT CLEARLY AND DIRECTLY fit into any of the categories on the list, you MUST respond with the single word "Unknown", in English, as is.
     3.  Do NOT invent a new category or try to find the "closest" match if one does not exist.
 
     --- PRODUCT TEXT ---
     {markdown_text}
     --- END TEXT ---
 
- Your response must be a single word, containing the category of the product.
+ Your response must be a single word, containing the category of the product, in Bulgarian.
     """
     async with llm_semaphore:
         try:
@@ -80,6 +103,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     3.  **Handle Missing Data:**  If a value is not found in the text, set that field to the string "null" (in quotes). Do not omit the key, and do not use the JSON null type — always use the string "null" instead.
     4.  **Respect Data Types:** Ensure all values match the `type` specified in the schema (e.g., `string`, `object`).
     5.  **Output Raw JSON:** Your entire response must be ONLY the raw JSON object, with no explanations or markdown formatting.
+    6. Do not extract prices labeled as "ПЦД:". Extract ONLY the price associated with the product.
 
     --- MARKDOWN INPUT ---
     {markdown_text}
@@ -88,7 +112,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     Now, provide the JSON output, strictly following the provided schema.
     --- SCHEMA (use this structure) ---
     {json.dumps(schema, indent=2)}
-    The JSON keys, as well as the product category, should be in English.
+    The JSON keys should be in English.
     """
     
     streamed_json = ""
@@ -152,19 +176,88 @@ def generate_and_save_schema(data: dict):
         }
     }
 
-    # Full schema structure
+   # Full schema structure
     proposed_schema = {
             "type": "object",
             "properties": new_properties,
             "required": ["name", "brand", "price", "specs"]
-        
     }
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(proposed_schema, f, indent=4, ensure_ascii=False)
     
     print(f"  [Schema Gen] ✅ Success! New schema saved to: {filepath}")
+
+# Helper func to setup db table
+def setup_database(connection):
+    """Creates the products table if it doesn't already exist using raw SQL."""
+    print("  [DB] Setting up database table...")
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        source_url VARCHAR(2048) NOT NULL UNIQUE,
+        name VARCHAR(512) NOT NULL,
+        brand VARCHAR(100),
+        price DECIMAL(10, 2),
+        category VARCHAR(50) NOT NULL,
+        product_description TEXT,
+        specs JSONB,
+        last_scraped_at TIMESTAMPTZ DEFAULT NOW()
+        
+    );
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(create_table_query)
+    connection.commit() # Save the changes
+    print("  [DB] Table 'products' is ready.")
+
+def save_to_postgresql(db_connection, data: dict):
+    """
+    Saves a new product's data to the PostgreSQL database.
+    If the source_url already exists, it does nothing.
+    """
+    source_url = data.get("source_url")
+    if not source_url:
+        print("  [DB] ❌ Cannot save data: source_url is missing.")
+        return
+
+    print(f"  [DB] Attempting to save data for {source_url}...")
+    name = data.get("name") or data.get("product_name")
+    if not name:
+        print(f"  [DB] ❌ Skipping save for {source_url}: 'name' is missing from data.")
+        return
+        
+    brand = data.get("brand")
+    category = data.get("detected_category")
+    description = data.get("product_description")
     
-async def process_single_result(result):
+    price_str = (data.get("price") or "0").replace("лв.", "").replace(" ", "").replace(".", "").replace(",", ".").strip()
+    try:
+        price_numeric = float(re.search(r'(\d+\.?\d*)', price_str).group(1))
+    except (ValueError, TypeError, AttributeError):
+        price_numeric = None
+
+    specs_data = data.get("specs") or data.get("attributes")
+    specs_json_string = json.dumps(specs_data) if specs_data else None
+
+    sql = """
+    INSERT INTO products (source_url, name, brand, price, category, product_description, specs)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (source_url) DO NOTHING;
+    """
+    values = (source_url, name, brand, price_numeric, category, description, specs_json_string)
+
+    with db_connection.cursor() as cursor:
+        cursor.execute(sql, values)
+        # Check cursor.rowcount to see if a row was actually inserted (it will be 0 on conflict).
+        if cursor.rowcount > 0:
+            print(f"  [DB] ✅ Successfully saved new data for {source_url}.")
+        else:
+            print(f"  [DB] ⏩ Skipped. Data for {source_url} already exists in the database.")
+  
+    db_connection.commit()
+
+
+async def process_single_result(result,db_connection):
     """Orchestrates the full crawling workflow for a given page."""
     url = result.url
     if not result.success:
@@ -173,7 +266,6 @@ async def process_single_result(result):
 
     print(f"\n--- Processing: {url} ---")
     markdown = truncate_markdown(result.markdown.raw_markdown)
-
     category = await classify_product(markdown)
     print(f"  [Step 1] Detected Category: '{category}'")
 
@@ -189,7 +281,7 @@ async def process_single_result(result):
         
         parsed_data['source_url'] = url
         parsed_data['detected_category'] = category
-
+        await asyncio.to_thread(save_to_postgresql, db_connection, parsed_data)
         if category == "Unknown":
             generate_and_save_schema(parsed_data)
         
@@ -198,70 +290,83 @@ async def process_single_result(result):
         print(f" FAILED for {url}: Validation error or bad JSON.")
         print(f"   Error: {e}")
 
-async def process_crawled_results(results):
-    tasks = [process_single_result(result) for result in results]
+async def process_crawled_results(results,db_connection):
+    tasks = [process_single_result(result,db_connection) for result in results]
     await asyncio.gather(*tasks)
 
 async def main():
-    browser_config = BrowserConfig(
-        headless=True,
-        verbose=True,
-        user_agent_mode="random",
-        light_mode=True,
-    )
-    prune_filter = PruningContentFilter(threshold_type="dynamic")
-    md_generator = DefaultMarkdownGenerator(content_filter=prune_filter)
-    config = CrawlerRunConfig(
-        cache_mode=CacheMode.BYPASS,
-        markdown_generator=md_generator,
-        verbose=True,
-        table_score_threshold=8,
-        exclude_external_links=True,
-        exclude_internal_links=True,
-        exclude_all_images=True,
-        override_navigator=True,
-        check_robots_txt=True,
-        user_agent="Crawlitics/1.0"
-    )
+    db_connection = None
+    try:
+        db_connection = get_db_connection()
+        if not db_connection: 
+            return
+        setup_database(db_connection)
+        print("✅ Database connection successful.")
+        browser_config = BrowserConfig(
+            headless=True,
+            verbose=True,
+            user_agent_mode="random",
+            light_mode=True,
+        )
+        prune_filter = PruningContentFilter(threshold_type="dynamic")
+        md_generator = DefaultMarkdownGenerator(content_filter=prune_filter)
+        config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            markdown_generator=md_generator,
+            verbose=True,
+            table_score_threshold=8,
+            exclude_external_links=True,
+            exclude_internal_links=True,
+            exclude_all_images=True,
+            override_navigator=True,
+            check_robots_txt=True,
+            user_agent="Crawlitics/1.0"
+        )
 
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=98.0,
-        check_interval=1.0, 
-        max_session_permit=30,
-        rate_limiter=RateLimiter(
-            base_delay=(1.0, 3.0),
-            max_delay=30.0,
-            max_retries=3,
-            rate_limit_codes=[429, 503]
-        ),
-    )
+        dispatcher = MemoryAdaptiveDispatcher(
+            memory_threshold_percent=98.0,
+            check_interval=1.0, 
+            max_session_permit=30,
+            rate_limiter=RateLimiter(
+                base_delay=(1.0, 3.0),
+                max_delay=30.0,
+                max_retries=3,
+                rate_limit_codes=[429, 503]
+            ),
+        )
+        start_time = time.perf_counter()
+        urls_to_crawl = [
+            "https://www.emag.bg/smartfon-apple-iphone-15-128gb-5g-black-mtp03rx-a/pd/DZ4H93YBM/"
+            ]
 
+        if not urls_to_crawl:
+            print("No URLs to crawl. Exiting.")
+            return
 
-    start_time = time.perf_counter()
-    urls_to_crawl = [
-        "https://www.emag.bg/smartfon-apple-iphone-15-128gb-5g-black-mtp03rx-a/pd/DZ4H93YBM/"
-        ]
+        print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
-    if not urls_to_crawl:
-        print("No URLs to crawl. Exiting.")
-        return
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            container = await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher)
+            results = []
+            if isinstance(container, list):
+                results = container
+            else:
+                async for res in container:
+                    results.append(res)
+            
+            await process_crawled_results(results,db_connection)
 
-    print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
+        elapsed = time.perf_counter() - start_time
+        print(f"\n✅ All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
 
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        container = await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher)
-        
-        results = []
-        if isinstance(container, list):
-            results = container
-        else:
-            async for res in container:
-                results.append(res)
-        
-        await process_crawled_results(results)
-
-    elapsed = time.perf_counter() - start_time
-    print(f"\n✅ All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
+    except psycopg2.Error as err:
+        print(f"FATAL: A database error occurred: {err}")
+    except Exception as e:
+        print(f"FATAL: An unexpected error occurred in main: {e}")
+    finally:
+        if db_connection:
+            db_connection.close()
+            print("Database connection closed.")
 
 if __name__ == "__main__":
     asyncio.run(main())
