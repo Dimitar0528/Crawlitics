@@ -154,11 +154,10 @@ def generate_and_save_schema(data: dict):
 
     # Full schema structure
     proposed_schema = {
-        guessed_category: {
             "type": "object",
             "properties": new_properties,
             "required": ["name", "brand", "price", "specs"]
-        }
+        
     }
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(proposed_schema, f, indent=4, ensure_ascii=False)

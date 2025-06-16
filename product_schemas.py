@@ -1,53 +1,48 @@
-SCHEMAS = {
-    "Smartphone": {
-        "type": "object",
-        "properties": {
-            "name": {"type": "string"},
-            "brand": {"type": "string"},
-            "price": {"type": "string"},
-            "product_description": {
-                "type": "string",
-                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown."
-            },
-            "specs": {
-                "type": "object",
-                "properties": {
-                    "processor": {"type": "string"},
-                    "ram": {"type": "string"},
-                    "storage": {"type": "string"},
-                    "screen_size": {"type": "string"},
-                    "resolution": {"type": "string"}, 
-                    "refresh_rate": {"type": "string"},
-                    "display_technology": {"type": "string"},
-                    "camera": {"type": "string"},
-                    "ports": {"type": "string"},
-                    "SIM_type": {"type": "string"},
-                    "battery_life": {"type": "string"},
-                    "color": {"type": "string"},
-                    "features": {"type": "string"},
-                },
-                "required": ["processor", "ram", "storage"]
-            }
+import os
+import json
+
+def load_schemas_from_directory(directory="proposed_schemas"):
+    """
+    Loads all .json files from the specified directory into a dictionary.
+    The filename (without .json) is used as the category key.
+    """
+    schemas = {}
+    try:
+        for filename in os.listdir(directory):
+            if filename.endswith(".json"):
+                category_name = os.path.splitext(filename)[0]
+                filepath = os.path.join(directory, filename)
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    schemas[category_name] = json.load(f)
+    except FileNotFoundError:
+        print(f"  [Warning] Schema directory not found: '{directory}'. No external schemas loaded.")
+        return {}
+        
+    return schemas
+SCHEMAS = load_schemas_from_directory()
+
+# Define the special 'Unknown' schema as a fallback
+UNKNOWN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "product_name": {"type": "string"},
+        "price": {"type": "string",},
+        "guessed_category": {
+            "type": "string",
+            "description": "The guessed category of the product. This should be a singular noun with the first letter capitalized."
         },
-        "required": ["name", "brand", "price", "product_description", "specs"]
+        "product_description": {
+            "type": "string",
+            "description": "A concise, human-readable summary of the product’s key features and benefits, written in a natural language paragraph. Highlight what makes the product useful or unique based ONLY on the provided text."
+        },
+        "attributes": {
+            "type": "object",
+            "description": "A key-value map of all other discovered specifications and their values.",
+            "additionalProperties": True
+        }
     },
-    # The fallback schema for everything else
-    "Unknown": {
-        "type": "object",
-        "properties": {
-            "product_name": {"type": "string"},
-            "price": {"type": "string"},
-            "guessed_category": {"type": "string"},
-            "product_description": {
-                "type": "string",
-                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown."
-            },
-            "attributes": {
-                "type": "object",
-                "description": "A key-value map of all discovered specifications.",
-                "additionalProperties": True # Allows any key-value pairs
-            }
-        },
-        "required": ["product_name"]
-    }
+    "required": ["product_name", "product_description", "guessed_category"]
 }
+
+if "Unknown" not in SCHEMAS:
+    SCHEMAS["Unknown"] = UNKNOWN_SCHEMA

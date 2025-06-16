@@ -1,5 +1,4 @@
 {
-    "Laptop": {
         "type": "object",
         "properties": {
             "name": {
@@ -85,4 +84,3 @@
             "specs"
         ]
     }
-}
