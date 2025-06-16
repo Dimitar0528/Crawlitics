@@ -2,60 +2,31 @@ import asyncio
 import json
 import re
 import time
-import os
 import ollama
 from jsonschema import validate, ValidationError
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
-
 import psycopg2
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from product_schemas import SCHEMAS
-PROPOSED_SCHEMA_DIR = "proposed_schemas"
+from scraper_helpers import (
+    truncate_markdown, 
+    clean_json_output,
+    generate_and_save_product_schema,
+    get_db_connection,
+    setup_database,
+    map_db_row_to_schema_format
+)
+
 LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
 KNOWN_CATEGORIES = [cat for cat in SCHEMAS if cat != "Unknown"]
-
-DB_CONFIG = {
-    'host': os.getenv("DB_HOST"),
-    'port': os.getenv("DB_PORT"),
-    'dbname': os.getenv("DB_NAME"),
-    'user': os.getenv("DB_USER"),
-    'password': os.getenv("DB_PASSWORD"),
-}
-# ----------------------------------------
-# HELPERS
-# ----------------------------------------
-def truncate_markdown(content):
-    lines = content.split('\n')
-    for i, line in enumerate(lines):
-        if line.strip().startswith('###') and not line.strip().startswith('##'):
-            return '\n'.join(lines[:i])
-    return content
-
-def clean_json_output(raw):
-    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
-
-
-def get_db_connection():
-    """Establishes and returns a new database connection."""
-    try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        print("✅ Successfully connected to PostgreSQL database.")
-        return conn
-    except psycopg2.OperationalError as e:
-        print(f"❌ Failed to connect to PostgreSQL. Please check your DB_CONFIG and ensure the server is running.")
-        print(f"Error: {e}")
-        return None
 
 # ----------------------------------------
 # DYNAMIC LLM EXTRACTION (Classify, Extract, Fallback)
@@ -140,75 +111,6 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     print()
     return clean_json_output(streamed_json)
 
-def generate_and_save_schema(data: dict):
-    """
-    Analyzes an 'Unknown' product's data and saves a proposed JSON schema for it.
-    """
-    guessed_category = data.get("guessed_category", "new_product").strip()
-    if not guessed_category:
-        guessed_category = "unnamed_category"
-        
-    # Sanitize the category name to create a valid filename
-    filename = re.sub(r'[^\w-]', '_', guessed_category) + ".json"
-    filepath = os.path.join(PROPOSED_SCHEMA_DIR, filename)
-
-    print(f"  [Schema Gen] Generating a new schema proposal for '{guessed_category}'...")
-
-    attributes = data.get("attributes", {})
-    if not attributes:
-        print("  [Schema Gen] No attributes found to generate a schema.")
-        return
-
-    # Build the 'properties' part of the new schema
-    new_properties = {
-        "name": {"type": "string"},
-        "brand": {"type": "string"},
-        "price": {"type": "string"},
-        "product_description": {
-                "type": "string",
-                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown."
-            },
-        "specs": {
-            "type": "object",
-            "properties": {
-                key: {"type": "string"} for key in attributes.keys()
-            },
-        }
-    }
-
-   # Full schema structure
-    proposed_schema = {
-            "type": "object",
-            "properties": new_properties,
-            "required": ["name", "brand", "price", "specs"]
-    }
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(proposed_schema, f, indent=4, ensure_ascii=False)
-    
-    print(f"  [Schema Gen] ✅ Success! New schema saved to: {filepath}")
-
-# Helper func to setup db table
-def setup_database(connection):
-    """Creates the products table if it doesn't already exist using raw SQL."""
-    print("  [DB] Setting up database table...")
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        source_url VARCHAR(2048) NOT NULL UNIQUE,
-        name VARCHAR(512) NOT NULL,
-        brand VARCHAR(100),
-        price DECIMAL(10, 2),
-        category VARCHAR(50) NOT NULL,
-        product_description TEXT,
-        specs JSONB,
-        last_scraped_at TIMESTAMPTZ DEFAULT NOW()
-        
-    );
-    """
-    with connection.cursor() as cursor:
-        cursor.execute(create_table_query)
-    connection.commit() # Save the changes
-    print("  [DB] Table 'products' is ready.")
 
 def save_to_postgresql(db_connection, data: dict):
     """
@@ -217,13 +119,13 @@ def save_to_postgresql(db_connection, data: dict):
     """
     source_url = data.get("source_url")
     if not source_url:
-        print("  [DB] ❌ Cannot save data: source_url is missing.")
+        print("  [DB] Cannot save data: source_url is missing.")
         return
 
     print(f"  [DB] Attempting to save data for {source_url}...")
     name = data.get("name") or data.get("product_name")
     if not name:
-        print(f"  [DB] ❌ Skipping save for {source_url}: 'name' is missing from data.")
+        print(f"  [DB] Skipping save for {source_url}: 'name' is missing from data.")
         return
         
     brand = data.get("brand")
@@ -250,11 +152,71 @@ def save_to_postgresql(db_connection, data: dict):
         cursor.execute(sql, values)
         # Check cursor.rowcount to see if a row was actually inserted (it will be 0 on conflict).
         if cursor.rowcount > 0:
-            print(f"  [DB] ✅ Successfully saved new data for {source_url}.")
+            print(f"  [DB] Successfully saved new data for {source_url}.")
         else:
-            print(f"  [DB] ⏩ Skipped. Data for {source_url} already exists in the database.")
+            print(f"  [DB] Skipped. Data for {source_url} already exists in the database.")
   
     db_connection.commit()
+
+async def read_products_from_db(db_connection, urls: list[str]) -> tuple[dict, list]:
+    """
+    Reads a list of URLs from the database, converts them to schema format,
+    validates them, and logs the results.
+
+    Returns:
+        A tuple containing:
+        - A dictionary of {url: data} for successfully found and validated products.
+        - A list of URLs that were not found in the database.
+    """
+    if not urls:
+        return {}, []
+
+    print(f"\n[DB Read] Checking for {len(urls)} URLs in the database...")
+    
+    found_products = {}
+    
+    # Use '%s' as a placeholder to sanitaize data
+    placeholders = ', '.join(['%s'] * len(urls))
+    query = f"""
+        SELECT source_url, name, brand, price, category, product_description, specs 
+        FROM products 
+        WHERE source_url IN ({placeholders})
+    """
+
+    with db_connection.cursor() as cursor:
+        cursor.execute(query, tuple(urls))
+        
+        # Get column names dynamically to create dictionaries
+        columns = [desc[0] for desc in cursor.description]
+        
+        for row in cursor.fetchall():
+            row_dict = dict(zip(columns, row))
+            source_url = row_dict.get("source_url")
+            rehydrated_json = map_db_row_to_schema_format(row_dict)
+            
+            if not rehydrated_json:
+                print(f"  [DB Read] Could not process row for {source_url}.")
+                continue
+
+            category = rehydrated_json.get("detected_category")
+            
+            print(f"  [DB Read] Found '{source_url}'. Validating against '{category}' schema...")
+            try:
+                schema_to_validate = SCHEMAS.get(category)
+                if schema_to_validate:
+                    validate(instance=rehydrated_json, schema=schema_to_validate)
+                    print(f"  [DB Read] SUCCESS: Cached data for {source_url} is valid.")
+                    found_products[source_url] = rehydrated_json
+                else:
+                    print(f"  [DB Read] WARNING: No schema found for category '{category}'. Cannot validate.")
+
+            except ValidationError as e:
+                print(f"  [DB Read] FAILED: Cached data for {source_url} is now invalid against the current schema.")
+                print(f"     Reason: {e.message}")
+
+    urls_not_found = [url for url in urls if url not in found_products]
+
+    return found_products, urls_not_found
 
 
 async def process_single_result(result,db_connection):
@@ -283,7 +245,7 @@ async def process_single_result(result,db_connection):
         parsed_data['detected_category'] = category
         await asyncio.to_thread(save_to_postgresql, db_connection, parsed_data)
         if category == "Unknown":
-            generate_and_save_schema(parsed_data)
+            generate_and_save_product_schema(parsed_data)
         
         print(f" Success! Valid data for {url}.")
     except (json.JSONDecodeError, ValidationError) as e:
@@ -296,12 +258,13 @@ async def process_crawled_results(results,db_connection):
 
 async def main():
     db_connection = None
+    start_time = time.perf_counter()
     try:
         db_connection = get_db_connection()
         if not db_connection: 
             return
         setup_database(db_connection)
-        print("✅ Database connection successful.")
+        print("Database connection successful.")
         browser_config = BrowserConfig(
             headless=True,
             verbose=True,
@@ -334,30 +297,34 @@ async def main():
                 rate_limit_codes=[429, 503]
             ),
         )
-        start_time = time.perf_counter()
-        urls_to_crawl = [
+        urls_to_process = [
             "https://www.emag.bg/smartfon-apple-iphone-15-128gb-5g-black-mtp03rx-a/pd/DZ4H93YBM/"
             ]
-
-        if not urls_to_crawl:
+        if not urls_to_process:
             print("No URLs to crawl. Exiting.")
             return
+        
+        found_products, urls_to_crawl = await read_products_from_db(db_connection, urls_to_process)
+        if found_products:
+            print("\n--- Summary of Valid Products Found in Database ---")
+            for url, data in found_products.items():
+                print(data)
+        if urls_to_crawl:
+            print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
-        print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
-
-        async with AsyncWebCrawler(config=browser_config) as crawler:
-            container = await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher)
-            results = []
-            if isinstance(container, list):
-                results = container
-            else:
-                async for res in container:
-                    results.append(res)
-            
-            await process_crawled_results(results,db_connection)
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                container = await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher)
+                results = []
+                if isinstance(container, list):
+                    results = container
+                else:
+                    async for res in container:
+                        results.append(res)
+                
+                await process_crawled_results(results,db_connection)
 
         elapsed = time.perf_counter() - start_time
-        print(f"\n✅ All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
+        print(f"\n All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
 
     except psycopg2.Error as err:
         print(f"FATAL: A database error occurred: {err}")
