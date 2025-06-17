@@ -2,6 +2,7 @@ import json
 import re
 import os
 import psycopg2
+from psycopg2.extensions import connection
 PROPOSED_SCHEMA_DIR = "proposed_schemas"
 DB_CONFIG = {
     'host': os.getenv("DB_HOST"),
@@ -11,24 +12,24 @@ DB_CONFIG = {
     'password': os.getenv("DB_PASSWORD"),
 }
 
-def truncate_markdown(content):
+def truncate_markdown(content: str):
     lines = content.split('\n')
     for i, line in enumerate(lines):
         if line.strip().startswith('###') and not line.strip().startswith('##'):
             return '\n'.join(lines[:i])
     return content
 
-def clean_json_output(raw):
-    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw, re.DOTALL)
+def clean_output(raw_content:str) -> str:
+    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw_content, re.DOTALL)
     if match:
         return match.group(1).strip()
-    return re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.MULTILINE).strip()
+    return re.sub(r"^```(?:json)?|```$", "", raw_content.strip(), flags=re.MULTILINE).strip()
 
-def generate_and_save_product_schema(data: dict):
+def generate_and_save_product_schema(data: dict[str,any]):
     """
     Analyzes an 'Unknown' product's data and saves a proposed JSON schema for it.
     """
-    guessed_category = data.get("guessed_category", "new_product").strip()
+    guessed_category: str = data.get("guessed_category", "new_product").strip()
     if not guessed_category:
         guessed_category = "unnamed_category"
         
@@ -38,7 +39,7 @@ def generate_and_save_product_schema(data: dict):
 
     print(f"  [Schema Gen] Generating a new schema proposal for '{guessed_category}'...")
 
-    attributes = data.get("attributes", {})
+    attributes: dict[str, str] = data.get("attributes", {})
     if not attributes:
         print("  [Schema Gen] No attributes found to generate a schema.")
         return
@@ -71,10 +72,10 @@ def generate_and_save_product_schema(data: dict):
     
     print(f"  [Schema Gen] Success! New schema saved to: {filepath}")
 
-def get_db_connection():
+def get_db_connection() -> connection | None:
     """Establishes and returns a new database connection."""
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn: connection = psycopg2.connect(**DB_CONFIG)
         print(" Successfully connected to PostgreSQL database.")
         return conn
     except psycopg2.OperationalError as e:
@@ -83,7 +84,7 @@ def get_db_connection():
         return None
     
 # Helper func to setup db table
-def setup_database(connection):
+def setup_database(connection: connection):
     """Creates the products table if it doesn't already exist using raw SQL."""
     print("  [DB] Setting up database table...")
     create_table_query = """
@@ -113,7 +114,7 @@ def map_db_row_to_schema_format(row_dict: dict) -> dict | None:
     if not row_dict:
         return None
 
-    category = row_dict.get("category")
+    category: str = row_dict.get("category")
     
     specs_data = row_dict.get("specs")
     if isinstance(specs_data, str):

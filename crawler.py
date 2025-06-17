@@ -6,14 +6,17 @@ from playwright.async_api import async_playwright, Page, ElementHandle, BrowserC
 from sentence_transformers import SentenceTransformer, util
 from rapidfuzz import fuzz
 from site_configs import get_site_configs
-from helpers import (
+from crawler_helpers import (
     click_matching_filter,
     extract_and_match_filter_values,
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
 )
 SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.55
+
+print("Loading sentence-transformer model...")
 MODEL = SentenceTransformer('all-MiniLM-L6-v2')
+print("Model loaded.")
 
 async def _click_and_track_option(
     page: Page, selectors: Dict, option_text: str, applied_filters: Set[str]
@@ -242,7 +245,7 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
             break
             
         page_matches = 0
-        product_titles = [(await el.inner_text())[:50].strip() for el in product_elements]
+        product_titles = [(await el.inner_text())[:100].strip() for el in product_elements]
         
         similarities = get_semantic_similarity(user_query, product_titles, MODEL)
         for i, element in enumerate(product_elements):
@@ -254,7 +257,7 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
                     full_url = href if href.startswith("http") else site_config['base_url'] + href
                     product_urls.add(full_url)
                     page_matches += 1
-                    print(f"  ✅ Matched '{title[:50]}...' (Similarity: {score:.2f})")
+                    print(f"  ✅ Matched '{title[:100]}...' (Similarity: {score:.2f})")
 
         print(f"INFO: Page {page_num}: Found {page_matches} matching products from {len(product_elements)} total.")
 
@@ -270,10 +273,13 @@ async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user
                 print("ACTION: Clicking next page...")
                 await next_button.scroll_into_view_if_needed()
                 await next_button.click()
+                await page.wait_for_timeout(100)
+            else:
+                print(f"INFO: Pagination ended on page {page_num}.")
+                break
         else:
-            print(f"INFO: Pagination ended on page {page_num}.")
+            print(f"INFO: Pagination ended on page 1!")
             break
-            
     return product_urls
 
 def get_user_criteria() -> Dict[str, Any]:
@@ -300,7 +306,7 @@ def get_user_criteria() -> Dict[str, Any]:
             break
 
         print(f"     Enter value(s) for '{filter_name}'.")
-        print("     - For price/range, use 'min-max' (e.g., 1500-2500).")
+        print("     - For price / range, use 'min-max' (e.g., 1500-2500).")
         print("     - For single / multiple text value(s), separate with a comma (e.g. if the filter is internal storage: 128 GB, 256 GB).")
         filter_value = input("     Value(s): ").strip()
 
