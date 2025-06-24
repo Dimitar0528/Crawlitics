@@ -12,6 +12,9 @@ from crawler_helpers import (
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
 )
+
+from product_schemas import USER_SELECTABLE_CATEGORIES 
+
 SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.55
 
 print("Loading sentence-transformer model...")
@@ -227,8 +230,8 @@ async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) 
     return category_url
 
 
-async def scrape_paginated_results(page: Page, site_config: Dict[str, Any], user_query: str, max_pages: int) -> Set[str]:
-    """Scrapes product URLs from the category page, handling pagination."""
+async def crawl_paginated_results(page: Page, site_config: Dict[str, Any], user_query: str, max_pages: int) -> Set[str]:
+    """Crawls product URLs from the category page, handling pagination."""
     product_urls = set()
     
     for page_num in range(1, max_pages + 1):
@@ -288,12 +291,33 @@ def get_user_criteria() -> Dict[str, Any]:
     constructs and returns the criteria dictionary.
     """
     print("--- Product Search & Filter Setup ---")
-    while not (query := input(" What product are you looking for? (e.g., iPhone 15 Pro) \n   ").strip()):
+
+    print("Please choose a category for the products you want to search for:")
+
+    unknown_index = USER_SELECTABLE_CATEGORIES.index("Unknown")
+    USER_SELECTABLE_CATEGORIES[unknown_index] = "Друга категория"
+
+    for i, category_option in enumerate(USER_SELECTABLE_CATEGORIES):
+        print(f"  {i+1}. {category_option}")
+    
+    user_choice = -1
+    while user_choice < 1 or user_choice > len(USER_SELECTABLE_CATEGORIES):
+        try:
+            choice_str = input(f"Enter the number of your choice (1-{len(USER_SELECTABLE_CATEGORIES)}): ")
+            user_choice = int(choice_str)
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+    
+    # Determine the chosen category string
+    selected_category = USER_SELECTABLE_CATEGORIES[user_choice - 1]
+    print(f"\nYou have selected the category: '{selected_category}'\n")
+
+    while not (query := input(" What product are you looking for? \n   ").strip()):
         print("    Search query cannot be empty. Please try again.")
     print(f"    Searching for: {query}\n")
 
     # Get filters in a loop
-    filters = {}
+    filters: dict[str,str] = {}
     print(" Now, let's add some filters. (Press Enter on an empty filter name to finish / exit)")
     
     while True:
@@ -306,8 +330,8 @@ def get_user_criteria() -> Dict[str, Any]:
             break
 
         print(f"     Enter value(s) for '{filter_name}'.")
-        print("     - For price / range, use 'min-max' (e.g., 1500-2500).")
-        print("     - For single / multiple text value(s), separate with a comma (e.g. if the filter is internal storage: 128 GB, 256 GB).")
+        print("     - For price / range  value(s), use 'min-max' (e.g., 1500-2500).")
+        print("     - For single / multiple text value(s), separate with a comma.")
         filter_value = input("     Value(s): ").strip()
 
         if filter_value:
@@ -317,17 +341,18 @@ def get_user_criteria() -> Dict[str, Any]:
             print(f"    Filter '{filter_name}' was not added because the value was empty.\n")
             
     criteria = {
+        "category": selected_category,
         "query": query,
         "filters": filters
     }
     
     return criteria
 
-async def run_site_scrape(context: BrowserContext, site_config: Dict[str, Any], user_criteria: Dict) -> List[str]:
-    """Orchestrates the entire scraping process for a single site."""
+async def run_site_crawl(context: BrowserContext, site_config: Dict[str, Any], user_criteria: Dict) -> List[str]:
+    """Orchestrates the entire crawling process for a single site."""
     page = await context.new_page()
     site_name = site_config['site_name']
-    print(f"\n{'='*20} Starting Scrape for: {site_name.upper()} {'='*20}")
+    print(f"\n{'='*20} Starting crawling for: {site_name.upper()} {'='*20}")
     
     try:
         category_url = await navigate_to_product_category(page, site_config)
@@ -337,23 +362,23 @@ async def run_site_scrape(context: BrowserContext, site_config: Dict[str, Any], 
 
         await apply_all_user_filters(page, site_config, user_criteria['filters'])
         
-        return await scrape_paginated_results(
+        return await crawl_paginated_results(
             page, site_config, user_criteria['query'], max_pages=3
         )
     except Exception as e:
-        print(f"FATAL ERROR during scrape of {site_name}: {e}")
+        print(f"FATAL ERROR during crawling of {site_name}: {e}")
         return []
     finally:
         await page.close()
 
 
-async def main():
+async def crawl_urls() -> tuple[str, List[str]]:
     user_criteria = get_user_criteria()
 
-    user_input = user_criteria['query']
-    user_filters = user_criteria['filters']
-
-    print(f"--- Starting Scrape for '{user_input}' ---")
+    user_selected_category: str = user_criteria['category']
+    user_input: str = user_criteria['query']
+    user_filters: dict[str,str] = user_criteria['filters']
+    print(f"--- Starting crawling for '{user_input}' ---")
     if user_filters:
         print("With filters:")
         for name, value in user_filters.items():
@@ -369,14 +394,14 @@ async def main():
         )
         await context.add_init_script("Object.defineProperty(navigator, 'webdriver', { get: () => undefined })")
 
-        tasks = [run_site_scrape(context, site, user_criteria) for site in site_configs]
+        tasks = [run_site_crawl(context, site, user_criteria) for site in site_configs]
         results_per_site = await asyncio.gather(*tasks)
         
         await browser.close()
 
     all_urls = [url for site_urls in results_per_site for url in site_urls]
     
-    print(f"\n\n{'='*20} SCRAPE COMPLETE {'='*20}")
+    print(f"\n\n{'='*20} CRAWL COMPLETE {'='*20}")
     print(f"Found {len(all_urls)} total URLs before final filtering.")
     
     filtered_urls = filter_urls_by_query_relaxed(all_urls, user_input)
@@ -387,8 +412,4 @@ async def main():
         
     elapsed = time.perf_counter() - start_time
     print(f"\n Done in {elapsed:.2f} seconds")
-    return filtered_urls
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    return user_selected_category, filtered_urls

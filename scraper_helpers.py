@@ -12,7 +12,8 @@ DB_CONFIG = {
     'password': os.getenv("DB_PASSWORD"),
 }
 
-def truncate_markdown(content: str):
+def truncate_markdown(content: str) -> str:
+    """Truncate uncessesary markdown content."""
     lines = content.split('\n')
     for i, line in enumerate(lines):
         if line.strip().startswith('###') and not line.strip().startswith('##'):
@@ -20,6 +21,7 @@ def truncate_markdown(content: str):
     return content
 
 def clean_output(raw_content:str) -> str:
+    """Cleans up Markdown code block fences."""
     match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw_content, re.DOTALL)
     if match:
         return match.group(1).strip()
@@ -65,7 +67,7 @@ def generate_and_save_product_schema(data: dict[str,any]):
     proposed_schema = {
             "type": "object",
             "properties": new_properties,
-            "required": ["name", "brand", "price", "specs"]
+            "required": ["name", "brand", "price", "product_description", "specs"]
     }
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(proposed_schema, f, indent=4, ensure_ascii=False)
@@ -106,7 +108,7 @@ def setup_database(connection: connection):
     connection.commit() # Save the changes
     print("  [DB] Table 'products' is ready.")
 
-def map_db_row_to_schema_format(row_dict: dict) -> dict | None:
+def map_db_row_to_schema_format(row_dict: dict[str,str]) -> dict | None:
     """
     Converts a flat dictionary from a database row back into the
     nested structure expected by the JSON schemas for validation.
@@ -114,7 +116,7 @@ def map_db_row_to_schema_format(row_dict: dict) -> dict | None:
     if not row_dict:
         return None
 
-    category: str = row_dict.get("category")
+    category = row_dict.get("category")
     
     specs_data = row_dict.get("specs")
     if isinstance(specs_data, str):

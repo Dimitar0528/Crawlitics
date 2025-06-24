@@ -7,8 +7,9 @@ from jsonschema import validate, ValidationError
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig, CacheMode
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
-from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
+from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter,CrawlResult
 import psycopg2
+from psycopg2.extensions import connection
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,54 +17,24 @@ load_dotenv()
 from product_schemas import SCHEMAS
 from scraper_helpers import (
     truncate_markdown, 
-    clean_json_output,
+    clean_output,
     generate_and_save_product_schema,
     get_db_connection,
     setup_database,
     map_db_row_to_schema_format
 )
-
+from crawler import crawl_urls
 LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
 KNOWN_CATEGORIES = [cat for cat in SCHEMAS if cat != "Unknown"]
 
 # ----------------------------------------
-# DYNAMIC LLM EXTRACTION (Classify, Extract, Fallback)
+# DYNAMIC LLM EXTRACTION
 # ----------------------------------------
-async def classify_product(markdown_text: str) -> str:
-    """LLM Call #1: Classifies the product"""
-    prompt = f"""
-    You are a strict and precise data classification engine. Your sole purpose is to classify the product in the text below into one of the predefined categories.
-
-    Follow these rules exactly:
-    1.  You MUST choose your answer from this exact list: {KNOWN_CATEGORIES}.
-    2.  If the product does NOT CLEARLY AND DIRECTLY fit into any of the categories on the list, you MUST respond with the single word "Unknown", in English, as is.
-    3.  Do NOT invent a new category or try to find the "closest" match if one does not exist.
-
-    --- PRODUCT TEXT ---
-    {markdown_text}
-    --- END TEXT ---
-
- Your response must be a single word, containing the category of the product, in Bulgarian.
-    """
-    async with llm_semaphore:
-        try:
-            response = await asyncio.to_thread(
-                ollama.chat,
-                model="gemma3",
-                messages=[{"role": "user", "content": prompt}],
-                options={'temperature': 0}
-            )
-            category = response['message']['content'].strip()
-            print(category)
-            return category if category in SCHEMAS else "Unknown"
-        except Exception as e:
-            print(f"  [Error] Classification failed: {e}")
-            return "Unknown"
 
 async def extract_structured_data(markdown_text: str, schema: dict) -> str:
-    """LLM Call #2: Extracts product data with real-time streaming to the console."""
+    """LLM Call: Extracts product data with real-time streaming to the console."""
     prompt = f"""
     You are a structured data extraction assistant.
     Your task is to extract accurate and complete information **ONLY about the primary product** described in the Markdown text below.
@@ -86,7 +57,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     The JSON keys should be in English.
     """
     
-    streamed_json = ""
+    streamed_data_text:str = ""
     print("  [LLM Stream] ", end="", flush=True) 
     async with llm_semaphore:
         stream_generator = await asyncio.to_thread(
@@ -106,17 +77,15 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
         for chunk in stream_generator:
             delta = chunk['message']['content']
             print(delta, end="", flush=True)
-            streamed_json += delta      
+            streamed_data_text += delta      
 
     print()
-    return clean_json_output(streamed_json)
+    return clean_output(streamed_data_text)
 
 
-def save_to_postgresql(db_connection, data: dict):
+def save_to_postgresql(db_connection: connection, data: dict[str,str]):
     """
-    Saves a new product's data to the PostgreSQL database.
-    If the source_url already exists, it does nothing.
-    """
+    Saves a new product's data to the PostgreSQL database, if it doesn't already exist."""
     source_url = data.get("source_url")
     if not source_url:
         print("  [DB] Cannot save data: source_url is missing.")
@@ -158,7 +127,7 @@ def save_to_postgresql(db_connection, data: dict):
   
     db_connection.commit()
 
-async def read_products_from_db(db_connection, urls: list[str]) -> tuple[dict, list]:
+async def read_products_from_db(db_connection: connection, urls: list[str]) -> tuple[dict[str, any], list]:
     """
     Reads a list of URLs from the database, converts them to schema format,
     validates them, and logs the results.
@@ -191,14 +160,14 @@ async def read_products_from_db(db_connection, urls: list[str]) -> tuple[dict, l
         
         for row in cursor.fetchall():
             row_dict = dict(zip(columns, row))
-            source_url = row_dict.get("source_url")
+            source_url: str = row_dict.get("source_url")
             rehydrated_json = map_db_row_to_schema_format(row_dict)
             
             if not rehydrated_json:
                 print(f"  [DB Read] Could not process row for {source_url}.")
                 continue
 
-            category = rehydrated_json.get("detected_category")
+            category: str = rehydrated_json.get("detected_category")
             
             print(f"  [DB Read] Found '{source_url}'. Validating against '{category}' schema...")
             try:
@@ -219,8 +188,8 @@ async def read_products_from_db(db_connection, urls: list[str]) -> tuple[dict, l
     return found_products, urls_not_found
 
 
-async def process_single_result(result,db_connection):
-    """Orchestrates the full crawling workflow for a given page."""
+async def process_single_result(result: CrawlResult, db_connection: connection, user_selected_category: str):
+    """Orchestrates the full scraping workflow for a given page."""
     url = result.url
     if not result.success:
         print(f"\n- Failed to crawl: {url} | Reason: {result.error_message}")
@@ -228,23 +197,22 @@ async def process_single_result(result,db_connection):
 
     print(f"\n--- Processing: {url} ---")
     markdown = truncate_markdown(result.markdown.raw_markdown)
-    category = await classify_product(markdown)
-    print(f"  [Step 1] Detected Category: '{category}'")
+    selected_schema = SCHEMAS[user_selected_category]
 
-    selected_schema = SCHEMAS[category]
-
-    print(f"  [Step 2] Extracting data using '{category}' schema...")
+    print(f"  [Step 1] Extracting data using '{user_selected_category}' schema...")
     json_output = await extract_structured_data(markdown, selected_schema)
 
-    print("  [Step 3] Validating...")
+    print("  [Step 2] Validating...")
     try:
         parsed_data = json.loads(json_output)
         validate(instance=parsed_data, schema=selected_schema)
         
         parsed_data['source_url'] = url
-        parsed_data['detected_category'] = category
+        parsed_data['detected_category'] = user_selected_category
+        
         await asyncio.to_thread(save_to_postgresql, db_connection, parsed_data)
-        if category == "Unknown":
+        
+        if user_selected_category == "Unknown":
             generate_and_save_product_schema(parsed_data)
         
         print(f" Success! Valid data for {url}.")
@@ -252,8 +220,8 @@ async def process_single_result(result,db_connection):
         print(f" FAILED for {url}: Validation error or bad JSON.")
         print(f"   Error: {e}")
 
-async def process_crawled_results(results,db_connection):
-    tasks = [process_single_result(result,db_connection) for result in results]
+async def process_crawled_results(results: list[CrawlResult], db_connection: connection, user_selected_category: str):
+    tasks = [process_single_result(result, db_connection, user_selected_category) for result in results]
     await asyncio.gather(*tasks)
 
 async def main():
@@ -281,6 +249,7 @@ async def main():
             exclude_external_links=True,
             exclude_internal_links=True,
             exclude_all_images=True,
+            locale="bg-BG",
             override_navigator=True,
             check_robots_txt=True,
             user_agent="Crawlitics/1.0"
@@ -291,15 +260,13 @@ async def main():
             check_interval=1.0, 
             max_session_permit=30,
             rate_limiter=RateLimiter(
-                base_delay=(1.0, 3.0),
+                base_delay=(1.25, 3.25),
                 max_delay=30.0,
                 max_retries=3,
                 rate_limit_codes=[429, 503]
             ),
         )
-        urls_to_process = [
-            "https://www.emag.bg/smartfon-apple-iphone-15-128gb-5g-black-mtp03rx-a/pd/DZ4H93YBM/"
-            ]
+        user_selected_category, urls_to_process = await crawl_urls()
         if not urls_to_process:
             print("No URLs to crawl. Exiting.")
             return
@@ -308,7 +275,8 @@ async def main():
         if found_products:
             print("\n--- Summary of Valid Products Found in Database ---")
             for url, data in found_products.items():
-                print(data)
+                print(f"URL: {url}; \n DATA:{data}")
+
         if urls_to_crawl:
             print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
@@ -321,7 +289,7 @@ async def main():
                     async for res in container:
                         results.append(res)
                 
-                await process_crawled_results(results,db_connection)
+                await process_crawled_results(results, db_connection, user_selected_category)
 
         elapsed = time.perf_counter() - start_time
         print(f"\n All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
