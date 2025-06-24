@@ -10,24 +10,39 @@ from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter,CrawlResult
 import psycopg2
 from psycopg2.extensions import connection
+from sqlalchemy.orm import Session
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from product_schemas import SCHEMAS
 from scraper_helpers import (
-    truncate_markdown, 
-    clean_output,
+    SessionLocal,
     generate_and_save_product_schema,
-    get_db_connection,
     setup_database,
-    map_db_row_to_schema_format
+    save_record_to_db,
+    read_record_from_db,
 )
 from crawler import crawl_urls
 LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
 
 KNOWN_CATEGORIES = [cat for cat in SCHEMAS if cat != "Unknown"]
+
+def truncate_markdown(content: str) -> str:
+    """Truncate uncessesary markdown content."""
+    lines = content.split('\n')
+    for i, line in enumerate(lines):
+        if line.strip().startswith('###') and not line.strip().startswith('##'):
+            return '\n'.join(lines[:i])
+    return content
+
+def clean_output(raw_content:str) -> str:
+    """Cleans up Markdown code block fences."""
+    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw_content, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return re.sub(r"^```(?:json)?|```$", "", raw_content.strip(), flags=re.MULTILINE).strip()
 
 # ----------------------------------------
 # DYNAMIC LLM EXTRACTION
@@ -82,113 +97,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     print()
     return clean_output(streamed_data_text)
 
-
-def save_to_postgresql(db_connection: connection, data: dict[str,str]):
-    """
-    Saves a new product's data to the PostgreSQL database, if it doesn't already exist."""
-    source_url = data.get("source_url")
-    if not source_url:
-        print("  [DB] Cannot save data: source_url is missing.")
-        return
-
-    print(f"  [DB] Attempting to save data for {source_url}...")
-    name = data.get("name") or data.get("product_name")
-    if not name:
-        print(f"  [DB] Skipping save for {source_url}: 'name' is missing from data.")
-        return
-        
-    brand = data.get("brand")
-    category = data.get("detected_category")
-    description = data.get("product_description")
-    
-    price_str = (data.get("price") or "0").replace("лв.", "").replace(" ", "").replace(".", "").replace(",", ".").strip()
-    try:
-        price_numeric = float(re.search(r'(\d+\.?\d*)', price_str).group(1))
-    except (ValueError, TypeError, AttributeError):
-        price_numeric = None
-
-    specs_data = data.get("specs") or data.get("attributes")
-    specs_json_string = json.dumps(specs_data) if specs_data else None
-
-    sql = """
-    INSERT INTO products (source_url, name, brand, price, category, product_description, specs)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    ON CONFLICT (source_url) DO NOTHING;
-    """
-    values = (source_url, name, brand, price_numeric, category, description, specs_json_string)
-
-    with db_connection.cursor() as cursor:
-        cursor.execute(sql, values)
-        # Check cursor.rowcount to see if a row was actually inserted (it will be 0 on conflict).
-        if cursor.rowcount > 0:
-            print(f"  [DB] Successfully saved new data for {source_url}.")
-        else:
-            print(f"  [DB] Skipped. Data for {source_url} already exists in the database.")
-  
-    db_connection.commit()
-
-async def read_products_from_db(db_connection: connection, urls: list[str]) -> tuple[dict[str, any], list]:
-    """
-    Reads a list of URLs from the database, converts them to schema format,
-    validates them, and logs the results.
-
-    Returns:
-        A tuple containing:
-        - A dictionary of {url: data} for successfully found and validated products.
-        - A list of URLs that were not found in the database.
-    """
-    if not urls:
-        return {}, []
-
-    print(f"\n[DB Read] Checking for {len(urls)} URLs in the database...")
-    
-    found_products = {}
-    
-    # Use '%s' as a placeholder to sanitaize data
-    placeholders = ', '.join(['%s'] * len(urls))
-    query = f"""
-        SELECT source_url, name, brand, price, category, product_description, specs 
-        FROM products 
-        WHERE source_url IN ({placeholders})
-    """
-
-    with db_connection.cursor() as cursor:
-        cursor.execute(query, tuple(urls))
-        
-        # Get column names dynamically to create dictionaries
-        columns = [desc[0] for desc in cursor.description]
-        
-        for row in cursor.fetchall():
-            row_dict = dict(zip(columns, row))
-            source_url: str = row_dict.get("source_url")
-            rehydrated_json = map_db_row_to_schema_format(row_dict)
-            
-            if not rehydrated_json:
-                print(f"  [DB Read] Could not process row for {source_url}.")
-                continue
-
-            category: str = rehydrated_json.get("detected_category")
-            
-            print(f"  [DB Read] Found '{source_url}'. Validating against '{category}' schema...")
-            try:
-                schema_to_validate = SCHEMAS.get(category)
-                if schema_to_validate:
-                    validate(instance=rehydrated_json, schema=schema_to_validate)
-                    print(f"  [DB Read] SUCCESS: Cached data for {source_url} is valid.")
-                    found_products[source_url] = rehydrated_json
-                else:
-                    print(f"  [DB Read] WARNING: No schema found for category '{category}'. Cannot validate.")
-
-            except ValidationError as e:
-                print(f"  [DB Read] FAILED: Cached data for {source_url} is now invalid against the current schema.")
-                print(f"     Reason: {e.message}")
-
-    urls_not_found = [url for url in urls if url not in found_products]
-
-    return found_products, urls_not_found
-
-
-async def process_single_result(result: CrawlResult, db_connection: connection, user_selected_category: str):
+async def process_single_result(result: CrawlResult, session: Session, user_selected_category: str):
     """Orchestrates the full scraping workflow for a given page."""
     url = result.url
     if not result.success:
@@ -210,7 +119,7 @@ async def process_single_result(result: CrawlResult, db_connection: connection, 
         parsed_data['source_url'] = url
         parsed_data['detected_category'] = user_selected_category
         
-        await asyncio.to_thread(save_to_postgresql, db_connection, parsed_data)
+        await asyncio.to_thread(save_record_to_db, session, parsed_data)
         
         if user_selected_category == "Unknown":
             generate_and_save_product_schema(parsed_data)
@@ -220,19 +129,15 @@ async def process_single_result(result: CrawlResult, db_connection: connection, 
         print(f" FAILED for {url}: Validation error or bad JSON.")
         print(f"   Error: {e}")
 
-async def process_crawled_results(results: list[CrawlResult], db_connection: connection, user_selected_category: str):
-    tasks = [process_single_result(result, db_connection, user_selected_category) for result in results]
-    await asyncio.gather(*tasks)
+async def process_crawled_results(results: list[CrawlResult], user_selected_category: str):
+    with SessionLocal() as session:
+        tasks = [process_single_result(result, session, user_selected_category) for result in results]
+        await asyncio.gather(*tasks)
 
 async def main():
-    db_connection = None
     start_time = time.perf_counter()
     try:
-        db_connection = get_db_connection()
-        if not db_connection: 
-            return
-        setup_database(db_connection)
-        print("Database connection successful.")
+        setup_database()
         browser_config = BrowserConfig(
             headless=True,
             verbose=True,
@@ -271,7 +176,7 @@ async def main():
             print("No URLs to crawl. Exiting.")
             return
         
-        found_products, urls_to_crawl = await read_products_from_db(db_connection, urls_to_process)
+        found_products, urls_to_crawl = await read_record_from_db(urls_to_process)
         if found_products:
             print("\n--- Summary of Valid Products Found in Database ---")
             for url, data in found_products.items():
@@ -289,19 +194,13 @@ async def main():
                     async for res in container:
                         results.append(res)
                 
-                await process_crawled_results(results, db_connection, user_selected_category)
+                await process_crawled_results(results, user_selected_category)
 
         elapsed = time.perf_counter() - start_time
-        print(f"\n All crawling + dynamic extraction done in: {elapsed:.2f} seconds")
+        print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
     except psycopg2.Error as err:
         print(f"FATAL: A database error occurred: {err}")
-    except Exception as e:
-        print(f"FATAL: An unexpected error occurred in main: {e}")
-    finally:
-        if db_connection:
-            db_connection.close()
-            print("Database connection closed.")
 
 if __name__ == "__main__":
     asyncio.run(main())

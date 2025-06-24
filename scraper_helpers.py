@@ -1,31 +1,26 @@
 import json
 import re
 import os
-import psycopg2
-from psycopg2.extensions import connection
+from jsonschema import validate, ValidationError
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.exc import IntegrityError
+
+from db_models import Product, Base 
+from product_schemas import SCHEMAS
 PROPOSED_SCHEMA_DIR = "proposed_schemas"
-DB_CONFIG = {
-    'host': os.getenv("DB_HOST"),
-    'port': os.getenv("DB_PORT"),
-    'dbname': os.getenv("DB_NAME"),
-    'user': os.getenv("DB_USER"),
-    'password': os.getenv("DB_PASSWORD"),
-}
 
-def truncate_markdown(content: str) -> str:
-    """Truncate uncessesary markdown content."""
-    lines = content.split('\n')
-    for i, line in enumerate(lines):
-        if line.strip().startswith('###') and not line.strip().startswith('##'):
-            return '\n'.join(lines[:i])
-    return content
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-def clean_output(raw_content:str) -> str:
-    """Cleans up Markdown code block fences."""
-    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw_content, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return re.sub(r"^```(?:json)?|```$", "", raw_content.strip(), flags=re.MULTILINE).strip()
+DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?client_encoding=utf8"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def generate_and_save_product_schema(data: dict[str,any]):
     """
@@ -74,76 +69,130 @@ def generate_and_save_product_schema(data: dict[str,any]):
     
     print(f"  [Schema Gen] Success! New schema saved to: {filepath}")
 
-def get_db_connection() -> connection | None:
-    """Establishes and returns a new database connection."""
+def setup_database():
+    """Creates all tables defined in db_models.py if they don't exist."""
+    print("  [DB ORM] Setting up database tables via SQLAlchemy...")
     try:
-        conn: connection = psycopg2.connect(**DB_CONFIG)
-        print(" Successfully connected to PostgreSQL database.")
-        return conn
-    except psycopg2.OperationalError as e:
-        print(f" Failed to connect to PostgreSQL. Please check your DB_CONFIG and ensure the server is running.")
-        print(f"Error: {e}")
-        return None
-    
-# Helper func to setup db table
-def setup_database(connection: connection):
-    """Creates the products table if it doesn't already exist using raw SQL."""
-    print("  [DB] Setting up database table...")
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        source_url VARCHAR(2048) NOT NULL UNIQUE,
-        name VARCHAR(512) NOT NULL,
-        brand VARCHAR(100),
-        price DECIMAL(10, 2),
-        category VARCHAR(50) NOT NULL,
-        product_description TEXT,
-        specs JSONB,
-        last_scraped_at TIMESTAMPTZ DEFAULT NOW()
-        
-    );
-    """
-    with connection.cursor() as cursor:
-        cursor.execute(create_table_query)
-    connection.commit() # Save the changes
-    print("  [DB] Table 'products' is ready.")
+        Base.metadata.create_all(bind=engine)
+        print("  [DB ORM] Tables are ready.")
+    except Exception as e:
+        print(f"  [DB ORM] Error setting up tables: {e}")
+        raise
 
-def map_db_row_to_schema_format(row_dict: dict[str,str]) -> dict | None:
+def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     """
-    Converts a flat dictionary from a database row back into the
+    Saves a product's data to the database using the PostgreSQL Python ORM.
+    """
+    source_url = data.get("source_url")
+    if not source_url: return
+
+    print(f"  [DB ORM] Preparing to save data for {source_url}...")
+    
+    name = data.get("name") or data.get("product_name")
+    if not name:
+        print(f"  [DB ORM] ❌ Skipping save for {source_url}: 'name' is missing.")
+        return
+    
+    brand = data.get("brand")
+    category = data.get("detected_category")
+    description = data.get("product_description")
+    price_str = (data.get("price") or "0").replace("лв.", "").replace(" ", "").replace(".", "").replace(",", ".").strip()
+    try:
+        price_numeric = float(re.search(r'(\d+\.?\d*)', price_str).group(1))
+    except (ValueError, TypeError, AttributeError):
+        price_numeric = None
+    specs_data = data.get("specs") or data.get("attributes")
+
+    # --- ORM "Upsert" Logic ---
+    existing_product = session.query(Product).filter(Product.source_url == source_url).first()
+    
+    if existing_product:
+        print(f"  [DB] ⏩ Skipped. Data for {source_url} already exists.")
+        return
+    else:
+        print(f"  [DB] Creating new product object...")
+        new_product = Product(
+            source_url=source_url,
+            name=name,
+            brand=brand,
+            price=price_numeric,
+            category=category,
+            product_description=description,
+            specs=specs_data
+        )
+        session.add(new_product)
+
+    try:
+        session.commit()
+        print(f"  [DB] Successfully saved new data for {source_url}.")
+    except IntegrityError:
+        print(f"  [DB] Integrity error (likely a race condition). Rolling back.")
+        session.rollback()
+    except Exception as e:
+        print(f"  [DB] An unexpected error occurred: {e}. Rolling back.")
+        session.rollback()
+        raise
+
+async def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str]]:
+    """Reads URLs from the database using the ORM and validates them."""
+    if not urls: return {}, []
+
+    print(f"\n[DB ORM Read] Checking for {len(urls)} URLs in the database...")
+    found_products_map = {}
+    
+    with SessionLocal() as session:
+        query_results = session.query(Product).filter(Product.source_url.in_(urls)).all()
+
+        for product_obj in query_results:
+            rehydrated_json = map_db_row_to_schema_format(product_obj)
+            category = rehydrated_json.get("detected_category")
+            schema_to_validate = SCHEMAS.get(category)
+            
+            try:
+                if schema_to_validate:
+                    validate(instance=rehydrated_json, schema=schema_to_validate)
+                    found_products_map[product_obj.source_url] = rehydrated_json
+            except ValidationError as e:
+                print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped.")
+
+    urls_not_found = [url for url in urls if url not in found_products_map]
+    return found_products_map, urls_not_found
+
+def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
+    """
+    Converts a SQLAlchemy Product instance back into the
     nested structure expected by the JSON schemas for validation.
     """
-    if not row_dict:
+    if not row_obj:
         return None
 
-    category = row_dict.get("category")
+    category = row_obj.category
     
-    specs_data = row_dict.get("specs")
+    specs_data = row_obj.specs
     if isinstance(specs_data, str):
         try:
             specs_data = json.loads(specs_data)
         except json.JSONDecodeError:
             specs_data = None 
     
-    # Re-assemble the object based on its category
     if category == "Unknown":
         rehydrated_object = {
-            "product_name": row_dict.get("name"),
-            "price": str(row_dict.get("price")),
-            "guessed_category": row_dict.get("guessed_category", category), 
-            "product_description": row_dict.get("product_description"),
+            "product_name": row_obj.name,
+            "price": str(row_obj.price),
+            "guessed_category": getattr(row_obj, "guessed_category", category),
+            "product_description": row_obj.product_description,
             "attributes": specs_data
         }
     else:
         rehydrated_object = {
-            "name": row_dict.get("name"),
-            "brand": row_dict.get("brand"),
-            "price": str(row_dict.get("price")),
-            "product_description": row_dict.get("product_description"),
+            "name": row_obj.name,
+            "brand": row_obj.brand,
+            "price": str(row_obj.price),
+            "product_description": row_obj.product_description,
             "specs": specs_data
         }
 
-    rehydrated_object['source_url'] = row_dict.get('source_url')
+    rehydrated_object['source_url'] = row_obj.source_url
     rehydrated_object['detected_category'] = category
     
     return rehydrated_object
