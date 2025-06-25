@@ -6,22 +6,27 @@ UNKNOWN_SCHEMA = {
     "type": "object",
     "properties": {
         "product_name": {"type": "string"},
-        "price": {"type": "string",},
+        "price": {"type": "string"},
+        "brand": {"type": "string"},
         "guessed_category": {
             "type": "string",
-            "description": "The guessed category of the product. This should be a singular noun with the first letter capitalized."
+            "description": "A product category that MUST BE written in Bulgarian (e.g., 'Компютър', 'Телефон', 'Телевизор'). The value must be a ONE OR MAX TWO singular noun(s) describing what the product fundamentally is, not its purpose, usage, or features. Start with a capital letter. Do not return adjectives like 'Гейминг', 'Бизнес', 'Смарт'"
         },
         "product_description": {
             "type": "string",
-            "description": "A concise, human-readable summary of the product’s key features and benefits, written in a natural language paragraph. Highlight what makes the product useful or unique based ONLY on the provided text."
+            "description": "A concise, human-readable summary of the product’s key features and benefits, written in a natural language paragraph. Highlight what makes the product useful or unique based ONLY on the provided text. The description should be in Bulgarian."
         },
         "attributes": {
             "type": "object",
-            "description": "A key-value map of all other discovered specifications and their values.",
+            "description": (
+                "A flat key-value map of all other specifications discovered in the product description. "
+                "**All attribute keys must be written in English only**, in snake_case if needed. "
+                "**All values must be in Bulgarian.** No keys should be written in Bulgarian. "
+            ),
             "additionalProperties": True
         }
     },
-    "required": ["product_name", "product_description", "guessed_category", "price", "attributes"]
+    "required": ["product_name", "price", "brand", "guessed_category", "product_description", "attributes"]
 }
 
 def load_schemas_from_directory(directory="proposed_schemas"):

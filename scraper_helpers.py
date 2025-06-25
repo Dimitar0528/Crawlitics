@@ -22,6 +22,21 @@ DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_POR
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+def parse_price(price_str: str) -> float:
+    cleaned = (price_str or "0").lower().replace("лв.", "").replace("лв", "").strip()
+
+    cleaned = re.sub(r"[^\d.,]", "", cleaned)
+
+    if "," in cleaned and "." in cleaned:
+        cleaned = cleaned.replace(".", "").replace(",", ".")
+    elif "," in cleaned:
+        cleaned = cleaned.replace(",", ".")
+
+    try:
+        return float(cleaned)
+    except ValueError:
+        return 0.0
+    
 def generate_and_save_product_schema(data: dict[str,any]):
     """
     Analyzes an 'Unknown' product's data and saves a proposed JSON schema for it.
@@ -94,13 +109,10 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
         return
     
     brand = data.get("brand")
-    category = data.get("detected_category")
+    category = data.get("product_category")
     description = data.get("product_description")
-    price_str = (data.get("price") or "0").replace("лв.", "").replace(" ", "").replace(".", "").replace(",", ".").strip()
-    try:
-        price_numeric = float(re.search(r'(\d+\.?\d*)', price_str).group(1))
-    except (ValueError, TypeError, AttributeError):
-        price_numeric = None
+    price_str = data.get("price") or "0"
+    price_numeric = parse_price(price_str)
     specs_data = data.get("specs") or data.get("attributes")
 
     # --- ORM "Upsert" Logic ---
@@ -145,7 +157,7 @@ async def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str
 
         for product_obj in query_results:
             rehydrated_json = map_db_row_to_schema_format(product_obj)
-            category = rehydrated_json.get("detected_category")
+            category = rehydrated_json.get("product_category")
             schema_to_validate = SCHEMAS.get(category)
             
             try:
@@ -174,25 +186,16 @@ def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
             specs_data = json.loads(specs_data)
         except json.JSONDecodeError:
             specs_data = None 
-    
-    if category == "Unknown":
-        rehydrated_object = {
-            "product_name": row_obj.name,
-            "price": str(row_obj.price),
-            "guessed_category": getattr(row_obj, "guessed_category", category),
-            "product_description": row_obj.product_description,
-            "attributes": specs_data
-        }
-    else:
-        rehydrated_object = {
-            "name": row_obj.name,
-            "brand": row_obj.brand,
-            "price": str(row_obj.price),
-            "product_description": row_obj.product_description,
-            "specs": specs_data
-        }
+        
+    rehydrated_object = {
+        "name": row_obj.name,
+        "brand": row_obj.brand,
+        "price": str(row_obj.price),
+        "product_description": row_obj.product_description,
+        "specs": specs_data
+    }
 
     rehydrated_object['source_url'] = row_obj.source_url
-    rehydrated_object['detected_category'] = category
+    rehydrated_object['product_category'] = category
     
     return rehydrated_object
