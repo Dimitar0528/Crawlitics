@@ -5,3 +5,4 @@ sentence-transformers==4.1.0
 psycopg2-binary==2.9.10
 SQLAlchemy==2.0.41
 python-dotenv==1.1.0
+agno==1.6.4

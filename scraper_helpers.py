@@ -9,7 +9,9 @@ from sqlalchemy.exc import IntegrityError
 
 from db_models import Product, Base 
 from product_schemas import SCHEMAS
-PROPOSED_SCHEMA_DIR = "proposed_schemas"
+
+from dotenv import load_dotenv
+load_dotenv()
 
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
@@ -18,9 +20,12 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?client_encoding=utf8"
+print(f"DB_HOST: {DB_HOST}, DB_PORT: {DB_PORT}, DB_NAME: {DB_NAME}, DB_USER: {DB_USER}, DB_PASSWORD: {DB_PASSWORD}")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+PROPOSED_SCHEMA_DIR = "proposed_schemas"
 
 def parse_price(price_str: str) -> float:
     cleaned = (price_str or "0").lower().replace("лв.", "").replace("лв", "").strip()
@@ -63,7 +68,7 @@ def generate_and_save_product_schema(data: dict[str,any]):
         "price": {"type": "string"},
         "product_description": {
                 "type": "string",
-                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown."
+                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown. The description must be in Bulgarian."
             },
         "specs": {
             "type": "object",
@@ -145,7 +150,7 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
         session.rollback()
         raise
 
-async def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str]]:
+def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str]]:
     """Reads URLs from the database using the ORM and validates them."""
     if not urls: return {}, []
 
@@ -165,7 +170,7 @@ async def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str
                     validate(instance=rehydrated_json, schema=schema_to_validate)
                     found_products_map[product_obj.source_url] = rehydrated_json
             except ValidationError as e:
-                print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped.")
+                print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped. {e}")
 
     urls_not_found = [url for url in urls if url not in found_products_map]
     return found_products_map, urls_not_found
