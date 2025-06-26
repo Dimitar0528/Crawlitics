@@ -1,0 +1,81 @@
+{
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "brand": {
+            "type": "string"
+        },
+        "price": {
+            "type": "string"
+        },
+        "product_description": {
+            "type": "string",
+            "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown. The description must be in Bulgarian."
+        },
+        "specs": {
+            "type": "object",
+            "properties": {
+                "processor_model": {
+                    "type": "string"
+                },
+                "processor_frequency_base": {
+                    "type": "string"
+                },
+                "ram_capacity": {
+                    "type": "string"
+                },
+                "ram_type": {
+                    "type": "string"
+                },
+                "storage_type": {
+                    "type": "string"
+                },
+                "storage_capacity": {
+                    "type": "string"
+                },
+                "video_card_model": {
+                    "type": "string"
+                },
+                "video_card_memory": {
+                    "type": "string"
+                },
+                "operating_system": {
+                    "type": "string"
+                },
+                "display_port": {
+                    "type": "string"
+                },
+                "hdmi_port": {
+                    "type": "string"
+                },
+                "number_of_cores": {
+                    "type": "string"
+                },
+                "number_of_threads": {
+                    "type": "string"
+                },
+                "architecture": {
+                    "type": "string"
+                },
+                "power_supply_wattage": {
+                    "type": "string"
+                },
+                "case_type": {
+                    "type": "string"
+                },
+                "cpu_cooler_type": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "required": [
+        "name",
+        "brand",
+        "price",
+        "product_description",
+        "specs"
+    ]
+}

@@ -1,7 +1,6 @@
 import asyncio
 import re
 import time
-from typing import Dict, Any, List, Optional, Set
 from playwright.async_api import async_playwright, Page, ElementHandle, BrowserContext
 from sentence_transformers import SentenceTransformer, util
 from rapidfuzz import fuzz
@@ -11,9 +10,8 @@ from crawler_helpers import (
     extract_and_match_filter_values,
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
+    get_user_criteria
 )
-
-from product_schemas import USER_SELECTABLE_CATEGORIES 
 
 SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.55
 
@@ -22,7 +20,7 @@ MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 print("Model loaded.")
 
 async def _click_and_track_option(
-    page: Page, selectors: Dict, option_text: str, applied_filters: Set[str]
+    page: Page, selectors: dict, option_text: str, applied_filters: set[str]
 ):
     """Helper to click a filter option, track it, and wait for the page update."""
     if option_text in applied_filters:
@@ -38,10 +36,10 @@ async def _click_and_track_option(
 
 async def apply_price_filter(
     page: Page,
-    selectors: Dict,
+    selectors: dict,
     price_range_str: str,
     price_section: ElementHandle,
-    applied_filters: Set[str],
+    applied_filters: set[str],
 ):
     """Handles applying a price filter, supporting custom inputs or predefined ranges."""
     try:
@@ -77,7 +75,7 @@ async def apply_price_filter(
         await _click_and_track_option(page, selectors, option, applied_filters)
 
 
-async def apply_text_filter(page: Page, selectors: Dict, user_values_str: str, filter_section: ElementHandle, applied_filters: Set[str]):
+async def apply_text_filter(page: Page, selectors: dict, user_values_str: str, filter_section: ElementHandle, applied_filters: set[str]):
     """Applies a text filter using semantic similarity."""
     target_values = [val.strip() for val in user_values_str.split(',')]
     
@@ -104,7 +102,7 @@ async def apply_text_filter(page: Page, selectors: Dict, user_values_str: str, f
         await _click_and_track_option(page, selectors, best_match_text, applied_filters)
     
 
-async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_filters: Dict[str, str]):
+async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_filters: dict[str, str]):
     """Applies filters by finding the best semantic match for each filter section."""
     selectors = site_config.get("side_filter_selectors")
     if not user_filters or not selectors:
@@ -186,7 +184,7 @@ async def apply_all_user_filters(page: Page, site_config: Dict[str, Any], user_f
 
 
 
-async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) -> Optional[str]:
+async def navigate_to_product_category(page: Page, site_config: dict[str, any]) -> str:
     """
     Performs an initial search and navigates to the main category page via breadcrumbs.
     Returns the URL of the category page.
@@ -230,7 +228,7 @@ async def navigate_to_product_category(page: Page, site_config: Dict[str, Any]) 
     return category_url
 
 
-async def crawl_paginated_results(page: Page, site_config: Dict[str, Any], user_query: str, max_pages: int) -> Set[str]:
+async def crawl_paginated_results(page: Page, site_config: dict[str, any], user_query: str, max_pages: int) -> set[str]:
     """Crawls product URLs from the category page, handling pagination."""
     product_urls = set()
     
@@ -285,70 +283,8 @@ async def crawl_paginated_results(page: Page, site_config: Dict[str, Any], user_
             break
     return product_urls
 
-def get_user_criteria() -> Dict[str, Any]:
-    """
-    Prompts the user for a search query and multiple filters, then
-    constructs and returns the criteria dictionary.
-    """
-    print("--- Product Search & Filter Setup ---")
 
-    print("Please choose a category for the products you want to search for:")
-
-    unknown_index = USER_SELECTABLE_CATEGORIES.index("Unknown")
-    USER_SELECTABLE_CATEGORIES[unknown_index] = "Друга категория"
-
-    for i, category_option in enumerate(USER_SELECTABLE_CATEGORIES):
-        print(f"  {i+1}. {category_option}")
-    
-    user_choice = -1
-    while user_choice < 1 or user_choice > len(USER_SELECTABLE_CATEGORIES):
-        try:
-            choice_str = input(f"Enter the number of your choice (1-{len(USER_SELECTABLE_CATEGORIES)}): ")
-            user_choice = int(choice_str)
-        except ValueError:
-            print("Invalid input. Please enter a number.")
-    
-    # Determine the chosen category string
-    selected_category = USER_SELECTABLE_CATEGORIES[user_choice - 1]
-    print(f"\nYou have selected the category: '{selected_category}'\n")
-
-    while not (query := input(" What product are you looking for? \n   ").strip()):
-        print("    Search query cannot be empty. Please try again.")
-    print(f"    Searching for: {query}\n")
-
-    # Get filters in a loop
-    filters: dict[str,str] = {}
-    print(" Now, let's add some filters. (Press Enter on an empty filter name to finish / exit)")
-    
-    while True:
-        filter_name = input("   - Filter Name (e.g., Цена, Color): ").strip()
-        if not filter_name:
-            if not filters:
-                print("    No filters were added.\n")
-            else:
-                print("    Finished adding filters.\n")
-            break
-
-        print(f"     Enter value(s) for '{filter_name}'.")
-        print("     - For price / range  value(s), use 'min-max' (e.g., 1500-2500).")
-        print("     - For single / multiple text value(s), separate with a comma.")
-        filter_value = input("     Value(s): ").strip()
-
-        if filter_value:
-            filters[filter_name] = filter_value
-            print(f"    Added Filter: {filter_name} = {filter_value}\n")
-        else:
-            print(f"    Filter '{filter_name}' was not added because the value was empty.\n")
-            
-    criteria = {
-        "category": selected_category,
-        "query": query,
-        "filters": filters
-    }
-    
-    return criteria
-
-async def run_site_crawl(context: BrowserContext, site_config: Dict[str, Any], user_criteria: Dict) -> List[str]:
+async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], user_criteria: dict) -> list[str]:
     """Orchestrates the entire crawling process for a single site."""
     page = await context.new_page()
     site_name = site_config['site_name']
@@ -372,7 +308,7 @@ async def run_site_crawl(context: BrowserContext, site_config: Dict[str, Any], u
         await page.close()
 
 
-async def crawl_urls() -> tuple[str, List[str]]:
+async def crawl_urls() -> tuple[str, list[str]]:
     user_criteria = get_user_criteria()
 
     user_selected_category: str = user_criteria['category']

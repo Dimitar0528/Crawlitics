@@ -1,16 +1,16 @@
 import re
-from typing import List, Callable, Optional
 from playwright.async_api import Page, ElementHandle
 from sentence_transformers import SentenceTransformer, util
-from typing import List
 import numpy as np
+
+from product_schemas import USER_SELECTABLE_CATEGORIES 
 
 async def extract_and_match_filter_values(
     section: ElementHandle,
     selector: str,
-    regex: Optional[str] = None,
-    match_logic: Optional[Callable] = None
-) -> List[str]:
+    regex: str = None,
+    match_logic: callable = None
+) -> list[str]:
     """
     Extracts text from filter value elements and returns those that match a given logic.
     Can use either a regex with a matcher function or a simple text-based match_logic.
@@ -56,7 +56,7 @@ async def click_matching_filter(page: Page, selectors: dict, text_to_match: str)
         return False
 
 
-def filter_urls_by_query_relaxed(urls: List[str], query: str) -> List[str]:
+def filter_urls_by_query_relaxed(urls: list[str], query: str) -> list[str]:
     """Filters a list of URLs to ensure all parts of the query are present in the URL path."""
     query_tokens = [token for token in query.lower().split() if token]
     if not query_tokens:
@@ -71,7 +71,7 @@ def filter_urls_by_query_relaxed(urls: List[str], query: str) -> List[str]:
     return filtered_urls
 
 
-def get_semantic_similarity(query: str, corpus: List[str], MODEL: SentenceTransformer) -> List[float]:
+def get_semantic_similarity(query: str, corpus: list[str], MODEL: SentenceTransformer) -> list[float]:
     """
     Calculates the cosine similarity between a single query string and a list of other strings.
     
@@ -94,3 +94,66 @@ def get_semantic_similarity(query: str, corpus: List[str], MODEL: SentenceTransf
 
     # Convert the result to a simple list of floats
     return cosine_scores[0].cpu().numpy().tolist()
+
+def get_user_criteria() -> dict[str, any]:
+    """
+    Prompts the user for a search query and multiple filters, then
+    constructs and returns the criteria dictionary.
+    """
+    print("--- Product Search & Filter Setup ---")
+
+    print("Please choose a category for the products you want to search for:")
+
+    unknown_index = USER_SELECTABLE_CATEGORIES.index("Unknown")
+    USER_SELECTABLE_CATEGORIES[unknown_index] = "Друга категория"
+
+    for i, category_option in enumerate(USER_SELECTABLE_CATEGORIES):
+        print(f"  {i+1}. {category_option}")
+    
+    user_choice = -1
+    while user_choice < 1 or user_choice > len(USER_SELECTABLE_CATEGORIES):
+        try:
+            choice_str = input(f"Enter the number of your choice (1-{len(USER_SELECTABLE_CATEGORIES)}): ")
+            user_choice = int(choice_str)
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+    
+    # Determine the chosen category string
+    selected_category: str = USER_SELECTABLE_CATEGORIES[user_choice - 1]
+    print(f"\nYou have selected the category: '{selected_category}'\n")
+
+    while not (query := input(" What product are you looking for? \n   ").strip()):
+        print("    Search query cannot be empty. Please try again.")
+    print(f"    Searching for: {query}\n")
+
+    # Get filters in a loop
+    filters: dict[str,str] = {}
+    print(" Now, let's add some filters. (Press Enter on an empty filter name to finish / exit)")
+    
+    while True:
+        filter_name = input("   - Filter Name (e.g., Цена, Color): ").strip()
+        if not filter_name:
+            if not filters:
+                print("    No filters were added.\n")
+            else:
+                print("    Finished adding filters.\n")
+            break
+
+        print(f"     Enter value(s) for '{filter_name}'.")
+        print("     - For price / range  value(s), use 'min-max' (e.g., 1500-2500).")
+        print("     - For single / multiple text value(s), separate with a comma.")
+        filter_value = input("     Value(s): ").strip()
+
+        if filter_value:
+            filters[filter_name] = filter_value
+            print(f"    Added Filter: {filter_name} = {filter_value}\n")
+        else:
+            print(f"    Filter '{filter_name}' was not added because the value was empty.\n")
+            
+    criteria = {
+        "category": selected_category,
+        "query": query,
+        "filters": filters
+    }
+    
+    return criteria
