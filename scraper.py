@@ -59,7 +59,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     3.  **Handle Missing Data:**  If a value is not found in the text, set that field to the string "null" (in quotes). Do not omit the key, and do not use the JSON null type — always use the string "null" instead.
     4.  **Respect Data Types:** Ensure all values match the `type` specified in the schema (e.g., `string`, `object`).
     5.  **Output Raw JSON:** Your entire response must be ONLY the raw JSON object, with no explanations or markdown formatting.
-    6. **Do not under any circumstance extract prices labeled as "ПЦД:" **. Extract ONLY the price associated with the product, which is the first price you see.
+    6. **Do not under any circumstance extract prices labeled as "ПЦД:" **. Extract ONLY the price associated with the product.
     --- MARKDOWN INPUT ---
     {markdown_text}
     --- END OF MARKDOWN INPUT ---
@@ -175,11 +175,11 @@ async def main():
             print("No URLs to crawl. Exiting.")
             return
         
-        found_products, urls_to_crawl = await read_record_from_db(urls_to_process)
+        found_products, urls_to_crawl = read_record_from_db(urls_to_process)
         if found_products:
             print("\n--- Summary of Valid Products Found in Database ---")
             for url, data in found_products.items():
-                print(f"URL: {url}; \n DATA:{data}")
+                print(f"{data},")
 
         if urls_to_crawl:
             print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
@@ -198,6 +198,20 @@ async def main():
         elapsed = time.perf_counter() - start_time
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
+        # The user chooses whether to run the data analyst agent or not
+        run_analysis_choice = input("Would you like to run a comparative analysis on the collected products? (y/n): ").lower().strip()
+        if run_analysis_choice == 'y':
+            try:
+                from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
+                
+                await analyze_and_rank_products(found_products)
+                
+            except ImportError:
+                print("\n[Error] Could not import the analyst agent. Make sure 'product_data_analyst_agent.py' exists.")
+            except Exception as analysis_err:
+                print(f"\n[Error] An error occurred during analysis: {analysis_err}")
+        else:
+            print("Skipping analysis. Exiting.")
     except psycopg2.Error as err:
         print(f"FATAL: A database error occurred: {err}")
 
