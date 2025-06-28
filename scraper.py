@@ -176,11 +176,6 @@ async def main():
             return
         
         found_products, urls_to_crawl = read_record_from_db(urls_to_process)
-        if found_products:
-            print("\n--- Summary of Valid Products Found in Database ---")
-            for url, data in found_products.items():
-                print(f"{data},")
-
         if urls_to_crawl:
             print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
@@ -199,15 +194,28 @@ async def main():
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
         # The user chooses whether to run the data analyst agent or not
-        run_analysis_choice = input("Would you like to run a comparative analysis on the collected products? (y/n): ").lower().strip()
-        if run_analysis_choice == 'y':
+        run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected products? (y/n): ").lower().strip()
+        if run_product_analysis_choice == 'y':
             try:
                 from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
                 
-                await analyze_and_rank_products(found_products)
+                analyze_and_rank_products(found_products)
                 
             except ImportError:
-                print("\n[Error] Could not import the analyst agent. Make sure 'product_data_analyst_agent.py' exists.")
+                print("\n[Error] Could not import the analyst agent. Make sure it exists.")
+            except Exception as analysis_err:
+                print(f"\n[Error] An error occurred during analysis: {analysis_err}")
+        else:
+            print("Skipping analysis. Exiting.")
+
+        run_visual_insight_choise = input("Would you like to run a price vs performance analysis on the products? (y/n): ").lower().strip()
+        if run_visual_insight_choise == 'y':
+            try:
+                from data_analyst_agent.visual_insight_agent import run_visualize_product_scatter_plot
+                run_visualize_product_scatter_plot(found_products)
+                
+            except ImportError:
+                print("\n[Error] Could not import the analyst agent. Make sure it exists.")
             except Exception as analysis_err:
                 print(f"\n[Error] An error occurred during analysis: {analysis_err}")
         else:
