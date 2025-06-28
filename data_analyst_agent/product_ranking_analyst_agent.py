@@ -1,5 +1,5 @@
 from textwrap import dedent
-from typing import List, Iterator
+from typing import Iterator
 
 from agno.agent import Agent, RunResponse
 from agno.models.ollama import Ollama
@@ -54,7 +54,22 @@ product_ranking_analyst_agent = Agent(
 )
 
 # Analyze a list of products and print structured output
-def analyze_and_rank_products(products: List[dict]):
+def analyze_and_rank_products(products: list[dict[str,any]]):
+    """
+    Analyzes and ranks a list of product dictionaries using the product_ranking_analyst_agent.
+
+    This function sends the provided list of product data (formatted as JSON)
+    to the AI agent, which analyzes, compares, and ranks the products across
+    multiple evaluation categories such as best budget option, best for gaming,
+    best design, and more. The agent returns the structured Markdown analysis
+    as a streaming response.
+
+    Args:
+        products (list[dict[str,any]]): A list of product data dictionaries, each containing
+            detailed product information.
+    Returns:
+        None:
+    """
     message = f"Here is a list of products (as JSON):\n{json.dumps(products, ensure_ascii=False, indent=2)}\n\nAnalyze, compare, and rank them as per your instructions."
     run_response: Iterator[RunResponse] = product_ranking_analyst_agent.run(message, stream=True)
     for chunk in run_response:

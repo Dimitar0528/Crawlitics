@@ -253,15 +253,15 @@ def visualize_product_scatter_plot(products: list[dict]):
             print(f"\n--- TOOL RESULT ---\n{event.result}")
     print("An interactive plot has been saved to 'product_plot.html'. Open this file in your browser to view it.")
 
-def run_visualize_product_scatter_plot(products):
+def run_visualize_product_scatter_plot(products:list[dict[str, any]]):
     cleaned_products = []
-    for _, product in products.items():
-        light_product = {
+    for product in products:
+        cleaned_product = {
             "name": product.get("name"),
             "brand": product.get("brand"),
             "price": product.get("price"),
             "product_category": product.get("product_category"),
             "specs": product.get("specs", {})
         }
-        cleaned_products.append(light_product)
+        cleaned_products.append(cleaned_product)
     visualize_product_scatter_plot(cleaned_products)

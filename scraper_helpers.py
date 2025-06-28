@@ -149,17 +149,18 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
         session.rollback()
         raise
 
-def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str]]:
+def read_record_from_db(urls: list[str]) -> tuple[list[dict[str, any]], list[str]]:
     """Reads URLs from the database using the ORM and validates them."""
-    if not urls: return {}, []
+    if not urls: return [], []
 
     print(f"\n[DB ORM Read] Checking for {len(urls)} URLs in the database...")
-    found_products_map = {}
-    
+    found_products: list[dict[str, any]] = []
+    successfully_found_urls: set[str] = set()
     with SessionLocal() as session:
         query_results = session.query(Product).filter(Product.source_url.in_(urls)).all()
 
         for product_obj in query_results:
+            source_url = product_obj.source_url
             rehydrated_json = map_db_row_to_schema_format(product_obj)
             category = rehydrated_json.get("product_category")
             schema_to_validate = SCHEMAS.get(category)
@@ -167,12 +168,13 @@ def read_record_from_db(urls: list[str]) -> tuple[dict[str, any], list[str]]:
             try:
                 if schema_to_validate:
                     validate(instance=rehydrated_json, schema=schema_to_validate)
-                    found_products_map[product_obj.source_url] = rehydrated_json
+                    found_products.append(rehydrated_json)
+                    successfully_found_urls.add(source_url)
             except ValidationError as e:
                 print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped. {e}")
 
-    urls_not_found = [url for url in urls if url not in found_products_map]
-    return found_products_map, urls_not_found
+    urls_not_found = [url for url in urls if url not in successfully_found_urls]
+    return found_products, urls_not_found
 
 def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
     """
