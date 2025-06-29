@@ -70,7 +70,20 @@ def analyze_and_rank_products(products: list[dict[str,any]]):
     Returns:
         None:
     """
-    message = f"Here is a list of products (as JSON):\n{json.dumps(products, ensure_ascii=False, indent=2)}\n\nAnalyze, compare, and rank them as per your instructions."
-    run_response: Iterator[RunResponse] = product_ranking_analyst_agent.run(message, stream=True)
-    for chunk in run_response:
-        print(chunk.content, end="", flush=True)
+    try:
+        if not products:
+            raise ValueError("No products provided for analysis")
+        
+        for i, product in enumerate(products):
+            if not isinstance(product, dict):
+                raise ValueError(f"Product {i} is not a dictionary")
+        
+        message = f"Here is a list of products (as JSON):\n{json.dumps(products, ensure_ascii=False, indent=2)}\n\nAnalyze, compare, and rank them as per your instructions."
+        
+        run_response = product_ranking_analyst_agent.run(message, stream=True)
+        for chunk in run_response:
+            print(chunk.content, end="", flush=True)
+            
+    except Exception as e:
+        print(f"Error during analysis: {e}")
+        return None

@@ -11,6 +11,7 @@ from agno.models.ollama import Ollama
 from agno.tools import tool
 import time
 from agno.exceptions import AgentRunException, StopAgentRun
+from helpers.helpers import clean_output
 
 spec_weight_generation_agent = Agent(
     model=Ollama(id="gemma3:latest", options={'num_ctx': 16384, 'temperature': 0}),
@@ -39,13 +40,6 @@ spec_weight_generation_agent = Agent(
     ],
     expected_output="A structured JSON object with performance profiles for each specification",
 )
-
-def clean_output(raw_content:str) -> str:
-    """Cleans up Markdown code block fences."""
-    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw_content, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return re.sub(r"^```(?:json)?|```$", "", raw_content.strip(), flags=re.MULTILINE).strip()
 
 @tool(show_result=True, stop_after_tool_call=True)
 def generate_price_vs_performance_scatter_plot(products: list[dict]) -> str:
@@ -210,9 +204,8 @@ def generate_price_vs_performance_scatter_plot(products: list[dict]) -> str:
         print(f"Error in plot generation: {e}")
         raise AgentRunException(f"Plot generation failed: {e}.")
 
-    return html_output
 
-def visualize_product_scatter_plot(products: list[dict]):
+def visualize_product_analysis_insights(products: list[dict]):
     start_time = time.perf_counter()
 
     visual_insight_agent = Agent(
@@ -227,7 +220,7 @@ def visualize_product_scatter_plot(products: list[dict]):
 
 
     message = f"""
-    Generate a value scatter plot for these products, visualizing their price-to-performance positioning.
+    Visualize product analysis insights for these products. 
     Product data:{json.dumps(products, indent=2, ensure_ascii=False)}
     """
 
@@ -239,7 +232,7 @@ def visualize_product_scatter_plot(products: list[dict]):
         if event.event == "RunResponseContent":
             html_content = event.content
             print("Sending the html output to the front-end")
-            with open("product_plot.html", "w", encoding="utf-8") as f:
+            with open("data_analyst_agent/product_plot.html", "w", encoding="utf-8") as f:
                 f.write("<h1>Product Value Scatter Plot</h1>")
                 f.write(html_content)
 
@@ -253,7 +246,7 @@ def visualize_product_scatter_plot(products: list[dict]):
             print(f"\n--- TOOL RESULT ---\n{event.result}")
     print("An interactive plot has been saved to 'product_plot.html'. Open this file in your browser to view it.")
 
-def run_visualize_product_scatter_plot(products:list[dict[str, any]]):
+def run_visualize_product_analysis_insights(products:list[dict[str, any]]):
     cleaned_products = []
     for product in products:
         cleaned_product = {
@@ -264,4 +257,4 @@ def run_visualize_product_scatter_plot(products:list[dict[str, any]]):
             "specs": product.get("specs", {})
         }
         cleaned_products.append(cleaned_product)
-    visualize_product_scatter_plot(cleaned_products)
+    visualize_product_analysis_insights(cleaned_products)

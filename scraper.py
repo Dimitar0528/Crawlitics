@@ -15,13 +15,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from product_schemas import SCHEMAS
-from scraper_helpers import (
+from helpers.scraper_helpers import (
     SessionLocal,
     generate_and_save_product_schema,
     setup_database,
     save_record_to_db,
     read_record_from_db,
 )
+from helpers.helpers import clean_output
 from crawler import crawl_urls
 LLM_CONCURRENCY = 2
 llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
@@ -36,12 +37,6 @@ def truncate_markdown(content: str) -> str:
             return '\n'.join(lines[:i])
     return content
 
-def clean_output(raw_content:str) -> str:
-    """Cleans up Markdown code block fences."""
-    match = re.search(r'```(?:json)?\s*({.*?})\s*```', raw_content, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return re.sub(r"^```(?:json)?|```$", "", raw_content.strip(), flags=re.MULTILINE).strip()
 
 # ----------------------------------------
 # DYNAMIC LLM EXTRACTION
@@ -194,7 +189,7 @@ async def main():
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
         # The user chooses whether to run the data analyst agent or not
-        run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected products? (y/n): ").lower().strip()
+        run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
         if run_product_analysis_choice == 'y':
             try:
                 from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
@@ -208,7 +203,7 @@ async def main():
         else:
             print("Skipping analysis. Exiting.")
 
-        run_visual_insight_choise = input("Would you like to run a price vs performance analysis on the products? (y/n): ").lower().strip()
+        run_visual_insight_choise = input("Would you like to run a visual product analysis on the collected data and generate various useful charts? (y/n): ").lower().strip()
         if run_visual_insight_choise == 'y':
             try:
                 from data_analyst_agent.visual_insight_agent import run_visualize_product_scatter_plot
