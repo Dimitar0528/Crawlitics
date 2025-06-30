@@ -80,7 +80,7 @@ def analyze_and_rank_products(products: list[dict[str,any]]):
         
         message = f"Here is a list of products (as JSON):\n{json.dumps(products, ensure_ascii=False, indent=2)}\n\nAnalyze, compare, and rank them as per your instructions."
         
-        run_response = product_ranking_analyst_agent.run(message, stream=True)
+        run_response: Iterator[RunResponse] = product_ranking_analyst_agent.run(message, stream=True)
         for chunk in run_response:
             print(chunk.content, end="", flush=True)
             

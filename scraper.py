@@ -51,7 +51,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     **Instructions:**
     1.  **Adhere to the Schema:** The final JSON object MUST validate against the schema provided below.
     2.  **Fill all `required` fields:** All fields listed as `required` in the schema MUST be present in your output.
-    3.  **Handle Missing Data:**  If a value is not found in the text, set that field to the string "null" (in quotes). Do not omit the key, and do not use the JSON null type — always use the string "null" instead.
+    3.  **Handle Missing Data:**  If a value is not found in the text, set that field to the STRING "null" (in double QUOTES). Do not omit the key, and DO Not use the JSON null type — ALWAYS use the string "null" instead.
     4.  **Respect Data Types:** Ensure all values match the `type` specified in the schema (e.g., `string`, `object`).
     5.  **Output Raw JSON:** Your entire response must be ONLY the raw JSON object, with no explanations or markdown formatting.
     6. **Do not under any circumstance extract prices labeled as "ПЦД:" **. Extract ONLY the price associated with the product.
@@ -206,8 +206,8 @@ async def main():
         run_visual_insight_choise = input("Would you like to run a visual product analysis on the collected data and generate various useful charts? (y/n): ").lower().strip()
         if run_visual_insight_choise == 'y':
             try:
-                from data_analyst_agent.visual_insight_agent import run_visualize_product_scatter_plot
-                run_visualize_product_scatter_plot(found_products)
+                from data_analyst_agent.visual_insight_agent import run_visualize_product_analysis_insights
+                run_visualize_product_analysis_insights(found_products)
                 
             except ImportError:
                 print("\n[Error] Could not import the analyst agent. Make sure it exists.")
