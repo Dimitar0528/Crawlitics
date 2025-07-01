@@ -24,8 +24,8 @@ from helpers.scraper_helpers import (
 )
 from helpers.helpers import clean_output
 from crawler import crawl_urls
-LLM_CONCURRENCY = 2
-llm_semaphore = asyncio.Semaphore(LLM_CONCURRENCY)
+AGENT_CONCURRENCY = 2
+agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
 
 KNOWN_CATEGORIES = [cat for cat in SCHEMAS if cat != "Unknown"]
 
@@ -36,7 +36,6 @@ def truncate_markdown(content: str) -> str:
         if line.strip().startswith('###') and not line.strip().startswith('##'):
             return '\n'.join(lines[:i])
     return content
-
 
 # ----------------------------------------
 # DYNAMIC LLM EXTRACTION
@@ -66,25 +65,24 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     
     streamed_data_text:str = ""
     print("  [LLM Stream] ", end="", flush=True) 
-    async with llm_semaphore:
-        stream_generator = await asyncio.to_thread(
-            ollama.chat,
-            model="gemma3",
-            messages=[
-                {"role": "system", "content": "You only output raw, valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            stream=True,
-            options={
-                'num_ctx': 16384,
-                'temperature': 0,
-            },
-        )
+    stream_generator = await asyncio.to_thread(
+        ollama.chat,
+        model="gemma3",
+        messages=[
+            {"role": "system", "content": "You only output raw, valid JSON."},
+            {"role": "user", "content": prompt}
+        ],
+        stream=True,
+        options={
+            'num_ctx': 16384,
+            'temperature': 0,
+        },
+    )
 
-        for chunk in stream_generator:
-            delta = chunk['message']['content']
-            print(delta, end="", flush=True)
-            streamed_data_text += delta      
+    for chunk in stream_generator:
+        delta = chunk['message']['content']
+        print(delta, end="", flush=True)
+        streamed_data_text += delta      
 
     print()
     return clean_output(streamed_data_text)
@@ -123,11 +121,6 @@ async def process_single_result(result: CrawlResult, session: Session, user_sele
         print(f" FAILED for {url}: Validation error or bad JSON.")
         print(f"   Error: {e}")
 
-async def process_crawled_results(results: list[CrawlResult], user_selected_category: str):
-    with SessionLocal() as session:
-        tasks = [process_single_result(result, session, user_selected_category) for result in results]
-        await asyncio.gather(*tasks)
-
 async def main():
     start_time = time.perf_counter()
     try:
@@ -151,7 +144,8 @@ async def main():
             locale="bg-BG",
             override_navigator=True,
             check_robots_txt=True,
-            user_agent="Crawlitics/1.0"
+            user_agent="Crawlitics/1.0",
+            stream=True,
         )
 
         dispatcher = MemoryAdaptiveDispatcher(
@@ -164,7 +158,7 @@ async def main():
                 max_retries=3,
                 rate_limit_codes=[429, 503]
             ),
-        )
+        ) 
         user_selected_category, urls_to_process = await crawl_urls()
         if not urls_to_process:
             print("No URLs to crawl. Exiting.")
@@ -173,22 +167,22 @@ async def main():
         found_products, urls_to_crawl = read_record_from_db(urls_to_process)
         if urls_to_crawl:
             print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
+            async def semaphore_task(result):
+                async with agent_semaphore:
+                    await process_single_result(result, session, user_selected_category)
 
             async with AsyncWebCrawler(config=browser_config) as crawler:
-                container = await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher)
-                results = []
-                if isinstance(container, list):
-                    results = container
-                else:
-                    async for res in container:
-                        results.append(res)
-                
-                await process_crawled_results(results, user_selected_category)
+                with SessionLocal() as session:
+                    tasks = []
+                    async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
+                        print(f"Just completed: {result.url}")
+                        tasks.append(asyncio.create_task(semaphore_task(result)))
+                    await asyncio.gather(*tasks)
 
         elapsed = time.perf_counter() - start_time
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
-        # The user chooses whether to run the data analyst agent or not
+        # # The user chooses whether to run the data analyst agent or not
         run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
         if run_product_analysis_choice == 'y':
             try:
@@ -208,7 +202,6 @@ async def main():
             try:
                 from data_analyst_agent.visual_insight_agent import run_visualize_product_analysis_insights
                 run_visualize_product_analysis_insights(found_products)
-                
             except ImportError:
                 print("\n[Error] Could not import the analyst agent. Make sure it exists.")
             except Exception as analysis_err:

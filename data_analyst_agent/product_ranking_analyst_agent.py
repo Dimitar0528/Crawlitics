@@ -1,7 +1,7 @@
 from textwrap import dedent
 from typing import Iterator
 
-from agno.agent import Agent, RunResponse
+from agno.agent import Agent
 from agno.models.ollama import Ollama
 import json
 
@@ -9,7 +9,7 @@ import json
 product_ranking_analyst_agent = Agent(
     model=Ollama(id="gemma3:latest",
         options={
-        'num_ctx': 48000,
+        'num_ctx': 16000,
         }),
     description=dedent("""\
         You are a highly skilled eCommerce data analyst AI agent.
@@ -80,9 +80,10 @@ def analyze_and_rank_products(products: list[dict[str,any]]):
         
         message = f"Here is a list of products (as JSON):\n{json.dumps(products, ensure_ascii=False, indent=2)}\n\nAnalyze, compare, and rank them as per your instructions."
         
-        run_response: Iterator[RunResponse] = product_ranking_analyst_agent.run(message, stream=True)
-        for chunk in run_response:
-            print(chunk.content, end="", flush=True)
+        agent_response = product_ranking_analyst_agent.run(message, stream=True)
+        for event in agent_response:
+            if event.event == "RunResponseContent":
+                print(event.content, end="", flush=True)
             
     except Exception as e:
         print(f"Error during analysis: {e}")

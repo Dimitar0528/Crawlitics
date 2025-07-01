@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright, Page, ElementHandle, BrowserC
 from sentence_transformers import SentenceTransformer, util
 from rapidfuzz import fuzz
 from site_configs import get_site_configs
-from crawler_helpers import (
+from helpers.crawler_helpers import (
     click_matching_filter,
     extract_and_match_filter_values,
     filter_urls_by_query_relaxed,
