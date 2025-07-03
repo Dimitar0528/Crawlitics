@@ -8,11 +8,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
-from db_models import Product, Base 
+from db_models import Product, PriceHistory, Base 
 from product_schemas import SCHEMAS
 
 from dotenv import load_dotenv
 load_dotenv()
+
+from slugify import slugify
+import random
+import string
 
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
@@ -157,6 +161,27 @@ def generate_and_save_product_schema(data: dict[str,any]):
     
     print(f"  [Schema Gen] Success! New schema saved to: {filepath}")
 
+def generate_unique_slug(session, name: str) -> str:
+    """
+    Generates a unique slug for a product name.
+    
+    If a product with the generated slug already exists, it appends a short
+    random string to ensure uniqueness.
+    
+    Args:
+        session: The SQLAlchemy session object.
+        name: The product name to slugify.
+        product_id_to_ignore: Optional. When updating a product, ignore its own existing slug.
+    """
+    base_slug = slugify(name)
+    slug = base_slug
+    # ensure generated slug is unique
+    while session.query(Product.id).filter(Product.slug == slug).first():
+        random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=5))
+        slug = f"{base_slug}-{random_suffix}"
+        
+    return slug
+
 def setup_database():
     """Creates all tables defined in db_models.py if they don't exist."""
     print("  [DB ORM] Setting up database tables via SQLAlchemy...")
@@ -180,7 +205,7 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     if not name:
         print(f"  [DB ORM] ❌ Skipping save for {source_url}: 'name' is missing.")
         return
-    
+    slug = generate_unique_slug(session, name)
     brand = data.get("brand")
     category = data.get("product_category")
     description = data.get("product_description")
@@ -192,20 +217,22 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     existing_product = session.query(Product).filter(Product.source_url == source_url).first()
     
     if existing_product:
-        print(f"  [DB] ⏩ Skipped. Data for {source_url} already exists.")
+        print(f"  [DB] Skipped. Data for {source_url} already exists.")
         return
     else:
         print(f"  [DB] Creating new product object...")
         new_product = Product(
             source_url=source_url,
             name=name,
+            slug=slug,
             brand=brand,
-            price=price_numeric,
             category=category,
             product_description=description,
             specs=specs_data
         )
         session.add(new_product)
+        price_entry = PriceHistory(price=price_numeric)
+        new_product.price_history.append(price_entry)
 
     try:
         session.commit()
@@ -265,7 +292,7 @@ def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
     rehydrated_object = {
         "name": row_obj.name,
         "brand": row_obj.brand,
-        "price": str(row_obj.price),
+        "price": str(row_obj.price_history[0].price),
         "product_description": row_obj.product_description,
         "specs": specs_data
     }
