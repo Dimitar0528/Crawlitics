@@ -8,7 +8,7 @@
                 "type": "string"
             },
             "price": {
-                "type": "string"
+                "type": "number"
             },
             "product_description": {
                 "type": "string",

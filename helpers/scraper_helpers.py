@@ -4,7 +4,7 @@ import os
 from typing import Literal
 from jsonschema import validate, ValidationError
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 
@@ -47,72 +47,83 @@ def parse_price(price_str: str) -> float:
     except ValueError:
         return 0.0
     
-def extract_dynamic_data_from_markdown(markdown: str) -> tuple[float, Literal['Unknown', 'Available', 'Out of Stock']]:
+def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclude_availability=False) -> tuple[list[float] | None, Literal['Неясен', 'В наличност', 'Изчерпан'] | None]:
     """
-    Reads markdown and extracts the product price as well as the product availability
+    Reads markdown and extracts the product price and availability status.
+    Allows for excluding either extraction task via flags.
 
     Args:
-        markdown: The extracted markdown from the page .
+        markdown: The extracted markdown from the page.
+        exclude_price: If True, price extraction will be skipped.
+        exclude_availability: If True, availability extraction will be skipped.
 
     Returns:
-        A tuple containing the product price, converted to float, and the product availability status.
+        A tuple containing:
+        - A product price, converted to float, or None if excluded.
+        - The availability status string or None if excluded.
     """
-    target_currencies = ['лв', 'EUR', '$', '€']
+    extracted_price: float | None = None
+    extracted_availability: Literal['Неясен', 'В наличност', 'Изчерпан'] | None = None
 
-    currency_pattern_part = '|'.join(re.escape(c) for c in target_currencies)
-    price_pattern = re.compile(
-    rf"""
-    ^(?!.*ПЦД)                  # Skip line if it contains 'ПЦД'
-    .*?                         # Match any characters (non-greedy) up to the price (this skips text before price)
-    \b                          # Word boundary to ensure price starts cleanly (not part of a larger word)
-    (                           # Capture group for full price number
-      (?:                       # Non-capturing group for integer part with thousands
-        [1-9]\d{{0,2}}          # Match integer part starting with non-zero digit, followed by 0 to 2 digits
-        (?:[\s'\.]\d{{3}})*     # Match zero or more thousands groups separated by space, apostrophe, or dot
-      )
-      (?:                       # Require decimal part (mandatory for a valid match)
-        [.,]\d{{2}}             # Match decimal separator (dot or comma), followed by exactly two digits
-      )
-    )                           # End capture group for the price
-    \s*                         # Optional whitespace after the price
-    (?:{currency_pattern_part}) # Match the currency (injected dynamically)
-    \b                          # Word boundary to ensure currency ends cleanly
-    """,
-    re.IGNORECASE | re.VERBOSE | re.MULTILINE
-)
+    if not exlude_price:
+        target_currencies = ['лв', 'EUR', '$', '€']
 
+        currency_pattern_part = '|'.join(re.escape(c) for c in target_currencies)
+        price_pattern = re.compile(
+        rf"""
+        ^(?!.*ПЦД)                  # Skip line if it contains 'ПЦД'
+        .*?                         # Match any characters (non-greedy) up to the price (this skips text before price)
+        \b                          # Word boundary to ensure price starts cleanly (not part of a larger word)
+        (                           # Capture group for full price number
+        (?:                       # Non-capturing group for integer part with thousands
+            [1-9]\d{{0,2}}          # Match integer part starting with non-zero digit, followed by 0 to 2 digits
+            (?:[\s'\.]\d{{3}})*     # Match zero or more thousands groups separated by space, apostrophe, or dot
+        )
+        (?:                       # Require decimal part (mandatory for a valid match)
+            [.,]\d{{2}}             # Match decimal separator (dot or comma), followed by exactly two digits
+        )
+        )                           # End capture group for the price
+        \s*                         # Optional whitespace after the price
+        (?:{currency_pattern_part}) # Match the currency (injected dynamically)
+        \b                          # Word boundary to ensure currency ends cleanly
+        """,
+        re.IGNORECASE | re.VERBOSE | re.MULTILINE
+    )
+        matches = price_pattern.findall(markdown)
+        extracted_price = [parse_price(match) for match in matches][0]
 
-    matches = price_pattern.findall(markdown)
-    extracted_price = [parse_price(match) for match in matches][0]
+    if not exclude_availability:
+        negative_lookbehind = r'(?<!вече\s)' 
+        
+        izcherpan_pattern = negative_lookbehind + r'изчерпан'
 
-    product_availability = ''
+        # define other unavailable keywords
+        other_unavailable = {'не е наличен', 'out of stock'}
+        
+        # combine all parts into the final regex
+        unavailable_parts = [izcherpan_pattern]
+        unavailable_parts.extend(re.escape(k) for k in other_unavailable)
 
-    OUT_OF_STOCK_KEYWORDS = {
-        'изчерпан',         
-        'не е наличен',
-        'out of stock',
-    }
+        AVAILABLE_KEYWORDS = {
+            'на склад',        
+            'в наличност',
+            'при доставчик',     
+            'in stock',
+        }
+        lower_content = markdown.lower()
+        print(lower_content)
+        
+        unavailable_pattern = r'\b(' + '|'.join(unavailable_parts) + r')\b'
+        if re.search(unavailable_pattern, lower_content):
+            extracted_availability = "Изчерпан"
 
-    AVAILABLE_KEYWORDS = {
-        'на склад',        
-        'в наличност',     
-        'in stock',
-    }
-    lower_content = markdown.lower()
-    # matches any of the keywords as whole words or phrases, ensuring no partial matches
-    out_of_stock_pattern = r'\b(' + '|'.join(re.escape(k) for k in OUT_OF_STOCK_KEYWORDS) + r')\b'
-    
-    if re.search(out_of_stock_pattern, lower_content):
-        product_availability = "Out of Stock"
+        available_pattern = r'\b(' + '|'.join(re.escape(k) for k in AVAILABLE_KEYWORDS) + r')\b'
+        if re.search(available_pattern, lower_content):
+            extracted_availability = "В наличност"
 
-    available_pattern = r'\b(' + '|'.join(re.escape(k) for k in AVAILABLE_KEYWORDS) + r')\b'
-    if re.search(available_pattern, lower_content):
-        product_availability = "Available"
-
-    if not product_availability:
-        product_availability = "Unknown"
-    
-    return extracted_price, product_availability
+        if not extracted_availability:
+            extracted_availability = "Неясен"
+    return extracted_price, extracted_availability
 
 def generate_and_save_product_schema(data: dict[str,any]):
     """
@@ -137,7 +148,7 @@ def generate_and_save_product_schema(data: dict[str,any]):
     new_properties = {
         "name": {"type": "string"},
         "brand": {"type": "string"},
-        "price": {"type": "string"},
+        "price": {"type": "number"},
         "product_description": {
                 "type": "string",
                 "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown. The description must be in Bulgarian."
@@ -192,6 +203,32 @@ def setup_database():
         print(f"  [DB ORM] Error setting up tables: {e}")
         raise
 
+def initialize_database_on_first_run():
+    """
+    Checks if the database tables exist and runs the setup function only
+    on the very first run.
+    """
+    try:
+        inspector = inspect(engine)
+
+        # get table names defined in models
+        required_tables = set(Base.metadata.tables.keys())
+        
+        # get table names that actually exist in the database
+        existing_tables = set(inspector.get_table_names())
+
+        if required_tables.issubset(existing_tables):
+            return 
+        else:
+            missing = required_tables - existing_tables
+            print(f"[Startup] Missing tables detected: {missing}.")
+            setup_database()
+
+    except Exception as e:
+        print(f"[Startup] FATAL: Could not connect to the database to check tables: {e}")
+        print("[Startup] Please ensure the database server is running and accessible.")
+        raise
+
 def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     """
     Saves a product's data to the database using the PostgreSQL Python ORM.
@@ -208,9 +245,9 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     slug = generate_unique_slug(session, name)
     brand = data.get("brand")
     category = data.get("product_category")
+    availability = data.get("availability")
     description = data.get("product_description")
-    price_str = data.get("price") or "0"
-    price_numeric = parse_price(price_str)
+    price = data.get("price") or "0"
     specs_data = data.get("specs") or data.get("attributes")
 
     # --- ORM "Upsert" Logic ---
@@ -227,11 +264,12 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
             slug=slug,
             brand=brand,
             category=category,
-            product_description=description,
+            availability=availability,
+            description=description,
             specs=specs_data
         )
         session.add(new_product)
-        price_entry = PriceHistory(price=price_numeric)
+        price_entry = PriceHistory(price=price)
         new_product.price_history.append(price_entry)
 
     try:
@@ -292,8 +330,8 @@ def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
     rehydrated_object = {
         "name": row_obj.name,
         "brand": row_obj.brand,
-        "price": str(row_obj.price_history[0].price),
-        "product_description": row_obj.product_description,
+        "price": row_obj.price_history[0].price,
+        "product_description": row_obj.description,
         "specs": specs_data
     }
 

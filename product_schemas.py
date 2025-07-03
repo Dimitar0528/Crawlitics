@@ -6,7 +6,7 @@ UNKNOWN_SCHEMA = {
     "type": "object",
     "properties": {
         "product_name": {"type": "string"},
-        "price": {"type": "string"},
+        "price": {"type": "number"},
         "brand": {"type": "string"},
         "guessed_category": {
             "type": "string",

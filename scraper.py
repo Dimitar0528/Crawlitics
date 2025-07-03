@@ -21,9 +21,10 @@ from product_schemas import SCHEMAS
 from helpers.scraper_helpers import (
     SessionLocal,
     generate_and_save_product_schema,
-    setup_database,
+    initialize_database_on_first_run,
     save_record_to_db,
     read_record_from_db,
+    extract_dynamic_data_from_markdown
 )
 from helpers.helpers import clean_output
 from crawler import crawl_urls
@@ -102,7 +103,7 @@ async def process_single_result(result: CrawlResult, session: Session, user_sele
     selected_schema = SCHEMAS[user_selected_category]
 
     json_output = await extract_structured_data(markdown, selected_schema)
-
+    _, availability = extract_dynamic_data_from_markdown(markdown, exlude_price=True)
     print("Validating extracted data...")
     try:
         parsed_data = json.loads(json_output)
@@ -110,7 +111,7 @@ async def process_single_result(result: CrawlResult, session: Session, user_sele
         
         parsed_data['source_url'] = url
         parsed_data['product_category'] = user_selected_category
-
+        parsed_data['availability'] = availability
         if user_selected_category == "Unknown":
             generate_and_save_product_schema(parsed_data)
             parsed_data['product_category'] = parsed_data["guessed_category"]
@@ -124,7 +125,7 @@ async def process_single_result(result: CrawlResult, session: Session, user_sele
 async def main():
     start_time = time.perf_counter()
     try:
-        setup_database()
+        initialize_database_on_first_run()
         browser_config = BrowserConfig(
             headless=True,
             verbose=True,

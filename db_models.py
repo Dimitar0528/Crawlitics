@@ -14,7 +14,8 @@ class Product(Base):
     slug = Column(String(256), nullable=False, unique=True, index=True)
     brand = Column(String(50), nullable=False)
     category = Column(String(50), nullable=False)
-    product_description = Column(TEXT)
+    availability = Column(String(20), nullable=False)
+    description = Column(TEXT)
     specs = Column(JSONB, nullable=False) 
     created_at = Column(
         TIMESTAMP(timezone=True), 
