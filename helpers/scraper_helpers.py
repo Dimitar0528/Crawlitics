@@ -1,6 +1,7 @@
 import json
 import re
 import os
+from typing import Literal
 from jsonschema import validate, ValidationError
 
 from sqlalchemy import create_engine
@@ -37,10 +38,78 @@ def parse_price(price_str: str) -> float:
         cleaned = cleaned.replace(",", ".")
 
     try:
-        return float(cleaned)
+        value = float(cleaned)
+        return "{:.2f}".format(value)
     except ValueError:
         return 0.0
     
+def extract_dynamic_data_from_markdown(markdown: str) -> tuple[float, Literal['Unknown', 'Available', 'Out of Stock']]:
+    """
+    Reads markdown and extracts the product price as well as the product availability
+
+    Args:
+        markdown: The extracted markdown from the page .
+
+    Returns:
+        A tuple containing the product price, converted to float, and the product availability status.
+    """
+    target_currencies = ['лв', 'EUR', '$', '€']
+
+    currency_pattern_part = '|'.join(re.escape(c) for c in target_currencies)
+    price_pattern = re.compile(
+    rf"""
+    ^(?!.*ПЦД)                  # Skip line if it contains 'ПЦД'
+    .*?                         # Match any characters (non-greedy) up to the price (this skips text before price)
+    \b                          # Word boundary to ensure price starts cleanly (not part of a larger word)
+    (                           # Capture group for full price number
+      (?:                       # Non-capturing group for integer part with thousands
+        [1-9]\d{{0,2}}          # Match integer part starting with non-zero digit, followed by 0 to 2 digits
+        (?:[\s'\.]\d{{3}})*     # Match zero or more thousands groups separated by space, apostrophe, or dot
+      )
+      (?:                       # Require decimal part (mandatory for a valid match)
+        [.,]\d{{2}}             # Match decimal separator (dot or comma), followed by exactly two digits
+      )
+    )                           # End capture group for the price
+    \s*                         # Optional whitespace after the price
+    (?:{currency_pattern_part}) # Match the currency (injected dynamically)
+    \b                          # Word boundary to ensure currency ends cleanly
+    """,
+    re.IGNORECASE | re.VERBOSE | re.MULTILINE
+)
+
+
+    matches = price_pattern.findall(markdown)
+    extracted_price = [parse_price(match) for match in matches][0]
+
+    product_availability = ''
+
+    OUT_OF_STOCK_KEYWORDS = {
+        'изчерпан',         
+        'не е наличен',
+        'out of stock',
+    }
+
+    AVAILABLE_KEYWORDS = {
+        'на склад',        
+        'в наличност',     
+        'in stock',
+    }
+    lower_content = markdown.lower()
+    # matches any of the keywords as whole words or phrases, ensuring no partial matches
+    out_of_stock_pattern = r'\b(' + '|'.join(re.escape(k) for k in OUT_OF_STOCK_KEYWORDS) + r')\b'
+    
+    if re.search(out_of_stock_pattern, lower_content):
+        product_availability = "Out of Stock"
+
+    available_pattern = r'\b(' + '|'.join(re.escape(k) for k in AVAILABLE_KEYWORDS) + r')\b'
+    if re.search(available_pattern, lower_content):
+        product_availability = "Available"
+
+    if not product_availability:
+        product_availability = "Unknown"
+    
+    return extracted_price, product_availability
+
 def generate_and_save_product_schema(data: dict[str,any]):
     """
     Analyzes an 'Unknown' product's data and saves a proposed JSON schema for it.

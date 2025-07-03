@@ -8,9 +8,9 @@ from typing import AsyncIterator
 
 from jsonschema import validate, ValidationError
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig, CacheMode
-from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter,CrawlResult
+
 import psycopg2
 from sqlalchemy.orm import Session
 
@@ -27,7 +27,6 @@ from helpers.scraper_helpers import (
 )
 from helpers.helpers import clean_output
 from crawler import crawl_urls
-
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
 
@@ -131,17 +130,18 @@ async def main():
             verbose=True,
             user_agent_mode="random",
             light_mode=True,
+            text_mode=True,
+            extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox"],
         )
-        prune_filter = PruningContentFilter(threshold_type="dynamic")
-        md_generator = DefaultMarkdownGenerator(content_filter=prune_filter)
         config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
-            markdown_generator=md_generator,
+            markdown_generator=DefaultMarkdownGenerator(),
             verbose=True,
             table_score_threshold=8,
             exclude_external_links=True,
             exclude_internal_links=True,
             exclude_all_images=True,
+            excluded_tags=["header", "aside", "nav", "footer"],
             locale="bg-BG",
             override_navigator=True,
             check_robots_txt=True,
@@ -168,17 +168,19 @@ async def main():
         found_products, urls_to_crawl = read_record_from_db(urls_to_process)
         if urls_to_crawl:
             print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
-            async def semaphore_task(result):
-                async with agent_semaphore:
-                    await process_single_result(result, session, user_selected_category)
 
             async with AsyncWebCrawler(config=browser_config) as crawler:
-                with SessionLocal() as session:
-                    tasks = []
-                    async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
-                        print(f"Just completed: {result.url}")
-                        tasks.append(asyncio.create_task(semaphore_task(result)))
-                    await asyncio.gather(*tasks)
+                async def semaphore_task(result):
+                    async with agent_semaphore:
+                        with SessionLocal() as session:
+                            await process_single_result(result, session, user_selected_category)
+
+                tasks = []
+                async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
+                    result: CrawlResult 
+                    print(f"Just completed: {result.url}")
+                    tasks.append(asyncio.create_task(semaphore_task(result)))
+                await asyncio.gather(*tasks)
 
         elapsed = time.perf_counter() - start_time
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
