@@ -2,11 +2,13 @@ import json
 import re
 import os
 from typing import Literal
+from decimal import Decimal
 from jsonschema import validate, ValidationError
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import func
 
 from db_models import Product, PriceHistory, Base 
 from product_schemas import SCHEMAS
@@ -17,6 +19,7 @@ load_dotenv()
 from slugify import slugify
 import random
 import string
+from datetime import datetime, timedelta, timezone
 
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
@@ -47,7 +50,7 @@ def parse_price(price_str: str) -> float:
     except ValueError:
         return 0.0
     
-def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclude_availability=False) -> tuple[list[float] | None, Literal['Неясен', 'В наличност', 'Изчерпан'] | None]:
+def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclude_availability=False) -> tuple[float | None, Literal['Неясен', 'В наличност', 'Изчерпан'] | None]:
     """
     Reads markdown and extracts the product price and availability status.
     Allows for excluding either extraction task via flags.
@@ -107,11 +110,11 @@ def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclud
         AVAILABLE_KEYWORDS = {
             'на склад',        
             'в наличност',
+            "ограничена наличност",
             'при доставчик',     
             'in stock',
         }
         lower_content = markdown.lower()
-        print(lower_content)
         
         unavailable_pattern = r'\b(' + '|'.join(unavailable_parts) + r')\b'
         if re.search(unavailable_pattern, lower_content):
@@ -229,6 +232,36 @@ def initialize_database_on_first_run():
         print("[Startup] Please ensure the database server is running and accessible.")
         raise
 
+def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
+    """
+    Converts a SQLAlchemy Product instance back into the
+    nested structure expected by the JSON schemas for validation.
+    """
+    if not row_obj:
+        return None
+
+    category = row_obj.category
+    
+    specs_data = row_obj.specs
+    if isinstance(specs_data, str):
+        try:
+            specs_data = json.loads(specs_data)
+        except json.JSONDecodeError:
+            specs_data = None 
+        
+    rehydrated_object = {
+        "name": row_obj.name,
+        "brand": row_obj.brand,
+        "price": float(row_obj.price_history[0].price),
+        "product_description": row_obj.description,
+        "specs": specs_data
+    }
+    rehydrated_object['availability'] = row_obj.availability
+    rehydrated_object['source_url'] = row_obj.source_url
+    rehydrated_object['category'] = category
+    
+    return rehydrated_object
+
 def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     """
     Saves a product's data to the database using the PostgreSQL Python ORM.
@@ -236,15 +269,12 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     source_url = data.get("source_url")
     if not source_url: return
 
-    print(f"  [DB ORM] Preparing to save data for {source_url}...")
+    print(f"  [DB] Preparing to save data for {source_url}...")
     
     name = data.get("name") or data.get("product_name")
-    if not name:
-        print(f"  [DB ORM] ❌ Skipping save for {source_url}: 'name' is missing.")
-        return
     slug = generate_unique_slug(session, name)
     brand = data.get("brand")
-    category = data.get("product_category")
+    category = data.get("category")
     availability = data.get("availability")
     description = data.get("product_description")
     price = data.get("price") or "0"
@@ -254,7 +284,6 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     existing_product = session.query(Product).filter(Product.source_url == source_url).first()
     
     if existing_product:
-        print(f"  [DB] Skipped. Data for {source_url} already exists.")
         return
     else:
         print(f"  [DB] Creating new product object...")
@@ -287,6 +316,8 @@ def read_record_from_db(urls: list[str]) -> tuple[list[dict[str, any]], list[str
     """Reads URLs from the database using the ORM and validates them."""
     if not urls: return [], []
 
+    CACHE_DURATION = timedelta(hours=24)
+
     print(f"\n[DB ORM Read] Checking for {len(urls)} URLs in the database...")
     found_products: list[dict[str, any]] = []
     successfully_found_urls: set[str] = set()
@@ -295,47 +326,61 @@ def read_record_from_db(urls: list[str]) -> tuple[list[dict[str, any]], list[str
 
         for product_obj in query_results:
             source_url = product_obj.source_url
-            rehydrated_json = map_db_row_to_schema_format(product_obj)
-            category = rehydrated_json.get("product_category")
-            schema_to_validate = SCHEMAS.get(category)
-            
-            try:
-                if schema_to_validate:
-                    validate(instance=rehydrated_json, schema=schema_to_validate)
-                    found_products.append(rehydrated_json)
-                    successfully_found_urls.add(source_url)
-            except ValidationError as e:
-                print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped. {e}")
+            time_since_last_scrape = datetime.now(timezone.utc) - product_obj.last_scraped_at
+
+            if time_since_last_scrape > CACHE_DURATION:
+                print(f" Stale URL: {source_url}. Queuing for update scrape.")
+
+            else:
+                rehydrated_json = map_db_row_to_schema_format(product_obj)
+                category = rehydrated_json["category"]
+                schema_to_validate = SCHEMAS.get(category)
+                try:
+                    if schema_to_validate:
+                        validate(instance=rehydrated_json, schema=schema_to_validate)
+                        found_products.append(rehydrated_json)
+                        successfully_found_urls.add(source_url)
+                except ValidationError as e:
+                    print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped. {e}")
 
     urls_not_found = [url for url in urls if url not in successfully_found_urls]
     return found_products, urls_not_found
 
-def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
+def update_record_from_db(
+    session: Session,
+    product_url: str,
+    new_price: float | None,
+    new_availability: Literal['Неясен', 'В наличност', 'Изчерпан']
+) -> None:
     """
-    Converts a SQLAlchemy Product instance back into the
-    nested structure expected by the JSON schemas for validation.
+    Updates a product's dynamic data (price and availability) based on fresh scrape data.
     """
-    if not row_obj:
-        return None
-
-    category = row_obj.category
+    print(f"  [DB] Processing data for URL: {product_url}")
     
-    specs_data = row_obj.specs
-    if isinstance(specs_data, str):
+    try:
+        product = session.query(Product).filter(Product.source_url == product_url).first()
+        if not product:
+            print(f"  [DB] WARNING: Product with URL '{product_url}' not found. Skipping.")
+            return
+
+        latest_price_entry = product.price_history[0].price if product.price_history else None
+        if latest_price_entry != Decimal(new_price):
+            print(f"  [DB] Price changed for '{product.name}'. Old: {getattr(latest_price_entry, 'price', 'N/A')}, New: {new_price}")
+            new_price_record = PriceHistory(price=new_price, product_id=product.id)
+            session.add(new_price_record)
+
+        if product.availability != new_availability:
+            print(f"  [DB] Availability changed for '{product.name}'. Old: {product.availability}, New: {new_availability}")
+            product.availability = new_availability
+
+        product.last_scraped_at = func.now()
         try:
-            specs_data = json.loads(specs_data)
-        except json.JSONDecodeError:
-            specs_data = None 
-        
-    rehydrated_object = {
-        "name": row_obj.name,
-        "brand": row_obj.brand,
-        "price": row_obj.price_history[0].price,
-        "product_description": row_obj.description,
-        "specs": specs_data
-    }
+            session.commit()
+        except IntegrityError:
+            print(f"  [DB] Integrity error (likely a race condition). Rolling back.")
+            session.rollback()
 
-    rehydrated_object['source_url'] = row_obj.source_url
-    rehydrated_object['product_category'] = category
-    
-    return rehydrated_object
+    except Exception as e:
+        print(f"  [DB] An error occurred during product update: {e}")
+        session.rollback()
+        raise 

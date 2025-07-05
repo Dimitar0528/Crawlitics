@@ -24,10 +24,13 @@ from helpers.scraper_helpers import (
     initialize_database_on_first_run,
     save_record_to_db,
     read_record_from_db,
+    update_record_from_db,
     extract_dynamic_data_from_markdown
 )
 from helpers.helpers import clean_output
 from crawler import crawl_urls
+from db_models import Product
+
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
 
@@ -86,12 +89,11 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
                 print(event.content, end="", flush=True)
                 streamed_data_text += event.content      
 
-    # print()
     elapsed = time.perf_counter() - start_time
     print(f"\n Dynamic extraction done in: {elapsed:.2f} seconds")
     return clean_output(streamed_data_text)
 
-async def process_single_result(result: CrawlResult, session: Session, user_selected_category: str):
+async def process_single_crawled_result(result: CrawlResult, session: Session, user_selected_category: str):
     """Orchestrates the full scraping workflow for a given page."""
     url = result.url
     if not result.success:
@@ -100,27 +102,40 @@ async def process_single_result(result: CrawlResult, session: Session, user_sele
 
     print(f"\n--- Processing: {url} ---")
     markdown = truncate_markdown(result.markdown.raw_markdown)
-    selected_schema = SCHEMAS[user_selected_category]
 
-    json_output = await extract_structured_data(markdown, selected_schema)
-    _, availability = extract_dynamic_data_from_markdown(markdown, exlude_price=True)
-    print("Validating extracted data...")
-    try:
-        parsed_data = json.loads(json_output)
-        validate(instance=parsed_data, schema=selected_schema)
-        
-        parsed_data['source_url'] = url
-        parsed_data['product_category'] = user_selected_category
-        parsed_data['availability'] = availability
-        if user_selected_category == "Unknown":
-            generate_and_save_product_schema(parsed_data)
-            parsed_data['product_category'] = parsed_data["guessed_category"]
+    existing_product = session.query(Product).filter(Product.source_url == url).first()
+    if existing_product:
+         print(f"  Product exists. Checking for fresh new data...")
+         new_price, new_availability = extract_dynamic_data_from_markdown(markdown)
+         await asyncio.to_thread(
+            update_record_from_db, 
+            session, 
+            url, 
+            new_price, 
+            new_availability
+        )
+    else:
+        selected_schema = SCHEMAS[user_selected_category]
 
-        await asyncio.to_thread(save_record_to_db, session, parsed_data)
-        print(f" Success! Valid data for {url}.")
-    except (json.JSONDecodeError, ValidationError) as e:
-        print(f" FAILED for {url}: Validation error or bad JSON.")
-        print(f"   Error: {e}")
+        json_output = await extract_structured_data(markdown, selected_schema)
+        _, availability = extract_dynamic_data_from_markdown(markdown, exlude_price=True)
+        print("Validating extracted data...")
+        try:
+            parsed_data = json.loads(json_output)
+            validate(instance=parsed_data, schema=selected_schema)
+            
+            parsed_data['source_url'] = url
+            parsed_data['category'] = user_selected_category
+            parsed_data['availability'] = availability
+            if user_selected_category == "Unknown":
+                generate_and_save_product_schema(parsed_data)
+                parsed_data['category'] = parsed_data["guessed_category"]
+
+            await asyncio.to_thread(save_record_to_db, session, parsed_data)
+            print(f" Success! Valid data for {url}.")
+        except (json.JSONDecodeError, ValidationError) as e:
+            print(f" FAILED for {url}: Validation error or bad JSON.")
+            print(f"   Error: {e}")
 
 async def main():
     start_time = time.perf_counter()
@@ -174,7 +189,7 @@ async def main():
                 async def semaphore_task(result):
                     async with agent_semaphore:
                         with SessionLocal() as session:
-                            await process_single_result(result, session, user_selected_category)
+                            await process_single_crawled_result(result, session, user_selected_category)
 
                 tasks = []
                 async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
