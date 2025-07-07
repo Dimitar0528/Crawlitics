@@ -102,7 +102,6 @@ async def process_single_crawled_result(result: CrawlResult, session: Session, u
 
     print(f"\n--- Processing: {url} ---")
     markdown = truncate_markdown(result.markdown.raw_markdown)
-
     existing_product = session.query(Product).filter(Product.source_url == url).first()
     if existing_product:
          print(f"  Product exists. Checking for fresh new data...")
@@ -127,6 +126,8 @@ async def process_single_crawled_result(result: CrawlResult, session: Session, u
             parsed_data['source_url'] = url
             parsed_data['category'] = user_selected_category
             parsed_data['availability'] = availability
+            parsed_data["image_url"] = result.metadata.get('og:image')
+            
             if user_selected_category == "Unknown":
                 generate_and_save_product_schema(parsed_data)
                 parsed_data['category'] = parsed_data["guessed_category"]
@@ -186,7 +187,7 @@ async def main():
             print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
             async with AsyncWebCrawler(config=browser_config) as crawler:
-                async def semaphore_task(result):
+                async def semaphore_task(result: CrawlResult):
                     async with agent_semaphore:
                         with SessionLocal() as session:
                             await process_single_crawled_result(result, session, user_selected_category)

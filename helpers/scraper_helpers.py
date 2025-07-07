@@ -3,7 +3,6 @@ import re
 import os
 from typing import Literal
 from decimal import Decimal
-from jsonschema import validate, ValidationError
 
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session
@@ -11,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import func
 
 from db_models import Product, PriceHistory, Base 
-from product_schemas import SCHEMAS
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -232,36 +230,6 @@ def initialize_database_on_first_run():
         print("[Startup] Please ensure the database server is running and accessible.")
         raise
 
-def map_db_row_to_schema_format(row_obj: Product) -> dict | None:
-    """
-    Converts a SQLAlchemy Product instance back into the
-    nested structure expected by the JSON schemas for validation.
-    """
-    if not row_obj:
-        return None
-
-    category = row_obj.category
-    
-    specs_data = row_obj.specs
-    if isinstance(specs_data, str):
-        try:
-            specs_data = json.loads(specs_data)
-        except json.JSONDecodeError:
-            specs_data = None 
-        
-    rehydrated_object = {
-        "name": row_obj.name,
-        "brand": row_obj.brand,
-        "price": float(row_obj.price_history[0].price),
-        "product_description": row_obj.description,
-        "specs": specs_data
-    }
-    rehydrated_object['availability'] = row_obj.availability
-    rehydrated_object['source_url'] = row_obj.source_url
-    rehydrated_object['category'] = category
-    
-    return rehydrated_object
-
 def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     """
     Saves a product's data to the database using the PostgreSQL Python ORM.
@@ -279,7 +247,7 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
     description = data.get("product_description")
     price = data.get("price") or "0"
     specs_data = data.get("specs") or data.get("attributes")
-
+    image_url = data.get("image_url")
     # --- ORM "Upsert" Logic ---
     existing_product = session.query(Product).filter(Product.source_url == source_url).first()
     
@@ -295,7 +263,8 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
             category=category,
             availability=availability,
             description=description,
-            specs=specs_data
+            specs=specs_data,
+            image_url= image_url if image_url else None
         )
         session.add(new_product)
         price_entry = PriceHistory(price=price)
@@ -313,7 +282,7 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
         raise
 
 def read_record_from_db(urls: list[str]) -> tuple[list[dict[str, any]], list[str]]:
-    """Reads URLs from the database using the ORM and validates them."""
+    """Reads a list of product URLs from the database, returning cached product data if it exists and is fresh enough."""
     if not urls: return [], []
 
     CACHE_DURATION = timedelta(hours=24)
@@ -325,23 +294,16 @@ def read_record_from_db(urls: list[str]) -> tuple[list[dict[str, any]], list[str
         query_results = session.query(Product).filter(Product.source_url.in_(urls)).all()
 
         for product_obj in query_results:
+            product_json_string = json.dumps(product_obj.to_json(), ensure_ascii=False)
+            product: dict[str, any] = json.loads(product_json_string)
             source_url = product_obj.source_url
             time_since_last_scrape = datetime.now(timezone.utc) - product_obj.last_scraped_at
 
             if time_since_last_scrape > CACHE_DURATION:
                 print(f" Stale URL: {source_url}. Queuing for update scrape.")
-
             else:
-                rehydrated_json = map_db_row_to_schema_format(product_obj)
-                category = rehydrated_json["category"]
-                schema_to_validate = SCHEMAS.get(category)
-                try:
-                    if schema_to_validate:
-                        validate(instance=rehydrated_json, schema=schema_to_validate)
-                        found_products.append(rehydrated_json)
-                        successfully_found_urls.add(source_url)
-                except ValidationError as e:
-                    print(f"  [DB Read] WARNING: Cached data for {product_obj.source_url} is invalid vs current schema. It should be re-scraped. {e}")
+                found_products.append(product)
+                successfully_found_urls.add(source_url)
 
     urls_not_found = [url for url in urls if url not in successfully_found_urls]
     return found_products, urls_not_found
@@ -365,7 +327,7 @@ def update_record_from_db(
 
         latest_price_entry = product.price_history[0].price if product.price_history else None
         if latest_price_entry != Decimal(new_price):
-            print(f"  [DB] Price changed for '{product.name}'. Old: {getattr(latest_price_entry, 'price', 'N/A')}, New: {new_price}")
+            print(f"  [DB] Price changed for '{product.name}'. Old: {latest_price_entry}, New: {new_price}")
             new_price_record = PriceHistory(price=new_price, product_id=product.id)
             session.add(new_price_record)
 

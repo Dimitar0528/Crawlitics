@@ -15,8 +15,9 @@ class Product(Base):
     brand = Column(String(50), nullable=False)
     category = Column(String(50), nullable=False)
     availability = Column(String(20), nullable=False)
-    description = Column(TEXT)
-    specs = Column(JSONB, nullable=False) 
+    description = Column(TEXT, nullable=True)
+    specs = Column(JSONB, nullable=False)
+    image_url = Column(String(512), nullable=True)
     created_at = Column(
         TIMESTAMP(timezone=True), 
         nullable=False,
@@ -36,8 +37,21 @@ class Product(Base):
     )
 
     def __repr__(self):
-        return f"<Product(name='{self.name}', brand='{self.brand}')>"
+        return f"<Product(name='{self.name}', brand='{self.brand}, price={self.price_history}')>"
     
+    def to_json(self) -> dict:
+        return {
+            "source_url": self.source_url,
+            "name": self.name,
+            "slug": self.slug,
+            "brand": self.brand,
+            "category": self.category,
+            "availability": self.availability,
+            "description": self.description,
+            "specs": self.specs,
+            "last_scraped_at": self.last_scraped_at.isoformat() if self.last_scraped_at else None,
+            "price_history": [ph.to_json() for ph in self.price_history] if self.price_history else [],
+        }
 class PriceHistory(Base):
     __tablename__ = 'price_history'
 
@@ -56,3 +70,9 @@ class PriceHistory(Base):
 
     def __repr__(self):
         return f"<PriceHistory(product_id={self.product_id}, price={self.price})>"
+    
+    def to_json(self) -> dict:
+        return {
+            "price": float(self.price) if self.price is not None else None,
+            "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
+        }
