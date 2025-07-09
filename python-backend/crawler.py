@@ -12,10 +12,11 @@ from helpers.crawler_helpers import (
     get_semantic_similarity, 
     get_user_criteria
 )
-
+COSINE_WEIGHT = 0.7
+FUZZY_WEIGHT = 0.45
 SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.55
 
-print("Loading sentence-transformer model...")
+print("Loading sentence-transformer model...", flush=True)
 MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 print("Model loaded.")
 
@@ -53,9 +54,7 @@ async def apply_price_filter(
         inputs = await price_section.query_selector_all(selectors["custom_price_inputs_selector"])
         if len(inputs) == 2:
             print(f"ACTION: Filling custom price range: {min_price} - {max_price}")
-            await page.wait_for_timeout(50)
             await inputs[0].fill(str(min_price))
-            await page.wait_for_timeout(50)
             await inputs[1].fill(str(max_price))
             await inputs[1].press("Enter")
             return
@@ -140,9 +139,6 @@ async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_f
         site_embeddings = MODEL.encode(site_filter_titles, convert_to_tensor=True)
         similarity_matrix = util.cos_sim(user_embeddings, site_embeddings)
 
-        COSINE_WEIGHT = 0.7
-        FUZZY_WEIGHT = 0.45
-
         best_score = -1.0
         best_user_index = None
         best_site_index = None
@@ -158,7 +154,7 @@ async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_f
                     best_site_index = j
 
         if best_user_index is None or best_site_index is None:
-            print("⚠️ WARN: No match found for any filter this round.")
+            print(" WARN: No match found for any filter this round.")
             break
         
         best_user_filter = user_filter_names[best_user_index]
@@ -166,7 +162,7 @@ async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_f
         filter_value = remaining_filters[best_user_filter]
         matched_section_element = section_map[best_site_title]
 
-        print(f"✅ Best Match: '{best_user_filter}' → '{best_site_title}' (Score: {best_score:.2f})")
+        print(f" Best Match: '{best_user_filter}' → '{best_site_title}' (Score: {best_score:.2f})")
 
         if "price" in best_user_filter.lower() or "цена" in best_user_filter.lower():
             await apply_price_filter(page, selectors, filter_value, matched_section_element, applied_options)
@@ -177,7 +173,7 @@ async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_f
         await page.wait_for_selector(selectors["sections"], state="visible", timeout=7000)
 
     if len(applied_filter_names) < len(user_filters):
-        print("⚠️ Not all filters applied. Remaining:")
+        print(" Not all filters applied. Remaining:")
         for f in user_filters:
             if f not in applied_filter_names:
                 print(f"  - {f}: {user_filters[f]}")
@@ -189,7 +185,7 @@ async def navigate_to_product_category(page: Page, site_config: dict[str, any]) 
     Performs an initial search and navigates to the main category page via breadcrumbs.
     Returns the URL of the category page.
     """
-    print(f"\n🔍 Searching on {site_config['site_name']}: {site_config['search_url']}")
+    print(f"\n Searching on {site_config['site_name']}: {site_config['search_url']}")
     await page.goto(site_config['search_url'])
     await page.wait_for_selector(site_config['search_product_card_selector'], timeout=8000)
 
@@ -258,7 +254,7 @@ async def crawl_paginated_results(page: Page, site_config: dict[str, any], user_
                     full_url = href if href.startswith("http") else site_config['base_url'] + href
                     product_urls.add(full_url)
                     page_matches += 1
-                    print(f"  ✅ Matched '{title[:100]}...' (Similarity: {score:.2f})")
+                    print(f"   Matched '{title[:100]}...' (Similarity: {score:.2f})")
 
         print(f"INFO: Page {page_num}: Found {page_matches} matching products from {len(product_elements)} total.")
 
@@ -308,7 +304,7 @@ async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], u
         await page.close()
 
 
-async def crawl_urls() -> tuple[str, list[str]]:
+async def main() -> tuple[str, list[str]]:
     user_criteria = get_user_criteria()
 
     user_selected_category: str = user_criteria['category']
@@ -347,5 +343,7 @@ async def crawl_urls() -> tuple[str, list[str]]:
         print(f"{i:2d}. {url}")
         
     elapsed = time.perf_counter() - start_time
-    print(f"\n Done in {elapsed:.2f} seconds")
-    return user_selected_category, filtered_urls
+    print(f"\n Crawling done in {elapsed:.2f} seconds")
+
+if __name__ == "__main__":
+    asyncio.run(main())
