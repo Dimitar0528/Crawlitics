@@ -1,5 +1,6 @@
 "use client";
-
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,18 @@ import {
 import { Typewriter } from "react-simple-typewriter";
 
 export default function LandingPage() {
+      useEffect(() => {
+        const expires = new Date();
+        expires.setFullYear(expires.getFullYear() + 1)
+
+        document.cookie =
+          "hasVisitedLanding=true; expires=" +
+          expires.toUTCString() +
+          "; path=/";
+      }, []);
+      
   const { setTheme } = useTheme();
+  const router = useRouter();
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
@@ -137,7 +149,8 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-102 transition-all duration-300">
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-102 transition-all duration-300"
+                onClick={()=> router.replace('/')}>
                 Започни да пестиш сега
                 <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
