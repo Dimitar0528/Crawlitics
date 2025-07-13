@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+
+import Navigation from "@/components/Navigation";
+import Footer from "@/components/Footer";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -20,12 +24,12 @@ export const metadata: Metadata = {
   generator: "Next.js",
   applicationName: "Crawlitics",
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -34,8 +38,11 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange>
-          {children}
+          disableTransitionOnChange
+          enableColorScheme>
+          <Navigation />
+          <main>{children}</main>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>

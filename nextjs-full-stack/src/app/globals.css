@@ -162,3 +162,32 @@ html {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Infinite scrolling animations */
+@keyframes scroll-right {
+  0% {
+    transform: translateX(-50%);
+  }
+
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-right {
+  animation: scroll-right 20s linear infinite alternate-reverse;
+}
+
+.animate-scroll-left {
+  animation: scroll-left 20s linear infinite alternate-reverse;
+}
