@@ -4,7 +4,7 @@ import time
 from playwright.async_api import async_playwright, Page, ElementHandle, BrowserContext
 from sentence_transformers import SentenceTransformer, util
 from rapidfuzz import fuzz
-from site_configs import get_site_configs
+from configs.site_configs import get_site_configs
 from helpers.crawler_helpers import (
     click_matching_filter,
     extract_and_match_filter_values,

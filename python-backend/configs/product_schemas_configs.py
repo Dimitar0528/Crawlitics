@@ -29,7 +29,7 @@ UNKNOWN_SCHEMA = {
     "required": ["product_name", "price", "brand", "guessed_category", "product_description", "attributes"]
 }
 
-def load_schemas_from_directory(directory="proposed_schemas"):
+def load_schemas_from_directory(directory="python-backend/proposed_schemas"):
     """
     Loads all .json files from the specified directory into a dictionary.
     The filename (without .json) is used as the category key.

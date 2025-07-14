@@ -17,19 +17,20 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 load_dotenv()
 
-from product_schemas import SCHEMAS
+from configs.product_schemas_configs import SCHEMAS
 from helpers.scraper_helpers import (
-    SessionLocal,
     generate_and_save_product_schema,
-    initialize_database_on_first_run,
-    save_record_to_db,
-    read_record_from_db,
-    update_record_from_db,
     extract_dynamic_data_from_markdown
 )
 from helpers.helpers import clean_output
+from db.models import Product
+from db.helpers import SessionLocal, initialize_database_on_first_run
+from db.crud import (
+    save_record_to_db,
+    read_record_from_db,
+    update_record_from_db,
+)
 from crawler import crawl_urls
-from db_models import Product
 
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)

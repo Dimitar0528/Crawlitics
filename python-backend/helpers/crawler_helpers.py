@@ -3,7 +3,7 @@ from playwright.async_api import Page, ElementHandle
 from sentence_transformers import SentenceTransformer, util
 import numpy as np
 
-from product_schemas import USER_SELECTABLE_CATEGORIES 
+from configs.product_schemas_configs import USER_SELECTABLE_CATEGORIES 
 
 async def extract_and_match_filter_values(
     section: ElementHandle,
