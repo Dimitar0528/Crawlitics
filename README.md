@@ -10,13 +10,14 @@
 
 ## Introduction
 
-**Crawlitics** is an AI-powered, Python-based eCommerce web crawler, scraper, and data analyst.
+**Crawlitics** is an AI-powered eCommerce web crawler, scraper, and data analysis platform, built with Next.js and Python.
 
-It combines asynchronous web automation using Playwright, NLP-powered matching via sentence-transformers, cosine similarity and fuzzy matching and modular scraping powered by Crawl4AI. It also features a structured data extraction and multiple different product analysis AI agents, implemented using the Agno framework, powered by the Gemma3 local LLM model (via Ollama). Crawlitics is purpose-built for collecting, analyzing, and comparing product data across many different online retailers.
+It combines asynchronous web automation using Playwright, NLP-powered matching via sentence-transformers, cosine similarity, and fuzzy matching, with modular scraping powered by Crawl4AI. It also features structured data extraction and multiple product analysis AI agents, implemented using the Agno framework and powered by the Gemma3 local LLM model (via Ollama). The fast, responsive Next.js frontend provides an intuitive UI, while Next.js backend routes handle data orchestration and API integration efficiently. Crawlitics is purpose-built for collecting, analyzing, and comparing product data across many different online retailers.
 
 ---
 
 ## Features
+- Full-stack Next.js app with React frontend (using TailwindCSS and shadcn/ui components) and backend API routes (for data orchestration and integration with the Python backend via REST APIs).
 - Asynchronous crawling and scraping across multiple eCommerce platforms (e.g. Ozone, Emag, Technomarket)
 - Automated and intelligent UI interaction using Playwright (filters, price sliders, next pages, etc.)
 - Support for custom user-defined filters (e.g. brand, model, RAM, storage, color, price range, etc.)
@@ -30,11 +31,12 @@ It combines asynchronous web automation using Playwright, NLP-powered matching v
 ## Installation
 1. Clone the repo
 ```bash
-git clone https://github.com/Dimitar0528/crawlitics.git
-cd crawlitics
+git clone https://github.com/Dimitar0528/Crawlitics.git
+cd Crawlitics
 ```
-2. Install dependencies with:
+2. Install Python dependencies:
 ```bash
+cd python-backend
 pip install -r requirements.txt
 ```
 3. Create a .env file with the following data needed to set up your PostgreSQL database:
@@ -45,9 +47,19 @@ DB_NAME=YOUR_DB_NAME
 DB_USER=YOUR_DB_USER
 DB_PASSWORD=YOUR_DB_PASSWORD
 ```
-4. Run the following python file (for now)
+4. Start the FastAPI server (on port 8000):
+``` bash
+uvicorn main:app --reload
+```
+5. Install Next.js dependencies:
 ```bash
-python scraper.py
+cd..
+cd nextjs-full-stack
+npm install
+```
+6. Start the Next.js frontend (on port 3000):
+```bash
+npm run dev
 ```
 
 ##  Local LLM Integration (Ollama)
@@ -63,7 +75,7 @@ ollama run gemma3:latest
 ```bash
 docker pull ollama/ollama
 ```
-- Start the Docker container with:
+- Start the Docker container (providing GPU acess) with:
 ```bash
 docker run --rm --gpus=all -d -v ollama_data:/root/.ollama -p 11434:11434 --name ollama ollama/ollama 
 ```
@@ -76,7 +88,8 @@ docker exec -it ollama ollama run gemma3
 - [✅] Semantic matching for multiple types of user filters (brand, RAM, storage, color, etc.)
 - [✅] Dynamic JSON schema generation for structured product output
 - [✅] LLM-powered AI agent for interactive product data analysis
-- [🔜] Export to CSV/JSON with rich metadata
+- [🔜] Enable users to create accounts, save searches, and track their favorite products and alerts.
+- [🔜] Show historical price charts to help users decide when to buy based on past trends.
 
 ## License
 
