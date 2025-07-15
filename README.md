@@ -12,7 +12,13 @@
 
 **Crawlitics** is an AI-powered eCommerce web crawler, scraper, and data analysis platform, built with Next.js and Python.
 
-It combines asynchronous web automation using Playwright, NLP-powered matching via sentence-transformers, cosine similarity, and fuzzy matching, with modular scraping powered by Crawl4AI. It also features structured data extraction and multiple product analysis AI agents, implemented using the Agno framework and powered by the Gemma3 local LLM model (via Ollama). The fast, responsive Next.js frontend provides an intuitive UI, while Next.js backend routes handle data orchestration and API integration efficiently. Crawlitics is purpose-built for collecting, analyzing, and comparing product data across many different online retailers.
+It combines asynchronous web automation using Playwright, NLP-powered matching via sentence-transformers, cosine similarity, and fuzzy matching, with modular scraping powered by Crawl4AI. 
+
+It also features structured data extraction and multiple product analysis AI agents, implemented using the Agno framework and powered by the Gemma3 local LLM model (via Ollama). 
+
+The fast, responsive Next.js frontend provides an intuitive UI, while Next.js backend routes handle data orchestration and API integration efficiently. 
+
+Crawlitics is purpose-built for collecting, analyzing, and comparing product data across many different online retailers.
 
 ---
 

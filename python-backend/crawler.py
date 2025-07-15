@@ -304,7 +304,7 @@ async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], u
         await page.close()
 
 
-async def main() -> tuple[str, list[str]]:
+async def crawl_sites() -> tuple[str, list[str]]:
     user_criteria = get_user_criteria()
 
     user_selected_category: str = user_criteria['category']
@@ -344,6 +344,4 @@ async def main() -> tuple[str, list[str]]:
         
     elapsed = time.perf_counter() - start_time
     print(f"\n Crawling done in {elapsed:.2f} seconds")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    return user_selected_category, filtered_urls

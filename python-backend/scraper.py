@@ -24,13 +24,13 @@ from helpers.scraper_helpers import (
 )
 from helpers.helpers import clean_output
 from db.models import Product
-from db.helpers import SessionLocal, initialize_database_on_first_run
+from db.helpers import SessionLocal
 from db.crud import (
     save_record_to_db,
     read_record_from_db,
     update_record_from_db,
 )
-from crawler import crawl_urls
+from crawler import crawl_sites
 
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
@@ -141,96 +141,92 @@ async def process_single_crawled_result(result: CrawlResult, session: Session, u
 
 async def main():
     start_time = time.perf_counter()
-    try:
-        initialize_database_on_first_run()
-        browser_config = BrowserConfig(
-            headless=True,
-            verbose=True,
-            user_agent_mode="random",
-            light_mode=True,
-            text_mode=True,
-            extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox"],
-        )
-        config = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS,
-            markdown_generator=DefaultMarkdownGenerator(),
-            verbose=True,
-            table_score_threshold=8,
-            exclude_external_links=True,
-            exclude_internal_links=True,
-            exclude_all_images=True,
-            excluded_tags=["header", "aside", "nav", "footer"],
-            locale="bg-BG",
-            override_navigator=True,
-            check_robots_txt=True,
-            user_agent="Crawlitics/1.0",
-            stream=True,
-        )
+    browser_config = BrowserConfig(
+        headless=True,
+        verbose=True,
+        user_agent_mode="random",
+        light_mode=True,
+        text_mode=True,
+        extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox"],
+    )
+    config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        markdown_generator=DefaultMarkdownGenerator(),
+        verbose=True,
+        table_score_threshold=8,
+        exclude_external_links=True,
+        exclude_internal_links=True,
+        exclude_all_images=True,
+        excluded_tags=["header", "aside", "nav", "footer"],
+        locale="bg-BG",
+        override_navigator=True,
+        check_robots_txt=True,
+        user_agent="Crawlitics/1.0",
+        stream=True,
+    )
 
-        dispatcher = MemoryAdaptiveDispatcher(
-            memory_threshold_percent=98.0,
-            check_interval=1.0, 
-            max_session_permit=30,
-            rate_limiter=RateLimiter(
-                base_delay=(1.25, 3.25),
-                max_delay=30.0,
-                max_retries=3,
-                rate_limit_codes=[429, 503]
-            ),
-        ) 
-        user_selected_category, urls_to_process = await crawl_urls()
-        if not urls_to_process:
-            print("No URLs to crawl. Exiting.")
-            return
-        
-        found_products, urls_to_crawl = read_record_from_db(urls_to_process)
-        if urls_to_crawl:
-            print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
+    dispatcher = MemoryAdaptiveDispatcher(
+        memory_threshold_percent=98.0,
+        check_interval=1.0, 
+        max_session_permit=30,
+        rate_limiter=RateLimiter(
+            base_delay=(1.25, 3.25),
+            max_delay=30.0,
+            max_retries=3,
+            rate_limit_codes=[429, 503]
+        ),
+    ) 
+    user_selected_category, urls_to_process = await crawl_sites()
+    if not urls_to_process:
+        print("No URLs to crawl. Exiting.")
+        return
+    
+    found_products, urls_to_crawl = read_record_from_db(urls_to_process)
+    if urls_to_crawl:
+        print(f"Starting crawl for {len(urls_to_crawl)} URLs...")
 
-            async with AsyncWebCrawler(config=browser_config) as crawler:
-                async def semaphore_task(result: CrawlResult):
-                    async with agent_semaphore:
-                        with SessionLocal() as session:
-                            await process_single_crawled_result(result, session, user_selected_category)
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            async def semaphore_task(result: CrawlResult):
+                async with agent_semaphore:
+                    with SessionLocal() as session:
+                        await process_single_crawled_result(result, session, user_selected_category)
 
-                tasks = []
-                async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
-                    result: CrawlResult 
-                    print(f"Just completed: {result.url}")
-                    tasks.append(asyncio.create_task(semaphore_task(result)))
-                await asyncio.gather(*tasks)
+            tasks = []
+            async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
+                result: CrawlResult 
+                print(f"Just completed: {result.url}")
+                tasks.append(asyncio.create_task(semaphore_task(result)))
+            await asyncio.gather(*tasks)
 
-        elapsed = time.perf_counter() - start_time
-        print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
+    elapsed = time.perf_counter() - start_time
+    print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
-        # The user chooses whether to run the data analyst agent or not
-        run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
-        if run_product_analysis_choice == 'y':
-            try:
-                from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
-                
-                analyze_and_rank_products(found_products)
-                
-            except ImportError:
-                print("\n[Error] Could not import the analyst agent. Make sure it exists.")
-            except Exception as analysis_err:
-                print(f"\n[Error] An error occurred during analysis: {analysis_err}")
-        else:
-            print("Skipping analysis. Exiting.")
+    # The user chooses whether to run the data analyst agent or not
+    run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
+    if run_product_analysis_choice == 'y':
+        try:
+            from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
+            
+            analyze_and_rank_products(found_products)
+            
+        except ImportError:
+            print("\n[Error] Could not import the analyst agent. Make sure it exists.")
+        except Exception as analysis_err:
+            print(f"\n[Error] An error occurred during analysis: {analysis_err}")
+    else:
+        print("Skipping analysis. Exiting.")
 
-        run_visual_insight_choise = input("Would you like to run a visual product analysis on the collected data and generate various useful charts? (y/n): ").lower().strip()
-        if run_visual_insight_choise == 'y':
-            try:
-                from data_analyst_agent.visual_insight_agent import run_visualize_product_analysis_insights
-                run_visualize_product_analysis_insights(found_products)
-            except ImportError:
-                print("\n[Error] Could not import the analyst agent. Make sure it exists.")
-            except Exception as analysis_err:
-                print(f"\n[Error] An error occurred during analysis: {analysis_err}")
-        else:
-            print("Skipping analysis. Exiting.")
-    except psycopg2.Error as err:
-        print(f"FATAL: A database error occurred: {err}")
+    run_visual_insight_choise = input("Would you like to run a visual product analysis on the collected data and generate various useful charts? (y/n): ").lower().strip()
+    if run_visual_insight_choise == 'y':
+        try:
+            from data_analyst_agent.visual_insight_agent import run_visualize_product_analysis_insights
+            run_visualize_product_analysis_insights(found_products)
+        except ImportError:
+            print("\n[Error] Could not import the analyst agent. Make sure it exists.")
+        except Exception as analysis_err:
+            print(f"\n[Error] An error occurred during analysis: {analysis_err}")
+    else:
+        print("Skipping analysis. Exiting.")
 
 if __name__ == "__main__":
     asyncio.run(main())

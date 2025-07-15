@@ -61,6 +61,13 @@ def save_record_to_db(session: Session, data: dict[str, any]) -> None:
         session.rollback()
         raise
 
+def read_newest_records_from_db():
+    """Reads the 20 newest entries in the db ordered from newest to oldest"""
+
+    with SessionLocal() as session:
+        products = session.query(Product).order_by(Product.created_at.desc()).limit(20).all()
+        return products
+    
 def read_record_from_db(urls: list[str]) -> tuple[list[dict[str, any]], list[str]]:
     """Reads a list of product URLs from the database, returning cached product data if it exists and is fresh enough."""
     if not urls: return [], []
