@@ -33,16 +33,14 @@ import {
 import { Typewriter } from "react-simple-typewriter";
 
 export default function LandingPage() {
-      useEffect(() => {
-        const expires = new Date();
-        expires.setFullYear(expires.getFullYear() + 1)
+  useEffect(() => {
+    const expires = new Date();
+    expires.setFullYear(expires.getFullYear() + 1);
 
-        document.cookie =
-          "hasVisitedLanding=true; expires=" +
-          expires.toUTCString() +
-          "; path=/";
-      }, []);
-      
+    document.cookie =
+      "hasVisitedLanding=true; expires=" + expires.toUTCString() + "; path=/";
+  }, []);
+
   const router = useRouter();
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -455,7 +453,7 @@ export default function LandingPage() {
               Доверени от водещи магазини в България
             </p>
             <p className="text-lg text-gray-500 dark:text-gray-400">
-              Над 50,000+ продукта от водещите онлайн магазини в България
+              Над 80,000+ продукта от водещите онлайн магазини в България
             </p>
           </div>
 
@@ -481,8 +479,8 @@ export default function LandingPage() {
 
           {/* Infinite Scrolling Carousel */}
           <div className="relative overflow-hidden py-8">
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 via-gray-50/80 to-transparent dark:from-gray-800 dark:via-gray-800/80 z-10 pointer-events-none"></div>
-            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 via-gray-50/80 to-transparent dark:from-gray-800 dark:via-gray-800/80 z-10 pointer-events-none"></div>
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 via-gray-50/80 to-transparent dark:from-gray-900 dark:via-gray-900/80 z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 via-gray-50/80 to-transparent dark:from-gray-900 dark:via-gray-900/80 z-10 pointer-events-none"></div>
 
             <div className="flex animate-scroll-right mb-6">
               {[
@@ -727,7 +725,7 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white relative overflow-hidden">
+      <section className="py-20 bg-gradient-to-r from-blue-500 to-purple-500 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="container mx-auto px-4 text-center relative z-10">
           <div className="max-w-4xl mx-auto space-y-8">

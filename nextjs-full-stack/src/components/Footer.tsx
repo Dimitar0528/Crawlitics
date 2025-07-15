@@ -12,7 +12,7 @@ export default function Footer() {
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Search className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent dark:bg-gradient-to-r dark:from-blue-500 dark:to-purple-500">
                 Crawlitics
               </span>
             </div>
@@ -96,7 +96,7 @@ export default function Footer() {
                 <a
                   href="#"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  Поверителност
+                  Политика за поверителност
                 </a>
               </li>
             </ul>

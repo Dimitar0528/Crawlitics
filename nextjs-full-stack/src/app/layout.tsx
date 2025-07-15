@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-
+import { CookieBanner } from "@/components/cookies/CookieBanner";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -40,6 +40,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
           enableColorScheme>
+          <CookieBanner />
           <Navigation />
           <main>{children}</main>
           <Footer />
