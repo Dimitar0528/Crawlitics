@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [
+      new URL("https://cdn.ozone.bg/**"),
+      new URL("https://cdn.technomarket.bg/**")
+    ],
+  },
 };
 
 export default nextConfig;

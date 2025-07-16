@@ -64,7 +64,7 @@ export default function LandingPage() {
             </Badge>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-center">
-              <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-white dark:via-blue-200 dark:to-purple-200 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 dark:from-gray-300 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
                 <Typewriter
                   words={[
                     "Намери най-добрите оферти.",
