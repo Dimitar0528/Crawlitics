@@ -8,55 +8,50 @@ Base = declarative_base()
 class Product(Base):
     __tablename__ = 'products'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    source_url = Column(String(512), nullable=False, unique=True)
-    name = Column(String(256), nullable=False)
+    id = Column(Integer, primary_key=True)
+    name = Column(String(256), unique=True, nullable=False)
     slug = Column(String(256), nullable=False, unique=True, index=True)
     brand = Column(String(50), nullable=False)
     category = Column(String(50), nullable=False)
-    availability = Column(String(20), nullable=False)
     description = Column(TEXT, nullable=True)
-    specs = Column(JSONB, nullable=False)
+    common_specs = Column(JSONB, nullable=False)
+    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    def __repr__(self):
+        return f"<Product(id={self.id}, name='{self.name}')>"
+    
+class ProductVariant(Base):
+    __tablename__ = 'product_variants'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False, index=True)
+    
+    source_url = Column(String(512), nullable=False, unique=True)
+    slug = Column(String(128), nullable=False, unique=True, index=True)
+    availability = Column(String(20), nullable=False)
     image_url = Column(String(512), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), 
-        nullable=False,
-        server_default=func.now()
-    )
-    last_scraped_at = Column(
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=func.now(), 
-        onupdate=func.now()
-    )
+    variant_specs = Column(JSONB, nullable=False)
+    
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    last_scraped_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # This product variant has a one-to-many relationship with its price history.
     price_history = relationship(
-        "PriceHistory", 
-        back_populates="product", 
-        cascade="all, delete-orphan",
-        order_by="PriceHistory.recorded_at.desc()"
+        "PriceHistory",
+        back_populates="variant",
+        cascade="all, delete-orphan"
     )
+    
+    product = relationship("Product", back_populates="variants")
 
     def __repr__(self):
-        return f"<Product(name='{self.name}', brand='{self.brand}, price={self.price_history}')>"
-    
-    def to_json(self) -> dict:
-        return {
-            "source_url": self.source_url,
-            "name": self.name,
-            "slug": self.slug,
-            "brand": self.brand,
-            "category": self.category,
-            "availability": self.availability,
-            "description": self.description,
-            "specs": self.specs,
-            "last_scraped_at": self.last_scraped_at.isoformat() if self.last_scraped_at else None,
-            "price_history": [ph.to_json() for ph in self.price_history] if self.price_history else [],
-        }
+        return f"<Variant(url='{self.source_url}', specs='{self.variant_specs}')>"
+
 class PriceHistory(Base):
     __tablename__ = 'price_history'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    product_id = Column(Integer, ForeignKey('products.id'), nullable=False, index=True)
+    variant_id = Column(Integer, ForeignKey('product_variants.id'), nullable=False, index=True)
     price = Column(DECIMAL(10, 2), nullable=False)
 
 
@@ -66,13 +61,8 @@ class PriceHistory(Base):
         server_default=func.now()
     )
 
-    product = relationship("Product", back_populates="price_history")
+
+    variant = relationship("ProductVariant", back_populates="price_history")
 
     def __repr__(self):
-        return f"<PriceHistory(product_id={self.product_id}, price={self.price})>"
-    
-    def to_json(self) -> dict:
-        return {
-            "price": float(self.price) if self.price is not None else None,
-            "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
-        }
+         return f"<PriceHistory(product_id={self.product_id}, price={self.price})>"

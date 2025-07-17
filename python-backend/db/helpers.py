@@ -6,9 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
-from .models import Product, Base 
+from .models import Product, ProductVariant, Base 
+
+from typing import Type
 
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
@@ -21,26 +23,55 @@ DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_POR
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def generate_unique_slug(session, name: str) -> str:
+BaseModel = Type[Product | ProductVariant]
+
+def generate_unique_slug(
+    session: Session,
+    model: BaseModel,
+    source_data: str | dict[str, str],
+    product_id: int = None
+) -> str:
     """
-    Generates a unique slug for a product name.
-    
-    If a product with the generated slug already exists, it appends a short
-    random string to ensure uniqueness.
+    Generates a unique slug for a given SQLAlchemy model.
+
+    - If source_data is a string, it slugifies the string.
+    - If source_data is a dictionary, it combines and sorts the values to create a slug.
+    - It ensures the generated slug is unique within the specified model's table.
     
     Args:
         session: The SQLAlchemy session object.
-        name: The product name to slugify.
-        product_id_to_ignore: Optional. When updating a product, ignore its own existing slug.
+        model: The SQLAlchemy model class (e.g., Product or ProductVariant).
+        source_data: The data to create the slug from (a string name or a dict of specs).
+        product_id: Optional. For ProductVariant, this is the parent product's ID
+                    to ensure the slug is unique *within that product's variants*.
     """
-    base_slug = slugify(name)
+    base_slug = ""
+    
+    if isinstance(source_data, str):
+        # generating slug for a parent Product from its name
+        base_slug = slugify(source_data)
+        
+    elif isinstance(source_data, dict):
+        # generating slug for a ProductVariant from its sorted spec keys
+        sorted_keys = sorted(source_data.keys())
+        slug_parts = [slugify(str(source_data.get(key, ''))) for key in sorted_keys]
+        base_slug = "-".join(part for part in slug_parts if part)
+    
     slug = base_slug
-    # ensure generated slug is unique
-    while session.query(Product.id).filter(Product.slug == slug).first():
+    while True:
+        query = session.query(model.id).filter(model.slug == slug)
+
+        if model is ProductVariant and product_id is not None:
+            query = query.filter(ProductVariant.product_id == product_id)
+            
+        existing = query.first()
+        
+        if not existing:
+            return slug
+        
+        # Generate a new slug with random suffix
         random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=5))
         slug = f"{base_slug}-{random_suffix}"
-        
-    return slug
 
 def setup_database():
     """Creates all tables defined in models.py if they don't exist."""
@@ -77,10 +108,3 @@ def initialize_database_on_first_run():
         print(f"[Startup] FATAL: Could not connect to the database to check tables: {e}")
         print("[Startup] Please ensure the database server is running and accessible.")
         raise
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db # Provide the session to the FastAPI route
-    finally:
-        db.close() # Ensure the session is closed after the request

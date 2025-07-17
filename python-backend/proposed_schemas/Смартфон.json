@@ -47,7 +47,7 @@
                     "SIM_type": {
                         "type": "string"
                     },
-                    "battery_life": {
+                    "battery_life_mAh": {
                         "type": "string"
                     },
                     "color": {
