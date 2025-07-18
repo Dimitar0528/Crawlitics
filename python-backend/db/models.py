@@ -15,7 +15,7 @@ class Product(Base):
     category = Column(String(50), nullable=False)
     description = Column(TEXT, nullable=True)
     common_specs = Column(JSONB, nullable=False)
-    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
+    variants = relationship("ProductVariant", back_populates="parent_product", cascade="all, delete-orphan")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     def __repr__(self):
         return f"<Product(id={self.id}, name='{self.name}')>"
@@ -42,7 +42,7 @@ class ProductVariant(Base):
         cascade="all, delete-orphan"
     )
     
-    product = relationship("Product", back_populates="variants")
+    parent_product = relationship("Product", back_populates="variants")
 
     def __repr__(self):
         return f"<Variant(url='{self.source_url}', specs='{self.variant_specs}')>"

@@ -11,6 +11,8 @@ from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig, CacheMode
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter,CrawlResult
 
+from sqlalchemy.orm import Session
+
 from collections import defaultdict
 
 from dotenv import load_dotenv
@@ -22,15 +24,14 @@ from helpers.scraper_helpers import (
     extract_dynamic_data_from_markdown
 )
 from helpers.helpers import clean_output
-from db.models import Product
 from db.helpers import SessionLocal, initialize_database_on_first_run
 from db.crud import (
-    save_record_to_db,
-    read_record_from_db,
-    update_record_from_db,
+    get_product_variant_by_url,
+    update_product_variant,
+    read_products_from_db
 )
 from data_aggregation import analyze_and_store_group, get_grouping_key
-# from crawler import crawl_sites
+from crawler import crawl_sites
 
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
@@ -96,7 +97,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
     print(f"\n Dynamic extraction done in: {elapsed:.2f} seconds")
     return clean_output(streamed_data_text)
 
-async def process_single_crawled_result(result: CrawlResult, user_selected_category: str):
+async def process_single_crawled_result(result: CrawlResult, session: Session, user_selected_category: str):
     """Orchestrates the full scraping workflow for a given page."""
     url = result.url
     if not result.success:
@@ -105,14 +106,17 @@ async def process_single_crawled_result(result: CrawlResult, user_selected_categ
 
     print(f"\n--- Processing: {url} ---")
     markdown = truncate_markdown(result.markdown.raw_markdown)
-        #  new_price, new_availability = extract_dynamic_data_from_markdown(markdown)
-        #  await asyncio.to_thread(
-        #     update_record_from_db, 
-        #     session, 
-        #     url, 
-        #     new_price, 
-        #     new_availability
-        # )
+    existing_product_variant = get_product_variant_by_url(session, url)
+    if existing_product_variant:
+        print(f"  Product variant exists. Checking for fresh new data...")
+        new_price, new_availability = extract_dynamic_data_from_markdown(markdown)
+        await asyncio.to_thread(
+            update_product_variant, 
+            session, 
+            url, 
+            new_price, 
+            new_availability
+        )
     
     selected_schema = SCHEMAS[user_selected_category]
 
@@ -176,90 +180,81 @@ async def main():
             rate_limit_codes=[429, 503]
         ),
     ) 
-    user_selected_category = "Смартфон"
-    urls_to_process = [
-        "https://www.ozone.bg/product/smartfon-samsung-galaxy-s25-5g-6-2-12gb-256gb-mint",
-        "https://www.ozone.bg/product/smartfon-samsung-galaxy-s25-5g-6-2-12gb-256gb-silver-shadow",
-        "https://www.ozone.bg/product/smartfon-samsung-galaxy-s25-5g-6-2-12gb-256gb-iceblue",
-        "https://www.ozone.bg/product/smartfon-samsung-galaxy-s25-5g-6-2-12gb-128gb-iceblue",
-        "https://www.emag.bg/smartfon-samsung-galaxy-s25-ultra-12gb-ram-512gb-5g-titanium-black-sm-s938bzkgeue/pd/DDRVXGYBM/",
-        "https://www.emag.bg/smartfon-samsung-galaxy-s25-ultra-12gb-ram-256gb-5g-titanium-black-sm-s938bzkdeue/pd/DYRVXGYBM/"
-        ]
+    user_selected_category, urls_to_process = await crawl_sites()
     if not urls_to_process:
         print("No URLs to crawl. Exiting.")
         return
     
-    # found_products, urls_to_crawl = read_record_from_db(urls_to_process)
-    if urls_to_process:
-        print(f"Starting scraping for {len(urls_to_process)} URLs...")
+    found_products, urls_to_crawl = read_products_from_db(urls_to_process)
+    if urls_to_crawl:
+        print(f"Starting scraping for {len(urls_to_crawl)} URLs...")
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
+            async def scrape_site_task():
+                with SessionLocal() as session:
+                    return await process_single_crawled_result(result, session, user_selected_category)
             tasks = []
-            async for result in await crawler.arun_many(urls=urls_to_process, config=config, dispatcher=dispatcher):
+            async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
                 result: CrawlResult 
-                print(f"Crawl completed for: {result.url}")
-                tasks.append(asyncio.create_task(process_single_crawled_result(result, user_selected_category)))
+                print(f"Scrape completed for: {result.url}")
+                tasks.append(asyncio.create_task(scrape_site_task))
 
             all_scraped_data: list[dict[str,any]] = await asyncio.gather(*tasks)
     
-    elapsed = time.perf_counter() - start_time
-    print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
+        elapsed = time.perf_counter() - start_time
+        print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
-    print("\n--- Starting PASS 2: Aggregating and Storing Data ---")
-    
-    product_groups = defaultdict(list)
-    print(all_scraped_data)
-    for item in all_scraped_data:
-        key = get_grouping_key(item, list(product_groups.keys()))
-        product_groups[key].append(item)
-
-    print(f"Found {len(product_groups)} unique product groups.")
-    for key in product_groups.keys():
-        print(f"  - Group: {key}")
-
-    # 2. Process each group and save to the database within a single session
-    db_session = SessionLocal()
-    initialize_database_on_first_run()
-    try:
-        for key, items in product_groups.items():
-            analyze_and_store_group(db_session, key, items)
+        print("\n--- Starting PASS 2: Aggregating and Storing Data ---")
         
-        print("\n" + "="*50 + "\nDATABASE OPERATION COMPLETE\n" + "="*50)
-    except Exception as e:
-        print(f"\nAN ERROR OCCURRED DURING DATABASE OPERATIONS: {e}")
-        print("Rolling back changes.")
-        db_session.rollback()
-    finally:
-        db_session.close()
+        product_groups = defaultdict(list)
+        print(all_scraped_data)
+        for item in all_scraped_data:
+            key = get_grouping_key(item, list(product_groups.keys()))
+            product_groups[key].append(item)
 
+        print(f"Found {len(product_groups)} unique product groups.")
+        for key in product_groups.keys():
+            print(f"  - Group: {key}")
 
-
+        db_session = SessionLocal()
+        initialize_database_on_first_run()
+        try:
+            for key, items in product_groups.items():
+                analyze_and_store_group(db_session, key, items)
+            
+            print("\n" + "="*50 + "\nDATABASE OPERATION COMPLETE\n" + "="*50)
+        except Exception as e:
+            print(f"\nAN ERROR OCCURRED DURING DATABASE OPERATIONS: {e}")
+            print("Rolling back changes.")
+            db_session.rollback()
+        finally:
+            db_session.close()
     # The user chooses whether to run the data analyst agent or not
-    # run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
-    # if run_product_analysis_choice == 'y':
-    #     try:
-    #         from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
+    run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
+    if run_product_analysis_choice == 'y':
+        try:
+            from data_analyst_agent.product_ranking_analyst_agent import analyze_and_rank_products
             
-    #         analyze_and_rank_products(found_products)
+            analyze_and_rank_products(found_products)
             
-    #     except ImportError:
-    #         print("\n[Error] Could not import the analyst agent. Make sure it exists.")
-    #     except Exception as analysis_err:
-    #         print(f"\n[Error] An error occurred during analysis: {analysis_err}")
-    # else:
-    #     print("Skipping analysis. Exiting.")
+        except ImportError:
+            print("\n[Error] Could not import the analyst agent. Make sure it exists.")
+        except Exception as analysis_err:
+            print(f"\n[Error] An error occurred during analysis: {analysis_err}")
+    else:
+        print("Skipping analysis. Exiting.")
 
-    # run_visual_insight_choise = input("Would you like to run a visual product analysis on the collected data and generate various useful charts? (y/n): ").lower().strip()
-    # if run_visual_insight_choise == 'y':
-    #     try:
-    #         from data_analyst_agent.visual_insight_agent import run_visualize_product_analysis_insights
-    #         run_visualize_product_analysis_insights(found_products)
-    #     except ImportError:
-    #         print("\n[Error] Could not import the analyst agent. Make sure it exists.")
-    #     except Exception as analysis_err:
-    #         print(f"\n[Error] An error occurred during analysis: {analysis_err}")
-    # else:
-    #     print("Skipping analysis. Exiting.")
+    run_visual_insight_choise = input("Would you like to run a visual product analysis on the collected data and generate various useful charts? (y/n): ").lower().strip()
+    if run_visual_insight_choise == 'y':
+        try:
+            from data_analyst_agent.visual_insight_agent import run_visualize_product_analysis_insights
+            run_visualize_product_analysis_insights(found_products)
+        except ImportError:
+            print("\n[Error] Could not import the analyst agent. Make sure it exists.")
+        except Exception as analysis_err:
+            print(f"\n[Error] An error occurred during analysis: {analysis_err}")
+    else:
+        print("Skipping analysis. Exiting.")
 
 if __name__ == "__main__":
     asyncio.run(main())

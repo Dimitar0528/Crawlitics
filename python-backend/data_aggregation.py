@@ -1,8 +1,12 @@
 from sqlalchemy.orm import Session
 from rapidfuzz import process, fuzz
 
-from db.models import Product, ProductVariant, PriceHistory
-from db.helpers import generate_unique_slug
+from db.crud import (
+    get_parent_product_by_name, 
+    create_parent_product, 
+    create_product_variant,
+    get_product_variant_by_url
+)
 
 def get_grouping_key(item: dict[str,any], existing_keys: list, score_cutoff=90) -> str:
     """
@@ -38,12 +42,11 @@ def normalize_value(value: str) -> str:
     """Helper function to clean string data before comparison."""
     if isinstance(value, str):
         return value.strip().replace("''", '"').rstrip(',')
-    return value
 
 def analyze_and_store_group(session: Session, group_key: str, group_items: list[dict[str,any]]):
     """
-    Analyzes a group of similar items to find variant keys automatically,
-    then stores them in the database.
+    Analyzes a group of items, and calls CRUD functions to store them as a
+    parent product with multiple variants.
     """
     print(f"\n--- Processing Group: {group_key} ({len(group_items)} item(s)) ---")
     keys_to_ignore = {'features'}
@@ -54,13 +57,13 @@ def analyze_and_store_group(session: Session, group_key: str, group_items: list[
 
     parsed_specs: list[dict[str,str]] = [item['specs'] for item in group_items]
 
-    all_spec_keys = set()
+    all_spec_keys: set[str] = set()
     for specs_dict in parsed_specs:
         all_spec_keys.update(specs_dict.keys())
     all_spec_keys -= keys_to_ignore
 
-    common_keys = set()
-    variant_keys = set()
+    common_keys: set[str] = set()
+    variant_keys: set[str] = set()
 
     for key in all_spec_keys:
         # for the current key, collect all its values from every item in the group.
@@ -77,55 +80,34 @@ def analyze_and_store_group(session: Session, group_key: str, group_items: list[
 
     first_item = group_items[0]
     parent_product_name = group_key.split('::')[1]
-    parent_product = session.query(Product).filter(Product.name == parent_product_name).first()
+    parent_product = get_parent_product_by_name(session, parent_product_name)
     if not parent_product:
-        first_item_specs = parsed_specs[0]
-        common_specs_dict = {key: first_item_specs.get(key) for key in common_keys if key}
-        parent_slug = generate_unique_slug(
-            session=session,
-            model=Product,
-            source_data=parent_product_name 
-        )
-        print(f"Creating new parent product: '{parent_product_name}'")
-        parent_product = Product(
-            name=parent_product_name,
-            slug=parent_slug,
-            brand=first_item.get('brand'),
-            category=first_item.get('category'),
-            description=first_item.get('product_description'),
-            common_specs=common_specs_dict
-        )
-        session.add(parent_product)
-        session.commit()
-        session.refresh(parent_product)
+        first_item = group_items[0]
+        common_specs_dict = {key: normalize_value(parsed_specs[0].get(key)) for key in common_keys}
+        
+        product_data = {
+            "name": parent_product_name,
+            "brand": first_item.get('brand'),
+            "category": first_item.get('category'),
+            "description": first_item.get('product_description'),
+            "common_specs": common_specs_dict
+        }
+        parent_product = create_parent_product(session, data=product_data)
     else:
         print(f"Found existing parent product: '{parent_product_name}'")
 
     # create a Variant for each item in the group
     for item, specs in zip(group_items, parsed_specs):
-        if session.query(ProductVariant).filter(ProductVariant.source_url == item['source_url']).first():
+        if get_product_variant_by_url(session, url=item['source_url']):
             print(f"Variant with URL {item['source_url']} already exists. Skipping.")
             continue
 
         variant_specs_dict = {key: specs.get(key) for key in variant_keys}
-        variant_slug = generate_unique_slug(
-                session=session,
-                model=ProductVariant,
-                source_data=variant_specs_dict,
-                product_id=parent_product.id
-            )
-        print(f"Creating new variant: {variant_specs_dict}")
-        variant = ProductVariant(
-                product_id=parent_product.id,
-                source_url=item['source_url'],
-                slug=variant_slug,
-                availability=item['availability'],
-                image_url=item['image_url'],
-                variant_specs=variant_specs_dict
-            )
-        session.add(variant)
-        price_entry = PriceHistory(price=item["price"])
-        variant.price_history.append(price_entry)
-        session.commit()
-        
-    session.commit()
+        variant_data = {
+            "source_url": item['source_url'],
+            "availability": item.get('availability'),
+            "image_url": item.get('image_url'),
+            "price": item.get('price'),
+            "variant_specs": variant_specs_dict,
+        }
+        create_product_variant(session, product_id=parent_product.id, data=variant_data)
