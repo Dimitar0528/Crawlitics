@@ -108,3 +108,10 @@ def initialize_database_on_first_run():
         print(f"[Startup] FATAL: Could not connect to the database to check tables: {e}")
         print("[Startup] Please ensure the database server is running and accessible.")
         raise
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db # provide the session to the FastAPI route
+    finally:
+        db.close()

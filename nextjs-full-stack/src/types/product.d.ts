@@ -1,24 +1,33 @@
-export interface Product {
+export type Product = {
   id: number;
-  source_url: string;
   name: string;
   slug: string;
   brand: string;
   category: string;
-  availability: string;
-  description: string | null;
-  specs: Record<string, string>; 
-  image_url: string | null;
-  created_at: string;
-  last_scraped_at: string;
-
-  price_history: PriceHistory[];
+  description: string;
+  common_specs: Record<string, string>; 
+  created_at: string
+  variants: ProductVariant[];
 }
 
-
-export interface PriceHistory {
+export type ProductVariant = {
   id: number;
+  product_id: number;
+  source_url: string;
+  slug: string;
+  availability: string;
+  image_url: string;
+  variant_specs: Record<string, string>;
+  created_at: string;
+  last_scraped_at: string;
+  price_history: PriceHistory[];
+  parent_product?: Product;
+};
+
+
+export type PriceHistory = {
+  id: number;
+  variant_id: number;
   price: number;
   recorded_at: string;
-  product_id: number;
 }

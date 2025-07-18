@@ -6,9 +6,9 @@ export default function Footer() {
   return (
     <footer className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 py-12 transition-colors duration-300">
       <div className="container mx-auto px-4 lg:px-18">
-        <div className="grid md:grid-cols-4 gap-8">
+        <div className="grid text-center md:text-left justify-center sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center md:justify-start space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Search className="w-5 h-5 text-white" />
               </div>
@@ -17,7 +17,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-gray-600 dark:text-gray-300 w-70">
-              Най-добрата платформа за сравняване на цени в България
+              Сравни цени лесно и бързо
             </p>
           </div>
 

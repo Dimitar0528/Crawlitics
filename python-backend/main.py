@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy.orm import Session
+
 from contextlib import asynccontextmanager
-from db.crud import read_newest_records_from_db
+from db.crud import get_newest_products
+from db.helpers import get_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,8 +33,8 @@ def scrape():
     return data
 
 @app.get("/api/products")
-def read_products():
-    newest_db_products = read_newest_records_from_db()
+def read_products( session: Session = Depends(get_db)):
+    newest_db_products = get_newest_products(session)
     if newest_db_products is None:
         raise HTTPException(status_code=404, detail="Products not found")
     return newest_db_products

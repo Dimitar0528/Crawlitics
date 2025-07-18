@@ -13,6 +13,15 @@ import { Product } from "@/types/product";
 import Image from "next/image";
 
 export default function ProductCard(product: Product) {
+  const heroImageUrl = product.variants.find(
+    (variant) => variant.image_url
+  )!.image_url;
+
+  const lowestPrice = product.variants?.reduce((min, variant) => {
+    const priceNum = variant.price_history[0].price;
+    return priceNum < min ? priceNum : min;
+  }, Infinity);
+
   return (
     <Card
       className="cursor-pointer
@@ -28,7 +37,7 @@ export default function ProductCard(product: Product) {
       ">
       <CardHeader className="p-0 overflow-hidden rounded-t-2xl">
         <Image
-          src={product.image_url!}
+          src={heroImageUrl}
           width={200}
           height={200}
           alt={product.name}
@@ -68,15 +77,14 @@ export default function ProductCard(product: Product) {
 
         <div className="flex flex-col mt-4">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-            Най-ниска цена: 
+            Най-ниска цена:
           </span>
           <div className="flex items-baseline space-x-2 justify-between">
             <span
               className="
         text-2xl font-extrabold text-blue-700 dark:text-blue-400 
       ">
-              {product.price_history && product.price_history.length > 0
-                && `${product.price_history[0].price} лв.`}
+            {lowestPrice} лв
             </span>
             <span className="text-sm text-gray-500 dark:text-gray-300">
               1 от 3 магазина
