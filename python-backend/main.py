@@ -32,7 +32,7 @@ def scrape():
     data = {"product": "Example", "price": 19.99}
     return data
 
-@app.get("/api/products")
+@app.get("/api/latest-products")
 def read_products( session: Session = Depends(get_db)):
     newest_db_products = get_newest_products(session)
     if newest_db_products is None:

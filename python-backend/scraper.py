@@ -24,7 +24,7 @@ from helpers.scraper_helpers import (
     extract_dynamic_data_from_markdown
 )
 from helpers.helpers import clean_output
-from db.helpers import SessionLocal, initialize_database_on_first_run
+from db.helpers import SessionLocal
 from db.crud import (
     get_product_variant_by_url,
     update_product_variant,
@@ -113,7 +113,7 @@ async def process_single_crawled_result(result: CrawlResult, session: Session, u
         await asyncio.to_thread(
             update_product_variant, 
             session, 
-            url, 
+            existing_product_variant, 
             new_price, 
             new_availability
         )
@@ -193,6 +193,7 @@ async def main():
             async def scrape_site_task():
                 with SessionLocal() as session:
                     return await process_single_crawled_result(result, session, user_selected_category)
+                
             tasks = []
             async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
                 result: CrawlResult 
@@ -217,7 +218,6 @@ async def main():
             print(f"  - Group: {key}")
 
         db_session = SessionLocal()
-        initialize_database_on_first_run()
         try:
             for key, items in product_groups.items():
                 analyze_and_store_group(db_session, key, items)

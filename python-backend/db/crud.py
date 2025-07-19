@@ -1,5 +1,5 @@
 from decimal import Decimal
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, load_only
 from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
 
@@ -81,9 +81,28 @@ def get_product_variant_by_url(session: Session, url: str) -> ProductVariant | N
     return session.query(ProductVariant).filter(ProductVariant.source_url == url).first()
 
 def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
-    """Reads the newest parent products, including their variants and price histories."""
+    """
+    Reads the 20 newest parent products, loading only the essential fields 
+    required to display them as product cards on the home page.
+    """
     return session.query(Product)\
-        .options(selectinload(Product.variants).selectinload(ProductVariant.price_history))\
+        .options(
+            # only load what's needed for the product card to display.
+            load_only(
+                Product.id,     
+                Product.name,
+                Product.slug,
+            ),
+            selectinload(Product.variants).load_only(
+                ProductVariant.id,        
+                ProductVariant.product_id,
+                ProductVariant.image_url,
+                ProductVariant.availability  
+            ),
+            selectinload(Product.variants).selectinload(ProductVariant.price_history).load_only(
+                PriceHistory.price  
+            )
+        )\
         .order_by(Product.created_at.desc())\
         .limit(limit)\
         .all()
@@ -150,14 +169,12 @@ def read_products_from_db(
 
 def update_product_variant(
     session: Session,
-    product_url: str,
+    variant: ProductVariant,
     new_price: float | None,
     new_availability: Literal['Неясен', 'В наличност', 'Изчерпан']
 ) -> None:
     """Updates a product's dynamic data (price and availability) based on fresh scrape data."""
-
-    variant = get_product_variant_by_url(session, product_url)
-
+    
     latest_price = variant.price_history[0].price if variant.price_history else None
     if  latest_price != Decimal(new_price):
         print(f"  [DB CRUD] Price changed for '{variant.slug}'. Old: {latest_price}, New: {new_price}")
