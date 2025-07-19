@@ -1,5 +1,4 @@
 "use client";
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,15 +31,7 @@ import {
 
 import { Typewriter } from "react-simple-typewriter";
 
-export default function LandingPage() {
-  useEffect(() => {
-    const expires = new Date();
-    expires.setFullYear(expires.getFullYear() + 1);
-
-    document.cookie =
-      "hasVisitedLanding=true; expires=" + expires.toUTCString() + "; path=/";
-  }, []);
-
+export default function HowItWorksPage() {
   const router = useRouter();
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -211,9 +202,9 @@ export default function LandingPage() {
               },
               {
                 icon: <Zap className="w-6 h-6 text-green-500" />,
-                title: "Актуални цени в реално време",
+                title: "Актуални данни в реално време",
                 description:
-                  "Нашата платформа ти предоставя напълно актуални цени и наличности директно от проверени магазини. Така винаги ще знаеш реалната стойност на продукта и ще можеш да направиш най-добрия избор без риск от подвеждаща информация.",
+                  "Нашата платформа ти предоставя напълно актуални цени и наличности директно от проверени магазини. Така винаги ще знаеш реалната стойност на продукта и неговата наличност и ще можеш да направиш най-добрия избор без риск от подвеждаща информация.",
               },
               {
                 icon: <Bell className="w-6 h-6 text-purple-500" />,

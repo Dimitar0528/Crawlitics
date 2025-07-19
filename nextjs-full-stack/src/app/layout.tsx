@@ -19,8 +19,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     template: "%s | Crawlitics",
-    default: "Crawlitics",
+    default: "Crawlitics Page",
   },
+  description:
+    "Crawlitics е платформа за интелигентно сравнение на цени, проследяване на продукти и откриване на най-добрите оферти онлайн.",
   generator: "Next.js",
   applicationName: "Crawlitics",
 };

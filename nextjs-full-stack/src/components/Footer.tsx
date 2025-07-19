@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import Link from "next/link";
 
 export default function Footer() {
   const YEAR = new Date().getFullYear();
@@ -12,7 +13,7 @@ export default function Footer() {
               <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Search className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent dark:bg-gradient-to-r dark:from-blue-500 dark:to-purple-500">
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent dark:bg-gradient-to-r dark:from-blue-400 dark:to-purple-400">
                 Crawlitics
               </span>
             </div>
@@ -22,14 +23,14 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Продукт</h4>
+            <h4 className="font-semibold mb-4">За Сайта</h4>
             <ul className="space-y-2 text-gray-600 dark:text-gray-300">
               <li>
-                <a
-                  href="#"
+                <Link
+                  href="/how-it-works"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                   Как работи
-                </a>
+                </Link>
               </li>
               <li>
                 <a
@@ -103,7 +104,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-300 dark:border-gray-700 mt-8 pt-8 text-center text-gray-600 dark:text-gray-400">
+        <div className="border-t border-gray-300 dark:border-gray-700 mt-8 pt-8 text-center text-gray-600 dark:text-gray-300">
           <p>&copy; {YEAR} Crawlitics. Всички права запазени.</p>
         </div>
       </div>
