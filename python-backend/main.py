@@ -4,7 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from contextlib import asynccontextmanager
-from db.crud import get_newest_products
+from db.crud import (
+    get_newest_products,
+    get_product_by_slug
+)
 from db.helpers import get_db
 
 @asynccontextmanager
@@ -27,17 +30,16 @@ app.add_middleware(
 def read_root():
     return {"message": "Hello from FastAPI"}
 
-@app.get("/api/scrape")
-def scrape():
-    data = {"product": "Example", "price": 19.99}
-    return data
-
 @app.get("/api/latest-products")
-def read_products( session: Session = Depends(get_db)):
-    newest_db_products = get_newest_products(session)
-    if newest_db_products is None:
-        raise HTTPException(status_code=404, detail="Products not found")
-    return newest_db_products
+def read_latest_products( session: Session = Depends(get_db)):
+    newest_products = get_newest_products(session)
+    return newest_products
+
+@app.get("/api/product/{product_slug}")
+def read_product(product_slug: str, session: Session = Depends(get_db)):
+    product = get_product_by_slug(session, product_slug)
+    return product
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

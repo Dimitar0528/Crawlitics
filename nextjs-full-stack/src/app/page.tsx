@@ -1,28 +1,28 @@
 import { Metadata } from "next";
-import { Product } from "@/types/product";
-
 import ProductCard from "@/components/products/ProductCard";
 import Link from "next/link";
 import { ArrowRight, Info } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import { getLatestProducts } from "@/lib/data";
+import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Home Page | Crawlitics",
   description: "Начална страница на Crawlitics платформата",
 };
 
-const response = await fetch("http://localhost:8000/api/latest-products");
-if (!response.ok) {
-  throw new Error("Failed to fetch latest products");
-}
-const newest_products: Product[] = await response.json();
-
 export const revalidate = 3600;
 
-export default function Home() {
+export default async function Home() {
+  const newest_products = await getLatestProducts();
+  if(!newest_products) {
+    notFound()
+  } 
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] justify-items-center min-h-screen p-8 gap-4 sm:p-4 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
+
         <section className="w-full bg-gradient-to-r from-blue-600 to-purple-600 p-8 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 border-3 border-dashed border-gray-300 dark:border-white/70">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-6">
@@ -39,7 +39,6 @@ export default function Home() {
                 </p>
               </div>
             </div>
-
             <Link href="/how-it-works">
               <Button
                 variant="outline"

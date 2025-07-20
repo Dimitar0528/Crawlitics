@@ -1,6 +1,6 @@
 from decimal import Decimal
 from sqlalchemy.orm import Session, selectinload, load_only
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, select
 from sqlalchemy.exc import IntegrityError
 
 from typing import Literal
@@ -8,10 +8,6 @@ from datetime import datetime, timedelta, timezone
 
 from .models import Product, ProductVariant, PriceHistory
 from .helpers import generate_unique_slug, SessionLocal
-
-def get_parent_product_by_name(session: Session, name: str) -> Product | None:
-    """Fetches a single parent product by its exact name."""
-    return session.query(Product).filter(Product.name == name).first()
 
 def create_parent_product(session: Session, data: dict[str, any]) -> Product:
     """Creates a new parent product in the database."""
@@ -76,18 +72,14 @@ def create_product_variant(session: Session, product_id: int, data: dict[str, an
     print(f"  [DB CRUD] Created Variant for Product ID {product_id} from URL: {data['source_url']}")
     return new_variant
 
-def get_product_variant_by_url(session: Session, url: str) -> ProductVariant | None:
-    """Fetches a single product variant by its source URL."""
-    return session.query(ProductVariant).filter(ProductVariant.source_url == url).first()
-
 def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
     """
-    Reads the 20 newest parent products, loading only the essential fields 
+    Reads the newest parent products, loading only the essential fields 
     required to display them as product cards on the home page.
     """
-    return session.query(Product)\
+    stmt = (
+        select(Product)
         .options(
-            # only load what's needed for the product card to display.
             load_only(
                 Product.id,     
                 Product.name,
@@ -102,10 +94,36 @@ def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
             selectinload(Product.variants).selectinload(ProductVariant.price_history).load_only(
                 PriceHistory.price  
             )
-        )\
-        .order_by(Product.created_at.desc())\
-        .limit(limit)\
-        .all()
+        )
+        .order_by(Product.created_at.desc())
+        .limit(limit)
+    )
+    result = session.execute(stmt)
+    return result.scalars().all()
+
+def get_product_by_slug(session: Session, slug: str) -> Product:
+    """Fetches a single product and its variants and their price history by its slug."""
+    stmt = (
+        select(Product)
+        .options(
+            selectinload(Product.variants).selectinload(ProductVariant.price_history)
+        )
+        .where(Product.slug == slug)
+    )
+    result = session.execute(stmt).scalars().first()
+    return result
+
+def get_parent_product_by_name(session: Session, name: str) -> Product:
+    """Fetches a single parent product by its exact name."""
+    stmt = select(Product).where(Product.name == name)
+    result = session.execute(stmt).scalars().first()
+    return result
+
+def get_product_variant_by_url(session: Session, url: str) -> ProductVariant:
+    """Fetches a single product variant by its source URL."""
+    stmt = select(ProductVariant).where(ProductVariant.source_url == url)
+    result = session.execute(stmt).scalars().first()
+    return result
 
 def read_products_from_db(
     urls: list[str], 
@@ -127,14 +145,15 @@ def read_products_from_db(
     found_records: list[dict[str, any]] = []
     freshly_found_urls: set[str] = set()
     with SessionLocal() as session:
-    # query variants that match the URLs, and pre-load their parent product and price history
-        query_results = session.query(ProductVariant)\
+        stmt = (
+            select(ProductVariant)
             .options(
                 selectinload(ProductVariant.parent_product), 
                 selectinload(ProductVariant.price_history)
-            )\
-            .filter(ProductVariant.source_url.in_(urls))\
-            .all()
+            )
+            .where(ProductVariant.source_url.in_(urls))
+        )
+        query_results = session.execute(stmt).scalars().all()
 
         for variant in query_results:
             is_stale = (datetime.now(timezone.utc) - variant.last_scraped_at) > cache_duration
@@ -144,7 +163,6 @@ def read_products_from_db(
                 continue
             
             parent: Product = variant.parent_product
-            # combine common and variant specs into a single dictionary
             specs = {**(parent.common_specs or {}), **(variant.variant_specs or {})}
             latest_price = variant.price_history[0].price if variant.price_history else None
 

@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Ghost } from "lucide-react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Страницата не е намерена ",
+  description: "Страницата, която потребителят поиска не е налична.",
+};
 
 export default function NotFound() {
   return (
