@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { calculate_product_variant_prices } from "@/lib/utils";
 
 import { Product } from "@/types/product";
 import Image from "next/image";
@@ -17,11 +18,16 @@ export default function ProductCard(product: Product) {
   const heroImageUrl = product.variants.find(
     (variant) => variant.image_url
   )!.image_url;
-  
-  const lowest_available_price = product.variants?.filter(variant => variant.availability === "В наличност").reduce((min, variant) => {
-    const priceNum = variant.price_history[0].price;
-    return priceNum < min ? priceNum : min;
-  }, Infinity);
+
+  const latest_lowest_available_price = product.variants
+    ?.filter((variant) => variant.availability === "В наличност")
+    .reduce((min, variant) => {
+      const priceNum = variant.latest_lowest_price_record!.price;
+      return priceNum < min ? priceNum : min;
+    }, Infinity);
+  const { price_bgn, price_eur } = calculate_product_variant_prices(
+    latest_lowest_available_price
+  );
 
   return (
     <Link href={`/product/${product.slug}`}>
@@ -50,6 +56,7 @@ export default function ProductCard(product: Product) {
               hover:rotate-1
             "
             draggable={false}
+            priority
           />
         </CardHeader>
 
@@ -81,13 +88,15 @@ export default function ProductCard(product: Product) {
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
               Най-ниска налична цена:
             </span>
-            <div className="flex items-baseline space-x-2 justify-between">
-              <span
-                className="
-        text-2xl font-extrabold text-blue-700 dark:text-blue-400 
-      ">
-                {lowest_available_price} лв
-              </span>
+            <div className="flex items-end space-x-2 justify-between">
+              <div>
+                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-400 leading-none">
+                  {price_bgn}
+                </div>
+                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-400 leading-none mt-2">
+                  {price_eur}
+                </div>
+              </div>
               <span className="text-sm text-gray-500 dark:text-gray-300">
                 1 от 3 магазина
               </span>

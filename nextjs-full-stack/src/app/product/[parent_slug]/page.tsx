@@ -2,17 +2,16 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Product } from "@/types/product";
 import { getLatestProducts, getProduct } from "@/lib/data";
+import BackButton from "@/components/products/BackButton";
+import { calculate_product_variant_prices } from "@/lib/utils";
 
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-    const newest_products = await getLatestProducts();
-    if (!newest_products) {
-      notFound();
-    } 
-    return newest_products.map((product: Product) => ({
-      parent_slug: product.slug,
-    }));
+  const newest_products = await getLatestProducts();
+  return newest_products.map((product: Product) => ({
+    parent_slug: product.slug,
+  }));
 }
 
 export async function generateMetadata({
@@ -41,7 +40,6 @@ export default async function ProductPage({
   if (!product) {
     notFound();
   }
-
   const SpecList = ({ specs }: { specs: Record<string, string> }) => (
     <ul className="space-y-3">
       {Object.entries(specs).map(([key, value]) => (
@@ -60,6 +58,7 @@ export default async function ProductPage({
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-white rounded-2xl shadow-subtle p-8 md:p-12">
+        <BackButton />
         <header className="pb-6 border-b border-gray-200">
           <p className="text-base font-semibold text-indigo-600">
             {product.brand}
@@ -103,6 +102,11 @@ export default async function ProductPage({
               {product.variants && product.variants.length > 0 ? (
                 product.variants.map((variant) => {
                   const isAvailable = variant.availability === "В наличност";
+                  const latest_lowest_price =
+                    variant.price_history[variant.price_history.length - 1]
+                      .price;
+                  const { price_bgn, price_eur } =
+                    calculate_product_variant_prices(latest_lowest_price);
                   return (
                     <div
                       key={variant.id}
@@ -111,20 +115,35 @@ export default async function ProductPage({
                         <SpecList specs={variant.variant_specs} />
                       </div>
 
-                      <div className="border-t border-gray-200 pt-4 flex justify-between items-center">
-                        <div className="text-2xl font-bold text-gray-900">
-                          {variant.price_history[0].price
-                            ? `${variant.price_history[0].price} лв`
-                            : "N/A"}
+                      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 p-4 border rounded-lg bg-white shadow-sm">
+                        {/* Price block */}
+                        <div>
+                          <span className="block text-sm font-medium text-gray-500 mb-1">
+                            Цена:
+                          </span>
+                          <div className="flex flex-col space-y-1">
+                            {price_bgn && (
+                              <span className="text-xl font-bold text-gray-900">
+                                {price_bgn}
+                              </span>
+                            )}
+                            {price_eur && (
+                              <span className="text-xl font-bold text-gray-900">
+                                {price_eur}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span
-                          className={`px-3 py-1 text-xs font-bold rounded-full ${
-                            isAvailable
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                          {variant.availability}
-                        </span>
+                        <div>
+                          <span
+                            className={`inline-block px-4 py-1 text-xs font-semibold rounded-full ${
+                              isAvailable
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                            {variant.availability}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowRight, Info } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { getLatestProducts } from "@/lib/data";
-import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Home Page | Crawlitics",
@@ -15,9 +14,6 @@ export const revalidate = 3600;
 
 export default async function Home() {
   const newest_products = await getLatestProducts();
-  if(!newest_products) {
-    notFound()
-  } 
 
   return (
     <div className="grid grid-rows-[20px_1fr_20px] justify-items-center min-h-screen p-8 gap-4 sm:p-4 font-[family-name:var(--font-geist-sans)]">

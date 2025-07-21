@@ -1,13 +1,33 @@
 import { Product } from "@/types/product";
 
-export async function getLatestProducts(){
-    const response = await fetch("http://localhost:8000/api/latest-products");
-    const newest_products: Product[] | null = await response.json();
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export async function getLatestProducts() {
+  try {
+    const response = await fetch(`${API_BASE}/api/latest-products`);
+    if (!response.ok) {
+      console.error("Failed to fetch latest products:", response.statusText);
+      return [];
+    }
+    const newest_products = (await response.json()) as Product[];
     return newest_products;
+  } catch (err) {
+    console.error("Error fetching latest products:", err);
+    return [];
+  }
 }
 
 export async function getProduct(slug: string) {
-  const response = await fetch(`http://localhost:8000/api/product/${slug}`);
-  const product: Product | null = await response.json();
-  return product;
+  try {
+    const response = await fetch(`${API_BASE}/api/product/${slug}`);
+    if (!response.ok) {
+      console.error(`Failed to fetch product ${slug}:`, response.statusText);
+      return null;
+    }
+    const product = (await response.json()) as Product;
+    return product;
+  } catch(err){
+    console.log(err);
+    return null
+  }
 }
