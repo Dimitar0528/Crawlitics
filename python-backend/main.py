@@ -35,9 +35,9 @@ def read_latest_products( session: Session = Depends(get_db)):
     newest_products = get_newest_products(session)
     return newest_products
 
-@app.get("/api/product/{product_slug}")
-def read_product(product_slug: str, session: Session = Depends(get_db)):
-    product = get_product_by_slug(session, product_slug)
+@app.get("/api/product/{slug}")
+def read_product(slug: str, session: Session = Depends(get_db)):
+    product = get_product_by_slug(session, slug)
     return product
 
 if __name__ == "__main__":

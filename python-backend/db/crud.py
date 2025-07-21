@@ -54,8 +54,9 @@ def create_product_variant(session: Session, product_id: int, data: dict[str, an
     )
     
     # create the first price history entry for the new variant
-    price = data.get("price") or "0"
-    price_entry = PriceHistory(price=price)
+    price = data.get("price")
+    currency = data.get("currency")
+    price_entry = PriceHistory(price=price, currency=currency)
     new_variant.price_history.append(price_entry)
     
     session.add(new_variant)
@@ -91,8 +92,9 @@ def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
                 ProductVariant.image_url,
                 ProductVariant.availability  
             ),
-            selectinload(Product.variants).selectinload(ProductVariant.price_history).load_only(
-                PriceHistory.price  
+            selectinload(Product.variants).selectinload(ProductVariant.latest_lowest_price_record).load_only( 
+                PriceHistory.price, 
+                PriceHistory.currency
             )
         )
         .order_by(Product.created_at.desc())
@@ -164,7 +166,7 @@ def read_products_from_db(
             
             parent: Product = variant.parent_product
             specs = {**(parent.common_specs or {}), **(variant.variant_specs or {})}
-            latest_price = variant.price_history[0].price if variant.price_history else None
+            latest_price = variant.price_history[-1].price if variant.price_history else None
 
             record = {
                 "name": parent.name,
@@ -193,7 +195,7 @@ def update_product_variant(
 ) -> None:
     """Updates a product's dynamic data (price and availability) based on fresh scrape data."""
     
-    latest_price = variant.price_history[0].price if variant.price_history else None
+    latest_price = variant.price_history[-1].price if variant.price_history else None
     if  latest_price != Decimal(new_price):
         print(f"  [DB CRUD] Price changed for '{variant.slug}'. Old: {latest_price}, New: {new_price}")
         new_price_record = PriceHistory(price=new_price, variant_id=variant.id)

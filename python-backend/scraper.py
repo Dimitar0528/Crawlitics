@@ -81,6 +81,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
         {json.dumps(schema, indent=2)}
 
         In the product name, DO NOT include the category of the product.
+        Make the product description longer and in Bulgarian.
                 """
             ],
         )
@@ -159,7 +160,7 @@ async def main():
         table_score_threshold=8,
         exclude_external_links=True,
         exclude_internal_links=True,
-        exclude_external_images=True,
+        exclude_all_images=True,
         excluded_tags=["header", "aside", "nav", "footer"],
         locale="bg-BG",
         override_navigator=True,
@@ -198,7 +199,7 @@ async def main():
             async for result in await crawler.arun_many(urls=urls_to_crawl, config=config, dispatcher=dispatcher):
                 result: CrawlResult 
                 print(f"Scrape completed for: {result.url}")
-                tasks.append(asyncio.create_task(scrape_site_task))
+                tasks.append(asyncio.create_task(scrape_site_task()))
 
             all_scraped_data: list[dict[str,any]] = await asyncio.gather(*tasks)
     

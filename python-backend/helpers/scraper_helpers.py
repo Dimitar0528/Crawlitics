@@ -82,7 +82,8 @@ def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclud
             'на склад',        
             'в наличност',
             "ограничена наличност",
-            'при доставчик',     
+            'при доставчик',
+            "последни"  
             'in stock',
         }
         lower_content = markdown.lower()

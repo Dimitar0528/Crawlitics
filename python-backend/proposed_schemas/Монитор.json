@@ -10,6 +10,10 @@
         "price": {
             "type": "number"
         },
+        "currency": {
+            "type": "string",
+            "description": "The currency in which the product price is listed, such as 'BGN' or 'EUR' for Euro. Always use the standard three-letter currency code."
+        },
         "product_description": {
             "type": "string",
             "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown. The description must be in Bulgarian."

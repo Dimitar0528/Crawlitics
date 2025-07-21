@@ -108,6 +108,7 @@ def analyze_and_store_group(session: Session, group_key: str, group_items: list[
             "availability": item.get('availability'),
             "image_url": item.get('image_url'),
             "price": item.get('price'),
+            "currency": item.get('currency'),
             "variant_specs": variant_specs_dict,
         }
         create_product_variant(session, product_id=parent_product.id, data=variant_data)
