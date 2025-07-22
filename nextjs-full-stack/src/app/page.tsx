@@ -16,7 +16,7 @@ export default async function Home() {
   const newest_products = await getLatestProducts();
 
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] justify-items-center min-h-screen p-8 gap-4 sm:p-4 font-[family-name:var(--font-geist-sans)]">
+    <div className="grid grid-rows-[10px_1fr_20px] justify-items-center min-h-screen p-8 sm:p-4 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
 
         <section className="w-full bg-gradient-to-r from-blue-600 to-purple-600 p-8 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 border-3 border-dashed border-gray-300 dark:border-white/70">
@@ -47,7 +47,7 @@ export default async function Home() {
         </section>
 
         <section className="w-full">
-          <h2 className="text-xl font-semibold mb-4">New Products</h2>
+          <h2 className="text-xl font-semibold mb-6">New Products</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 justify-items-center">
             {newest_products.map((product) => (
               <ProductCard key={product.id} {...product} />

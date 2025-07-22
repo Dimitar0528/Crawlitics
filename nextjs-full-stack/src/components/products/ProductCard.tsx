@@ -37,9 +37,11 @@ export default function ProductCard(product: Product) {
         overflow-hidden
         bg-white dark:bg-gray-900
         shadow-lg 
-        transition-transform duration-500 ease-in-out
-        hover:shadow-2xl 
-        hover:scale-[1.03] 
+        transition-all duration-500 ease-in-out
+        hover:shadow-2xl
+        hover:border-blue-500
+        hover:dark:border-blue-500
+        hover:scale-[1.02] 
         hover:-translate-y-2
         relative
       ">
@@ -70,34 +72,20 @@ export default function ProductCard(product: Product) {
             {product.name}
           </CardTitle>
 
-          <div className="flex items-center space-x-3">
-            <span
-              className="
-            bg-yellow-400 text-gray-900 text-xs font-semibold px-3 py-1 rounded-full
-            shadow-md
-          ">
-              Намаление 8%
-            </span>
-
-            <span className="text-sm text-gray-600 dark:text-gray-300 italic my-2">
-              Спестете до 12,62 лв.
-            </span>
-          </div>
-
           <div className="flex flex-col mt-4">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+            <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
               Най-ниска налична цена:
             </span>
             <div className="flex items-end space-x-2 justify-between">
               <div>
-                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-400 leading-none">
+                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-300 leading-none">
                   {price_bgn}
                 </div>
-                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-400 leading-none mt-2">
+                <div className="text-xl font-extrabold text-blue-700 dark:text-blue-300 leading-none mt-2">
                   {price_eur}
                 </div>
               </div>
-              <span className="text-sm text-gray-500 dark:text-gray-300">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
                 1 от 3 магазина
               </span>
             </div>
