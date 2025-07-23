@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import ProductCard from "@/components/products/ProductCard";
+import ProductCard from "@/components/products/cards/ProductCard";
 import Link from "next/link";
 import { ArrowRight, Info } from "lucide-react";
 import { Button } from '@/components/ui/button';
