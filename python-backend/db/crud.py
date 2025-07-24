@@ -117,7 +117,7 @@ def get_product_by_slug(session: Session, slug: str) -> Product:
 
 def get_parent_product_by_name(session: Session, name: str) -> Product:
     """Fetches a single parent product by its exact name."""
-    stmt = select(Product).where(Product.name == name)
+    stmt = select(Product).options(selectinload(Product.variants)).where(Product.name == name)
     result = session.execute(stmt).scalars().first()
     return result
 

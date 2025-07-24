@@ -83,11 +83,11 @@ def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclud
             'в наличност',
             "ограничена наличност",
             'при доставчик',
-            "последни"  
+            "последни",
+            "последен",
             'in stock',
         }
         lower_content = markdown.lower()
-        
         unavailable_pattern = r'\b(' + '|'.join(unavailable_parts) + r')\b'
         if re.search(unavailable_pattern, lower_content):
             extracted_availability = "Изчерпан"
@@ -95,7 +95,6 @@ def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclud
         available_pattern = r'\b(' + '|'.join(re.escape(k) for k in AVAILABLE_KEYWORDS) + r')\b'
         if re.search(available_pattern, lower_content):
             extracted_availability = "В наличност"
-
         if not extracted_availability:
             extracted_availability = "Неясен"
     return extracted_price, extracted_availability

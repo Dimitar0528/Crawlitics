@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DECIMAL, TEXT, TIMESTAMP, ForeignKey, select,  and_
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import declarative_base, relationship, remote, foreign
+from sqlalchemy.orm import declarative_base, relationship, remote, foreign, Mapped
 from sqlalchemy.sql import func
 
 Base = declarative_base()
@@ -14,8 +14,8 @@ class Product(Base):
     brand = Column(String(50), nullable=False)
     category = Column(String(50), nullable=False)
     description = Column(TEXT, nullable=True)
-    common_specs = Column(JSONB, nullable=False)
-    variants = relationship("ProductVariant", back_populates="parent_product", cascade="all, delete-orphan")
+    common_specs: Column[JSONB] = Column(JSONB, nullable=False)
+    variants: Mapped[list["ProductVariant"]] = relationship("ProductVariant", back_populates="parent_product", cascade="all, delete-orphan")
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     def __repr__(self):
         return f"<Product(id={self.id}, name='{self.name}')>"
@@ -29,16 +29,16 @@ class ProductVariant(Base):
     slug = Column(String(128), nullable=False, unique=True, index=True)
     availability = Column(String(20), nullable=False)
     image_url = Column(String(512), nullable=True)
-    variant_specs = Column(JSONB, nullable=False)
+    variant_specs: Column[JSONB] = Column(JSONB, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     last_scraped_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
     # This product variant has a one-to-many relationship with its price history.
-    price_history = relationship(
+    price_history: Mapped[list["PriceHistory"]] = relationship(
         "PriceHistory",
         back_populates="variant",
         cascade="all, delete-orphan"
     )
-    latest_lowest_price_record = relationship(
+    latest_lowest_price_record: Mapped['PriceHistory'] = relationship(
         "PriceHistory",
         primaryjoin=lambda: and_(
             # this part defines the link between the two tables
@@ -60,7 +60,7 @@ class ProductVariant(Base):
         uselist=False,
         viewonly=True,
     )
-    parent_product = relationship("Product", back_populates="variants")
+    parent_product: Mapped["Product"] = relationship("Product", back_populates="variants")
 
     def __repr__(self):
         return f"<Variant(url='{self.source_url}', specs='{self.variant_specs}')>"
@@ -77,7 +77,7 @@ class PriceHistory(Base):
         nullable=False, 
         server_default=func.now()
     )
-    variant = relationship("ProductVariant", back_populates="price_history")
+    variant: Mapped["ProductVariant"] = relationship("ProductVariant", back_populates="price_history")
 
     def __repr__(self):
          return f"<PriceHistory(product_id={self.product_id}, price={self.price})>"

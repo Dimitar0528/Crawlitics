@@ -80,7 +80,7 @@ async def extract_structured_data(markdown_text: str, schema: dict) -> str:
         --- SCHEMA (use this structure) ---
         {json.dumps(schema, indent=2)}
 
-        In the product name, DO NOT include the category of the product.
+        In the product name, DO NOT include the category of the product. Also in the product name include ONLY the core name of the product and not its specs. Also don't include 5G in the title.
         Make the product description longer and in Bulgarian.
                 """
             ],
@@ -206,30 +206,31 @@ async def main():
         elapsed = time.perf_counter() - start_time
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
 
-        print("\n--- Starting PASS 2: Aggregating and Storing Data ---")
-        
-        product_groups = defaultdict(list)
-        print(all_scraped_data)
-        for item in all_scraped_data:
-            key = get_grouping_key(item, list(product_groups.keys()))
-            product_groups[key].append(item)
-
-        print(f"Found {len(product_groups)} unique product groups.")
-        for key in product_groups.keys():
-            print(f"  - Group: {key}")
-
-        db_session = SessionLocal()
-        try:
-            for key, items in product_groups.items():
-                analyze_and_store_group(db_session, key, items)
+        if any(all_scraped_data):
+            print("\n--- Starting PASS 2: Aggregating and Storing Data ---")
             
-            print("\n" + "="*50 + "\nDATABASE OPERATION COMPLETE\n" + "="*50)
-        except Exception as e:
-            print(f"\nAN ERROR OCCURRED DURING DATABASE OPERATIONS: {e}")
-            print("Rolling back changes.")
-            db_session.rollback()
-        finally:
-            db_session.close()
+            product_groups = defaultdict(list)
+            for item in all_scraped_data:
+                key = get_grouping_key(item, list(product_groups.keys()))
+                product_groups[key].append(item)
+
+            print(f"Found {len(product_groups)} unique product groups.")
+            for key in product_groups.keys():
+                print(f"  - Group: {key}")
+
+            db_session = SessionLocal()
+            try:
+                for key, items in product_groups.items():
+                    analyze_and_store_group(db_session, key, items)
+                
+                print("\n" + "="*50 + "\nDATABASE OPERATION COMPLETE\n" + "="*50)
+            except Exception as e:
+                print(f"\nAN ERROR OCCURRED DURING DATABASE OPERATIONS: {e}")
+                print("Rolling back changes.")
+                db_session.rollback()
+            finally:
+                db_session.close()
+
     # The user chooses whether to run the data analyst agent or not
     run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
     if run_product_analysis_choice == 'y':
