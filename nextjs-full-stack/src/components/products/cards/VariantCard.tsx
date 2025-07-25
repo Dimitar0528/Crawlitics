@@ -62,11 +62,14 @@ export default function VariantCard({
         console.error("Failed to copy text: ", err);
         toast.error("Could not copy link.");
       });
+      setTimeout(() => {
+        setSelectedVariantSlug(null)
+      }, 4000);
   };
 
   return (
     <TooltipProvider>
-      <div className="space-y-4 max-h-[30rem] overflow-y-auto pr-3">
+      <div className="space-y-4 pr-4">
         {variants.map((variant) => {
           const isSelected = selectedVariantSlug === variant.slug;
           const isAvailable = variant.availability === "В наличност";
@@ -84,8 +87,8 @@ export default function VariantCard({
                 else variantRefs.current.delete(variant.slug);
               }}
               className={`
-                relative grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-white dark:bg-slate-800 
-                border-2 rounded-xl p-5 shadow-sm 
+                relative grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-white dark:bg-slate-800 
+                border-1 rounded-xl p-5 shadow-md 
                 transition-all duration-300 ease-in-out
                 ${
                   isSelected
@@ -98,13 +101,13 @@ export default function VariantCard({
                   <CheckCircle className="w-5 h-5" />
                 </div>
               )}
-              <div className="absolute top-0.5 left-0.5 z-10">
+              <div className="absolute top-0 left-0 z-10">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full w-8 h-8 bg-slate-100/50 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      className="rounded-full w-6 h-6 bg-slate-300 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600"
                       onClick={(e) => handleShareVariant(e, variant.slug)}>
                       <LinkIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </Button>
@@ -115,8 +118,8 @@ export default function VariantCard({
                 </Tooltip>
               </div>
 
-              <div className="md:col-span-1 mt-4">
-                <SpecList specs={variant.variant_specs} />
+              <div className="md:col-span-1">
+                <SpecList specs={variant.variant_specs} initial_limit={3} />
               </div>
 
               <div className="md:col-span-1 flex flex-row md:flex-col items-center justify-between md:justify-center gap-2">
