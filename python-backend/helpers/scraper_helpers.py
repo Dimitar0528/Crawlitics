@@ -3,8 +3,6 @@ import re
 import os
 from typing import Literal
 
-PROPOSED_SCHEMA_DIR = "proposed_schemas"
-
 def parse_price(price_str: str) -> float:
     cleaned = (price_str or "0").lower().replace("лв.", "").replace("лв", "").strip()
 
@@ -98,50 +96,3 @@ def extract_dynamic_data_from_markdown(markdown: str, exlude_price=False, exclud
         if not extracted_availability:
             extracted_availability = "Неясен"
     return extracted_price, extracted_availability
-
-def generate_and_save_product_schema(data: dict[str,any]):
-    """
-    Analyzes an 'Unknown' product's data and saves a proposed JSON schema for it.
-    """
-    guessed_category: str = data.get("guessed_category", "new_product").strip()
-    if not guessed_category:
-        guessed_category = "unnamed_category"
-        
-    # Sanitize the category name to create a valid filename
-    filename = re.sub(r'[^\w-]', '_', guessed_category) + ".json"
-    filepath = os.path.join(PROPOSED_SCHEMA_DIR, filename)
-
-    print(f"  [Schema Gen] Generating a new schema proposal for '{guessed_category}'...")
-
-    attributes: dict[str, str] = data.get("attributes", {})
-    if not attributes:
-        print("  [Schema Gen] No attributes found to generate a schema.")
-        return
-
-    # Build the 'properties' part of the new schema
-    new_properties = {
-        "name": {"type": "string"},
-        "brand": {"type": "string"},
-        "price": {"type": "number"},
-        "product_description": {
-                "type": "string",
-                "description": "A concise, human-readable summary of the product’s key features, specifications, and benefits, written in natural language. This should highlight what makes the product useful or unique, based only on the content provided in the markdown. The description must be in Bulgarian."
-            },
-        "specs": {
-            "type": "object",
-            "properties": {
-                key: {"type": "string"} for key in attributes.keys()
-            },
-        }
-    }
-
-   # Full schema structure
-    proposed_schema = {
-            "type": "object",
-            "properties": new_properties,
-            "required": ["name", "brand", "price", "product_description", "specs"]
-    }
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(proposed_schema, f, indent=4, ensure_ascii=False)
-    
-    print(f"  [Schema Gen] Success! New schema saved to: {filepath}")

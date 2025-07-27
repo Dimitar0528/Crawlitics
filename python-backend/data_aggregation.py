@@ -146,7 +146,7 @@ def analyze_and_store_group(session: Session, group_key: str, group_items: list[
             "name": parent_product_name, 
             "brand": first_item.get('brand'), 
             "category": first_item.get('category'),
-            "description": first_item.get('product_description'), 
+            "description": first_item.get('description'), 
             "common_specs": common_specs_dict,
         }
         parent_product = create_parent_product(session, data=product_data)
@@ -160,8 +160,8 @@ def analyze_and_store_group(session: Session, group_key: str, group_items: list[
             if representative_value is not None:
                 updated_common_specs[key] = representative_value
 
-    parent_product.common_specs = updated_common_specs
-    flag_modified(parent_product, "common_specs")
+        parent_product.common_specs = updated_common_specs
+        flag_modified(parent_product, "common_specs")
 
     # update all existing variants based on new key structure
     if parent_product and existing_variants_full_specs:

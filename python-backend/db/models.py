@@ -8,7 +8,7 @@ Base = declarative_base()
 class Product(Base):
     __tablename__ = 'products'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(256), unique=True, nullable=False)
     slug = Column(String(256), nullable=False, unique=True, index=True)
     brand = Column(String(50), nullable=False)
@@ -49,7 +49,6 @@ class ProductVariant(Base):
                 select(PriceHistory.id)
                 .where(PriceHistory.variant_id == ProductVariant.id)
                 .order_by(
-                    PriceHistory.price.desc(),
                     PriceHistory.recorded_at.desc()
                 )
                 .limit(1)
@@ -70,7 +69,7 @@ class PriceHistory(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     variant_id = Column(Integer, ForeignKey('product_variants.id'), nullable=False, index=True)
-    price = Column(DECIMAL(10, 2), nullable=False)
+    price: Column[DECIMAL] = Column(DECIMAL(10, 2), nullable=False)
     currency = Column(String(3), nullable=False, default='BGN', index=True)
     recorded_at = Column(
         TIMESTAMP(timezone=True), 
@@ -81,3 +80,15 @@ class PriceHistory(Base):
 
     def __repr__(self):
          return f"<PriceHistory(product_id={self.product_id}, price={self.price})>"
+    
+class ProductCategorySchema(Base):
+    __tablename__ = 'product_category_schema'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_category = Column(String(50), nullable=False, unique=True, index=True)
+    schema_definition: Column[JSONB] = Column(JSONB, nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f"<UniversalProductSchema(id={self.id}, category='{self.product_category}') schema='{self.schema_definition}')>"

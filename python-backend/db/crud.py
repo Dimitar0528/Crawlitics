@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from typing import Literal
 from datetime import datetime, timedelta, timezone
 
-from .models import Product, ProductVariant, PriceHistory
+from .models import Product, ProductVariant, PriceHistory, ProductCategorySchema
 from .helpers import generate_unique_slug, SessionLocal
 
 def create_parent_product(session: Session, data: dict[str, any]) -> Product:
@@ -73,6 +73,29 @@ def create_product_variant(session: Session, product_id: int, data: dict[str, an
     print(f"  [DB CRUD] Created Variant for Product ID {product_id} from URL: {data['source_url']}")
     return new_variant
 
+def create_product_category_schema(session: Session, category: str, schema_def: dict[str, any]) -> ProductCategorySchema:
+    """
+    Creates product category schema in the database.
+    """
+    print(f"Creating a new schema for category: '{category}'")
+    db_schema = ProductCategorySchema(
+        product_category=category,
+        schema_definition=schema_def
+    )
+    session.add(db_schema)
+
+    try:
+        session.commit()
+    except IntegrityError:
+        print(f"  [DB] Integrity error (likely a race condition). Rolling back.")
+        session.rollback()
+    except Exception as e:
+        print(f"  [DB] An unexpected error occurred: {e}. Rolling back.")
+        session.rollback()
+        raise
+
+    return db_schema
+
 def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
     """
     Reads the newest parent products, loading only the essential fields 
@@ -85,6 +108,7 @@ def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
                 Product.id,     
                 Product.name,
                 Product.slug,
+                Product.category,
             ),
             selectinload(Product.variants).load_only(
                 ProductVariant.id,        
@@ -180,12 +204,26 @@ def read_products_from_db(
             freshly_found_urls.add(variant.source_url)
 
     all_input_urls = set(urls)
-    urls_to_rescrape = list(all_input_urls - freshly_found_urls)
+    urls_to_scrape = list(all_input_urls - freshly_found_urls)
     
     print(f"[DB Read] Found {len(found_records)} fresh records.")
-    print(f"[DB Read] Queuing {len(urls_to_rescrape)} URLs for scraping.")
+    print(f"[DB Read] Queuing {len(urls_to_scrape)} URLs for scraping.")
 
-    return found_records, urls_to_rescrape
+    return found_records, urls_to_scrape
+
+def get_schema_by_product_category(session: Session, category: str) -> dict[str, any]:
+    """Retrieves the current schema for a given product category."""
+    stmt = select(ProductCategorySchema.schema_definition).where(ProductCategorySchema.product_category == category)
+    result = session.execute(stmt).scalars().first()
+    return result
+
+def get_all_categories_from_product_schemas(session: Session) -> list[str]:
+    """
+    Retrieves all product category names from the ProductCategorySchema.
+    """
+    stmt = select(ProductCategorySchema.product_category)
+    result = session.execute(stmt).scalars().all()
+    return result
 
 def update_product_variant(
     session: Session,
