@@ -38,9 +38,9 @@ export default function ProductCard(product: Product) {
     const isAvailable = availableCount > 0;
 
   return (
-    <Link href={`/product/${product.slug}`}>
+    <Link className="block group" href={`/product/${product.slug}`}>
       <Card
-        className="cursor-pointer w-72
+        className="cursor-pointer w-72 max-w-xs
         max-w-xs rounded-2xl border border-gray-200 dark:border-gray-700 
         overflow-hidden
         bg-white dark:bg-gray-900
@@ -49,40 +49,41 @@ export default function ProductCard(product: Product) {
         hover:shadow-2xl
         hover:border-blue-500
         hover:dark:border-blue-500
-        hover:scale-[1.02] 
-        hover:-translate-y-2
+        group-hover:shadow-xl group-hover:border-primary group-hover:scale-[1.02]
         relative
       ">
         <Badge
           variant="secondary"
-          className="absolute top-0 bg-blue-500 text-white dark:bg-blue-600">
+          className="absolute top-2 left-2 bg-blue-500 text-white dark:bg-blue-600">
           <BadgeCheckIcon />
           {product.category}
         </Badge>
-        <CardHeader className="p-0 overflow-hidden rounded-t-2xl">
-          <Image
-            src={heroImageUrl}
-            width={200}
-            height={200}
-            alt={product.name}
-            className="h-50
-              mx-auto object-cover 
-              transition-transform duration-700 ease-in-out
-              hover:scale-105 
-              hover:rotate-1
-            "
-            draggable={false}
-            priority
-          />
+        <CardHeader className="p-0 relative border-b">
+          <div className="aspect-square w-full overflow-hidden">
+            <Image
+              src={heroImageUrl}
+              width={300}
+              height={300}
+              alt={product.name}
+              className="
+                h-full w-full object-contain p-4 
+                transition-transform duration-500 ease-in-out
+                group-hover:scale-105
+              "
+              draggable={false}
+              priority
+            />
+          </div>
         </CardHeader>
 
-        <CardContent className="p-5 space-y-3">
+        <CardContent className="p-4 flex flex-col flex-grow">
+          {/* This title will truncate if it's too long, preventing card stretching. */}
           <CardTitle
             className="
-          text-lg font-extrabold text-gray-900 dark:text-gray-100 
-          transition-colors duration-400 
-          hover:text-purple-600 dark:hover:text-purple-400
-        ">
+              text-lg font-bold capitalize line-clamp-1 h-[1.625rem] 
+              group-hover:text-primary transition-colors
+            "
+            title={product.name}>
             {product.name}
           </CardTitle>
 

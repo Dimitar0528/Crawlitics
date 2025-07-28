@@ -36,7 +36,10 @@ export async function generateMetadata({
     notFound();
   }
   return {
-    title: `${product.name} | Crawlitics`,
+    title: `${product.name
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")} | Crawlitics`,
     description: `Страница, показваща информация за продукта ${product.name}`,
   };
 }
@@ -78,12 +81,12 @@ export default async function ProductPage({
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">
           <header>
-            <p className="text-base font-semibold text-blue-600 dark:text-blue-300">
+            <p className="text-base font-bold text-blue-600 dark:text-blue-300 uppercase">
               {product.brand}
             </p>
             <h1
               id="product-name"
-              className="mt-1 text-2xl lg:text-3xl font-extrabold tracking-tighter text-slate-900 dark:text-white">
+              className="mt-1 text-2xl lg:text-3xl font-extrabold tracking-tighter text-slate-900 dark:text-white capitalize">
               {product.name}
             </h1>
           </header>
@@ -117,6 +120,16 @@ export default async function ProductPage({
             className="flex items-center justify-center gap-3 text-3xl font-bold text-slate-800 dark:text-white mb-6">
             <BadgeEuro className="w-8 h-8 text-purple-500" /> Налични оферти
           </h2>
+
+          <div className="mb-4 flex items-start gap-4 rounded-lg bg-amber-100 p-4 text-sm dark:bg-amber-900/30">
+            <Info className="w-5 h-5 text-amber-900 dark:text-amber-100" />
+            <p className="text-amber-900 dark:text-amber-100">
+              За най-точна и подробна информация за съответния продукт, моля,
+              посетете страницата на продукта, като използвате бутона{" "}
+              <span className="font-bold">&quot;Към магазина&quot;</span>.
+            </p>
+          </div>
+
           <div className="space-y-6 max-h-[40rem] overflow-y-auto">
             {Object.entries(groupVariantsByStore(product.variants || []))
               .length > 0 ? (

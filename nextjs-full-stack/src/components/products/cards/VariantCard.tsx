@@ -43,6 +43,9 @@ export default function VariantCard({
             node.scrollIntoView({ behavior: "smooth", block: "center" });
           }
         }, 100);
+        setTimeout(() => {
+          setSelectedVariantSlug(null);
+        }, 4000);
       }
       isInitialLoad.current = false;
     }
@@ -119,7 +122,14 @@ export default function VariantCard({
               </div>
 
               <div className="md:col-span-1">
-                <SpecList specs={variant.variant_specs} initial_limit={3} />
+                {Object.keys(variants).length === 0 ? (
+                  <p className="text-center text-gray-700 italic bg-gray-200 px-4 py-2 rounded-md">
+                    Всички характеристики за този вариант съвпадат с общите
+                    характеристики.
+                  </p>
+                ) : (
+                  <SpecList specs={variant.variant_specs} initial_limit={3} />
+                )}
               </div>
 
               <div className="md:col-span-1 flex flex-row md:flex-col items-center justify-between md:justify-center gap-2">
