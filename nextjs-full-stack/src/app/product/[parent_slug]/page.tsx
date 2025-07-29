@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { Info, Store, BadgeEuro, Cpu, Tag } from "lucide-react";
 
 import { Product } from "@/types/product";
@@ -15,6 +14,7 @@ import {
 } from "@/lib/utils";
 import VariantCard from "@/components/products/cards/VariantCard";
 import { SpecList } from "@/components/products/SpecList";
+import ProductImage from "@/components/products/images/ProductImage";
 
 export const revalidate = 3600;
 
@@ -55,9 +55,6 @@ export default async function ProductPage({
   if (!product) {
     notFound();
   }
-  const heroImageUrl =
-    product.variants?.find((v) => v.image_url)?.image_url ?? "";
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <div className="mb-6">
@@ -65,18 +62,7 @@ export default async function ProductPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mb-12">
-        <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-3xl shadow-lg shadow-slate-200 dark:shadow-black/20 flex sm:items-center justify-center mb-4 lg:mb-0">
-          <div className="relative w-75 h-75 lg:w-125 lg:h-125">
-            <Image
-              src={heroImageUrl}
-              alt={`Image of ${product.name}`}
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-        </div>
-
+       <ProductImage name={product.name} variants={product.variants}/>
         <section
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">
