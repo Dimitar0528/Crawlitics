@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ProductVariant } from "@/types/product";
+import { ProductVariant } from "@/lib/validations/product";
 import { useState } from "react";
 
 import Lightbox from "yet-another-react-lightbox";

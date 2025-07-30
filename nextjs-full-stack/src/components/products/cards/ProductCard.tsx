@@ -11,11 +11,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { calculate_product_variant_prices } from "@/lib/utils";
 import { BadgeCheckIcon } from "lucide-react";
-import { Product } from "@/types/product";
 import Image from "next/image";
 import Link from "next/link";
+import { LatestProduct } from "@/lib/validations/product";
 
-export default function ProductCard(product: Product) {
+export default function ProductCard(product: LatestProduct) {
   const heroImageUrl = product.variants.find(
     (variant) => variant.image_url
   )!.image_url;

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { SpecList } from "../SpecList";
-import { ProductVariant } from "@/types/product";
+import { ProductVariant } from "@/lib/validations/product";
 import { calculate_product_variant_prices } from "@/lib/utils";
 
 export default function VariantCard({

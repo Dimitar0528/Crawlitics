@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Info, Store, BadgeEuro, Cpu, Tag } from "lucide-react";
 
-import { Product } from "@/types/product";
 import BackButton from "@/components/products/BackButton";
 import ReadMore from "@/components/products/ReadMore";
 
@@ -20,7 +19,7 @@ export const revalidate = 3600;
 
 export async function generateStaticParams() {
   const newest_products = await getLatestProducts();
-  return newest_products.map((product: Product) => ({
+  return newest_products.map((product) => ({
     parent_slug: product.slug,
   }));
 }

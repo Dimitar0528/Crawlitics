@@ -1,4 +1,4 @@
-import { ProductVariant } from "@/types/product";
+import { ProductVariant } from "@/lib/validations/product";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
