@@ -25,7 +25,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import Hero from "@/components/homepage/Hero";
+import Hero from "@/components/how-it-works/Hero";
 
 export const metadata: Metadata = {
   title: "Как работи приложението",

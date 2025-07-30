@@ -1,57 +1,131 @@
 import { Metadata } from "next";
 import ProductCard from "@/components/products/cards/ProductCard";
 import Link from "next/link";
-import { ArrowRight, Info } from "lucide-react";
-import { Button } from '@/components/ui/button';
+import {
+  ScanSearch,
+  BrainCircuit,
+  Trophy,
+  ChevronRight,
+} from "lucide-react";
 import { getLatestProducts } from "@/lib/data";
+import InteractiveHero from "@/components/homepage/InteractiveHero";
 
 export const metadata: Metadata = {
-  title: "Home Page | Crawlitics",
+  title: "Начална страница | Crawlitics",
   description: "Начална страница на Crawlitics платформата",
 };
 
 export const revalidate = 3600;
 
-export default async function Home() {
+const processSteps = [
+  {
+    icon: <ScanSearch className="h-10 w-10 text-purple-500" />,
+    title: "Стъпка 1: Обхождане (Crawling)",
+    description:
+      "Нашият интелигентен бот, CrawleeBot, систематично обхожда десетки сайтове на онлайн търговци, за да открие всички налични продуктови страници и оферти.",
+  },
+  {
+    icon: <BrainCircuit className="h-10 w-10 text-sky-500" />,
+    title: "Стъпка 2: Извличане (Scraping)",
+    description:
+      "След като намери страниците, нашата система прецизно извлича ключовата информация: цени, спецификации, наличност и изображения, превръщайки хаотичния HTML код в чисти данни.",
+  },
+  {
+    icon: <Trophy className="h-10 w-10 text-amber-500" />,
+    title: "Стъпка 3: Структуриране и Показване",
+    description:
+      "Накрая, събраните данни се анализират, групират и структурират в лесен за разбиране формат. Получавате пълна, ясна и обективна картина на продукта, за да направите най-добрия избор.",
+  },
+];
+export default async function HomePage() {
   const newest_products = await getLatestProducts();
 
   return (
-    <div className="grid grid-rows-[10px_1fr_20px] justify-items-center min-h-screen p-8 sm:p-4 font-[family-name:var(--font-geist-sans)]">
+    <div className=" min-h-screen p-8 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-
-        <section className="w-full bg-gradient-to-r from-blue-600 to-purple-600 p-8 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 border-3 border-dashed border-gray-300 dark:border-white/70">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-              <div className="hidden sm:block bg-white dark:bg-gray-800 p-3 rounded-full shadow-md border border-gray-200/80 dark:border-gray-700/60">
-                <Info className="w-6 h-6 text-blue-500" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">
-                  Пазарувай разумно и намери най-добрите оферти с лекота
-                </h2>
-                <p className="text-white mt-1">
-                  Виж как нашата платформа ти помага да спестиш време и пари
-                  ефикасно.
-                </p>
-              </div>
-            </div>
-            <Link href="/how-it-works">
-              <Button
-                variant="outline"
-                className="w-full md:w-auto bg-white dark:bg-gray-900 backdrop-blur-sm border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:bg-white/85 dark:hover:border-blue-400 dark:hover:bg-gray-900/60 transition-all duration-300 group">
-                Научи повече
-                <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
-              </Button>
-            </Link>
+        <InteractiveHero />
+        <section
+          className="w-full grid justify-items-center"
+          aria-labelledby="new-products">
+          <h2 id="new-products" className="text-3xl font-semibold mb-6">
+            Последни Находки
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+            {newest_products.map((product) => {
+              return(
+              <ProductCard key={product.id} {...product} />
+            )})}
           </div>
         </section>
 
-        <section className="w-full">
-          <h2 className="text-xl font-semibold mb-6">New Products</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 justify-items-center">
-            {newest_products.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
+        <section className="relative bg-slate-50 dark:bg-slate-800 py-8 mx-auto">
+          <div className="absolute inset-0 bg-grid-slate-100/[0.4] [mask-image:radial-gradient(ellipse_at_center,white,transparent_85%)] dark:bg-grid-slate-700/[0.2]"></div>
+
+          <div className="relative container mx-auto px-4 z-10">
+            <header className="text-center mb-4">
+              <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+                От Хаоса на Данните до Вашето Перфектно Решение
+              </h2>
+              <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-700 dark:text-slate-200">
+                Нашата платформа предоставя цялата информация, от която се
+                нуждаете, на едно централизирано място, чрез тези стъпки:
+              </p>
+            </header>
+
+            <div className="flex flex-col items-center justify-center gap-8 md:flex-row md:gap-4">
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl max-w-sm transition-all duration-300 hover:bg-white dark:hover:bg-slate-500/50 hover:shadow-xl hover:-translate-y-2">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-300 mb-6">
+                  {processSteps[0].icon}
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {processSteps[0].title}
+                </h3>
+                <p className="mt-2 text-slate-700 dark:text-slate-200">
+                  {processSteps[0].description}
+                </p>
+              </div>
+
+              <ChevronRight className="h-12 w-12 flex-shrink-0 text-slate-300 dark:text-slate-600 hidden md:block" />
+
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl max-w-sm transition-all duration-300 hover:bg-white dark:hover:bg-slate-500/50 hover:shadow-xl hover:-translate-y-2">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-300 mb-6">
+                  {processSteps[1].icon}
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {processSteps[1].title}
+                </h3>
+                <p className="mt-2 text-slate-700 dark:text-slate-200">
+                  {processSteps[1].description}
+                </p>
+              </div>
+
+              <ChevronRight className="h-12 w-12 flex-shrink-0 text-slate-300 dark:text-slate-600 hidden md:block" />
+
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl max-w-sm transition-all duration-300 hover:bg-white dark:hover:bg-slate-500/50 hover:shadow-xl hover:-translate-y-2">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-300 mb-6">
+                  {processSteps[2].icon}
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {processSteps[2].title}
+                </h3>
+                <p className="mt-2 text-slate-700 dark:text-slate-200">
+                  {processSteps[2].description}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-center mt-16">
+              <Link
+                href="/how-it-works"
+                className="
+              inline-block rounded-full bg-gradient-to-r from-sky-500 to-purple-600 
+              px-8 py-3 text-base font-semibold text-white shadow-lg
+              transition-all duration-300 ease-in-out
+              hover:scale-105 hover:shadow-sky-500/30
+            ">
+                Повече информация за Crawlitics
+              </Link>
+            </div>
           </div>
         </section>
       </main>

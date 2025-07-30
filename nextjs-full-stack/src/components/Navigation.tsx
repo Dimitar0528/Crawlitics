@@ -20,11 +20,20 @@ export default function Navigation() {
     { value: "dark", label: "Dark" },
     { value: "system", label: "System" },
   ];
-
+  
+  function switchTheme(value: string){
+    if(!document.startViewTransition){
+      setTheme(value);
+      return
+    }
+    document.startViewTransition(()=>{
+      setTheme(value);
+    })
+  }
   return (
     <nav className="sticky top-0 w-full z-50 backdrop-blur-md bg-white/80 dark:bg-gray-900/80 border-b border-gray-200/20 dark:border-gray-700/20">
       <div className="container mx-auto px-4 lg:px-18 py-4 flex items-center justify-between">
-        <Link href={'/'} className="flex items-center space-x-2">
+        <Link href={"/"} className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Search className="w-5 h-5 text-white" />
           </div>
@@ -46,7 +55,7 @@ export default function Navigation() {
               {themes.map((t) => (
                 <DropdownMenuItem
                   key={t.value}
-                  onClick={() => setTheme(t.value)}
+                  onClick={() => switchTheme(t.value)}
                   className={`flex items-center justify-between ${
                     theme === t.value ? "font-semibold" : ""
                   }`}>
@@ -58,7 +67,6 @@ export default function Navigation() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-
           <Button
             variant="outline"
             className="hidden md:flex bg-white dark:bg-transparent dark:hover:bg-gray-500/50">

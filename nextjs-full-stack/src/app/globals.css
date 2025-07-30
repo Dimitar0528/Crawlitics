@@ -121,7 +121,17 @@
   }
 }
 
+::view-transition-old(root){
+  animation-delay: 250ms;
+}
+::view-transition-new(root) {
+  animation: circle-in 600ms;
+}
 /* Custom animations */
+@keyframes circle-in {
+  from { clip-path: circle(0% at 50% 0%) }
+  to { clip-path: circle(130% at 50% 0%) }
+}
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -190,4 +200,19 @@ html {
 
 .animate-scroll-left {
   animation: scroll-left 20s linear infinite alternate-reverse;
+}
+
+@keyframes aurora {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-aurora {
+  background-size: 400% 400%;
+  animation: aurora 10s ease-in-out infinite alternate;
 }
