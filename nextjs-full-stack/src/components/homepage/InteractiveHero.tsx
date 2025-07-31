@@ -2,32 +2,42 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { toast } from "sonner";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
 export default function InteractiveHero() {
-    const router = useRouter();
-    const searchQuerySchema = z
+  const router = useRouter();
+  const searchQueryFormSchema = z.object({
+    search_query: z
       .string()
-      .trim()
-      .min(3, "Полето за търсене трябва да съдържа поне 3 символа.");
+      .min(3, "Полето за търсене трябва да съдържа поне 3 символа."),
+  });
 
-    const handleSearchSubmit = ( event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        const query = formData.get("q")?.toString().trim() ?? "";
-        const validationResult = searchQuerySchema.safeParse(query);
-        if (!validationResult.success) {
-        toast.error(`${z.prettifyError(validationResult.error)}`);
-        return;
-    }
-    const sanitizedQuery = validationResult.data;
+  const onSubmit = (values: z.infer<typeof searchQueryFormSchema>) => {
+    const sanitized_query = values.search_query;
     const params = new URLSearchParams();
-    params.set("q", sanitizedQuery); 
+    params.set("q", sanitized_query);
     router.push(`/crawleebot/search?${params.toString()}`);
-    };
+  };
+
+  // define form structure.
+  const form = useForm<z.infer<typeof searchQueryFormSchema>>({
+    resolver: zodResolver(searchQueryFormSchema),
+    defaultValues: {
+      search_query: "",
+    },
+  });
+  
   return (
     <section
       aria-labelledby="cta-tag"
@@ -53,13 +63,21 @@ export default function InteractiveHero() {
           сканира и анализира наличните магазини, за да ви покаже всички оферти,
           които наистина си заслужават.
         </p>
-        <form onSubmit={handleSearchSubmit} className="mt-10 flex w-full max-w-lg items-center space-x-2">
-          <Input
-            type="text"
-            name="q"
-            placeholder="Напр. Samsung Galaxy S25..."
-            className="
-                h-14 flex-1 rounded-full border-2
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="mt-10 flex w-full max-w-lg items-start justify-center space-x-2">
+            <FormField
+              control={form.control}
+              name="search_query"
+              render={({ field }) => (
+                <FormItem >
+                  <FormControl>
+                    <Input {...field} 
+                      type="text"
+                      placeholder="Напр. Samsung Galaxy S25..."
+                      className="
+                sm:w-md h-14 flex-1 rounded-full border-2
                 border-slate-300 dark:border-slate-600
                 bg-white/80 dark:bg-slate-800/80
                 px-6 text-base
@@ -68,21 +86,27 @@ export default function InteractiveHero() {
                 focus:border-purple-500 focus:ring-purple-500
                 transition-all duration-200 ease-in-out
               "
-            required
-          />
-          <Button
-            type="submit"
-            size="icon"
-            className="
+              required
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              className="
               h-14 w-14 flex-shrink-0 rounded-full
               bg-gradient-to-r from-sky-500 to-purple-600
               transition-all duration-300 ease-in-out
               hover:scale-105
             ">
-            <Search className="h-6 w-6" />
-            <span className="sr-only">Анализирай пазара</span>
-          </Button>
-        </form>
+              <Search className="h-6 w-6" />
+              <span className="sr-only">Анализирай пазара</span>
+            </Button>
+          </form>
+        </Form>
       </div>
     </section>
   );

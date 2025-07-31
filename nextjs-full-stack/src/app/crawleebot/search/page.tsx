@@ -1,83 +1,27 @@
-"use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import DOMPurify from "dompurify";
-import { Plus, X, Bot, Info } from "lucide-react";
+import { Suspense } from "react";
+import {  Info } from "lucide-react";
+import SpecialSearchForm from "@/components/crawleebot/SpecialSearchForm";
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Интелигентно търсене",
+};
 
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-
-interface Filter {
-  id: number;
-  name: string;
-  value: string;
-}
-
-export default function SearchPageWrapper() {
+export default function SpecialSearchPageWrapper() {
   return (
     <Suspense fallback={<div>Loading....</div>}>
-      <SearchPage />
+      <SpecialSearchPage />
     </Suspense>
   );
 }
 
-function SearchPage() {
-  const searchParams = useSearchParams();
-
-  const [mainQuery, setMainQuery] = useState("");
-  const [filters, setFilters] = useState<Filter[]>([]);
-  const [nextId, setNextId] = useState(1);
-
-  useEffect(() => {
-    const rawQuery = searchParams.get("q") || "";
-    const cleanQuery = DOMPurify.sanitize(rawQuery);
-    setMainQuery(cleanQuery);
-
-  }, [searchParams]);
-
-  const handleAddFilter = () => {
-    setFilters([...filters, { id: nextId, name: "", value: "" }]);
-    setNextId(nextId + 1);
-  };
-
-  const handleRemoveFilter = (id: number) => {
-    setFilters(filters.filter((filter) => filter.id !== id));
-  };
-
-  const handleFilterChange = (
-    id: number,
-    field: "name" | "value",
-    text: string
-  ) => {
-    setFilters(
-      filters.map((filter) =>
-        filter.id === id ? { ...filter, [field]: text } : filter
-      )
-    );
-  };
-
-  const handleFinalSearch = () => {
-    const searchPayload = {
-      query: mainQuery,
-      filters: filters.reduce((acc, filter) => {
-        if (filter.name && filter.value) {
-          acc[filter.name] = filter.value;
-        }
-        return acc;
-      }, {} as Record<string, string>),
-    };
-
-    console.log("Starting analysis with payload:", searchPayload);
-  };
+function SpecialSearchPage() {
 
   return (
     <div className="bg-slate-50 dark:bg-gray-900 min-h-screen">
       <div className="container mx-auto max-w-4xl p-8 text-center">
         <div className="flex justify-center items-center gap-3 mb-4">
-          <Bot className="h-10 w-10 text-purple-500" />
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-800 dark:text-slate-200 mb-4">
+          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-slate-800 dark:text-slate-200 mb-4">
             Преди да намерите перфектните продукти...
           </h1>
         </div>
@@ -138,7 +82,7 @@ function SearchPage() {
               вашата експертиза. Мислете за него като за изключително умен, но
               леко разсеян асистент. Посоченото име на продукта му дава основна
               посока, но допълнителните филтри са това, което наистина фокусира
-              неговия &quot;поглед&quot; върху специфични продукти.
+              неговия <strong>&quot;поглед&quot;</strong> върху специфични продукти.
             </p>
 
             <p className="mt-4 text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -149,7 +93,7 @@ function SearchPage() {
               </strong>{" "}
               или{" "}
               <strong className="font-semibold text-purple-600 dark:text-purple-400">
-                други специфични за продукта характерсиктики
+                други специфични за продукта характеристики
               </strong>
               , вие му помагате да елиминира хиляди неподходящи оферти и да се
               концентрира само върху най-добрите.
@@ -162,83 +106,8 @@ function SearchPage() {
           </div>
         </div>
 
-        <div className="mt-10">
-          <Label
-            htmlFor="mainQuery"
-            className="font-semibold text-slate-800 dark:text-slate-200">
-            Име на продукта
-          </Label>
-          <Input
-            id="mainQuery"
-            type="text"
-            value={mainQuery}
-            onChange={(e) => setMainQuery(e.target.value)}
-            placeholder="Напр. геймърски лаптоп..."
-            className="mt-2 h-12 text-lg"
-          />
-        </div>
+        <SpecialSearchForm />
 
-        <div className="mt-8 text-left">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-200">
-            Допълнителни филтри (препоръчително)
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-            Натиснете бутона (+), за да добавите филтър. Посочете име (напр.
-            &quot;RAM памет&quot;) и стойност (напр. &quot;16 GB&quot;).
-          </p>
-
-          <div className="mt-4 space-y-4">
-            {filters.map((filter) => (
-              <div
-                key={filter.id}
-                className="flex items-center gap-2 animate-in fade-in-50 duration-300">
-                <Input
-                  type="text"
-                  placeholder="Име на филтър (напр. Цена)"
-                  value={filter.name}
-                  onChange={(e) =>
-                    handleFilterChange(filter.id, "name", e.target.value)
-                  }
-                  className="h-11"
-                />
-                <Input
-                  type="text"
-                  placeholder="Стойност (напр. 1669-2420)"
-                  value={filter.value}
-                  onChange={(e) =>
-                    handleFilterChange(filter.id, "value", e.target.value)
-                  }
-                  className="h-11"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveFilter(filter.id)}
-                  className="text-slate-500 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/50 dark:hover:text-red-400"
-                  title="Изтрий филтър">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-
-          <Button
-            variant="outline"
-            onClick={handleAddFilter}
-            className="mt-4 w-full border-dashed">
-            <Plus className="h-4 w-4 mr-2" />
-            Добави нов филтър
-          </Button>
-        </div>
-
-        <div className="mt-12">
-          <Button
-            size="lg"
-            onClick={handleFinalSearch}
-            className="w-full max-w-xs h-14 text-lg font-bold bg-gradient-to-r from-sky-500 to-purple-600 hover:scale-105 transition-transform duration-300">
-            Анализирай с {filters.length + 1} критерия
-          </Button>
-        </div>
       </div>
     </div>
   );
