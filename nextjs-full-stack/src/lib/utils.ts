@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+const EUR_TO_BGN_RATE = 1.95583;
 
 export function calculate_product_variant_prices(price: number) {
   const price_bgn = new Intl.NumberFormat("bg-BG", {
@@ -14,7 +15,6 @@ export function calculate_product_variant_prices(price: number) {
     maximumFractionDigits: 2,
   }).format(price);
 
-  const EUR_TO_BGN_RATE = 1.95583;
   const priceInEUR = price / EUR_TO_BGN_RATE;
   const price_eur = new Intl.NumberFormat("de-DE", {
     // using German locale for standard Euro formatting
@@ -77,3 +77,47 @@ export function getVariantSummary(
 
   return { ...summary, totalCount: variants.length };
 }
+
+
+export const getPriceHistoryChartData = (variants: ProductVariant[]) => {
+  const priceHistoryByDate: { [date: string]: number[] } = {};
+
+  //  aggregate all prices for each date
+  variants.forEach((variant) => {
+    variant.price_history.forEach((pricePoint) => {
+      const date = new Date(pricePoint.recorded_at).toISOString().split("T")[0];
+      if (!priceHistoryByDate[date]) {
+        priceHistoryByDate[date] = [];
+      }
+      priceHistoryByDate[date].push(pricePoint.price);
+    });
+  });
+
+  const chartData = Object.entries(priceHistoryByDate).map(([date, prices]) => {
+
+    const minPriceBgn = Math.min(...prices);
+    const maxPriceBgn = Math.max(...prices);
+    const averagePriceBgn =
+      prices.reduce((acc, price) => acc + price, 0) / prices.length;
+
+    return {
+      date,
+      minPrice: {
+        bgn: parseFloat(minPriceBgn.toFixed(2)),
+        eur: parseFloat((minPriceBgn / EUR_TO_BGN_RATE).toFixed(2)),
+      },
+      averagePrice: {
+        bgn: parseFloat(averagePriceBgn.toFixed(2)),
+        eur: parseFloat((averagePriceBgn / EUR_TO_BGN_RATE).toFixed(2)),
+      },
+      maxPrice: {
+        bgn: parseFloat(maxPriceBgn.toFixed(2)),
+        eur: parseFloat((maxPriceBgn / EUR_TO_BGN_RATE).toFixed(2)),
+      },
+    };
+  });
+
+  return chartData.sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+};

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Info, Store, BadgeEuro, Cpu, Tag } from "lucide-react";
+import { Info, Store, BadgeEuro, Cpu, Tag, TrendingUp } from "lucide-react";
 
 import BackButton from "@/components/products/BackButton";
 import ReadMore from "@/components/products/ReadMore";
@@ -14,8 +14,9 @@ import {
 import VariantCard from "@/components/products/cards/VariantCard";
 import { SpecList } from "@/components/products/SpecList";
 import ProductImage from "@/components/products/images/ProductImage";
-
+import PriceHistoryChart from "@/components/products/charts/PriceHistoryChart";
 export const revalidate = 3600;
+
 
 export async function generateStaticParams() {
   const newest_products = await getLatestProducts();
@@ -35,11 +36,11 @@ export async function generateMetadata({
     notFound();
   }
   return {
-    title: `${product.name
+    title: product.name
       .split(" ")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ")} | Crawlitics`,
-    description: `Страница, показваща информация за продукта ${product.name}`,
+      .join(" "),
+    description: product.description.split(".").slice(0, 1).join("").trim(),
   };
 }
 
@@ -61,7 +62,7 @@ export default async function ProductPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mb-12">
-       <ProductImage name={product.name} variants={product.variants}/>
+        <ProductImage name={product.name} variants={product.variants} />
         <section
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">
@@ -181,6 +182,15 @@ export default async function ProductPage({
             )}
           </div>
         </div>
+      </section>
+
+      <section aria-labelledby="price-history-chart" className="mt-16">
+        <h2
+          id="price-history-chart"
+          className="flex items-center justify-center gap-3 text-3xl font-bold text-slate-800 dark:text-gray-200 mb-6">
+          <TrendingUp className="w-8 h-8 text-purple-500" /> Ценова история
+        </h2>
+        <PriceHistoryChart variants={product.variants} />
       </section>
     </div>
   );
