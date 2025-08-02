@@ -1,5 +1,4 @@
 
-import { Suspense } from "react";
 import {  Info } from "lucide-react";
 import SpecialSearchForm from "@/components/crawleebot/SpecialSearchForm";
 import { Metadata } from "next";
@@ -7,15 +6,8 @@ export const metadata: Metadata = {
   title: "Интелигентно търсене",
 };
 
-export default function SpecialSearchPageWrapper() {
-  return (
-    <Suspense fallback={<div>Loading....</div>}>
-      <SpecialSearchPage />
-    </Suspense>
-  );
-}
 
-function SpecialSearchPage() {
+export default function SpecialSearchPage() {
 
   return (
     <div className="bg-slate-50 dark:bg-gray-900 min-h-screen">

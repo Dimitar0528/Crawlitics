@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Crawlitics",
-    default: "Crawlitics Page",
+    template: "%s - Crawlitics",
+    default: "Crawlitics Страница",
   },
   description:
     "Crawlitics е платформа за интелигентно сравнение на цени, проследяване на продукти и откриване на най-добрите оферти онлайн.",
@@ -37,10 +37,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Toaster position="top-center" />
+        <Toaster position="top-center" richColors />
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="system" 
           enableSystem
           disableTransitionOnChange
           enableColorScheme>

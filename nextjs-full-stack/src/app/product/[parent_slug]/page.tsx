@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Info, Store, BadgeEuro, Cpu, Tag, TrendingUp } from "lucide-react";
+import { Info, Store, BadgeEuro, Cpu, Tag, TrendingUp, Loader2 } from "lucide-react";
 
 import BackButton from "@/components/products/BackButton";
 import ReadMore from "@/components/products/ReadMore";
@@ -15,6 +15,7 @@ import VariantCard from "@/components/products/cards/VariantCard";
 import { SpecList } from "@/components/products/SpecList";
 import ProductImage from "@/components/products/images/ProductImage";
 import PriceHistoryChart from "@/components/products/charts/PriceHistoryChart";
+import { Suspense } from "react";
 export const revalidate = 3600;
 
 
@@ -62,7 +63,14 @@ export default async function ProductPage({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mb-12">
-        <ProductImage name={product.name} variants={product.variants} />
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+              <Loader2 className="h-10 w-10 animate-spin text-white" />
+            </div>
+          }>
+          <ProductImage name={product.name} variants={product.variants} />
+        </Suspense>
         <section
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">

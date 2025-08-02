@@ -4,17 +4,14 @@ import Image from "next/image";
 import { ProductVariant } from "@/lib/validations/product";
 import { useState } from "react";
 
-import Lightbox from "yet-another-react-lightbox";
-import Zoom from "yet-another-react-lightbox/plugins/zoom";
-import Counter from "yet-another-react-lightbox/plugins/counter";
-import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
-
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/counter.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
+import dynamic from "next/dynamic";
+const ProductImagesGallery = dynamic(() => import("@/components/products/images/ProductImagesGallery"));
 
 export default function ProductImage({name, variants}: {name: string, variants: ProductVariant[]}) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>();
   const imageUrls = variants?.map((v) => v.image_url) ?? []
   const slides = imageUrls.map((url) => ({ src: url }));
   const heroImageUrl = imageUrls[0]
@@ -38,14 +35,9 @@ export default function ProductImage({name, variants}: {name: string, variants: 
           Кликни, за да видиш галерията с изображения
         </span>
       </div>
-
-      <Lightbox
-        open={open}
-        close={() => setOpen(false)}
-        slides={slides}
-        plugins={[Zoom, Counter, Thumbnails]}
-        counter={{ container: { style: { top: 0 } } }}
-      />
+      {open !== undefined && (
+        <ProductImagesGallery open={open} close={() => setOpen(false)} slides={slides} />
+      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { getLatestProducts } from "@/lib/data";
 import InteractiveHero from "@/components/homepage/InteractiveHero";
 
 export const metadata: Metadata = {
-  title: "Начална страница | Crawlitics",
+  title: "Начална страница - Crawlitics",
   description: "Начална страница на Crawlitics платформата",
 };
 

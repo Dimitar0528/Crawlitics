@@ -26,10 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 const specialSearchFormSchema = z.object({
-  product_name: z.string().trim().min(3, {
-    message: "Името на продукта трябва да бъде поне 3 символа.",
-  }),
+  product_name: z.string().trim().min(3, "Името на продукта трябва да бъде поне 3 символа.", ),
   product_category: z.string("Моля изберете категория на продукта"),
   filters: z
     .array(
@@ -74,6 +73,7 @@ export default function SpecialSearchForm() {
     console.log("Form submitted with valid data:", values);
 
     const searchPayload = {
+      category: values.product_category,
       query: values.product_name,
       filters: values.filters?.reduce((acc, filter) => {
         acc[filter.name] = filter.value;

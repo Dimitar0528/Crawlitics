@@ -1,8 +1,8 @@
-import { LatestProductsResponseSchema, LatestProduct, Product, ProductSchema } from "@/lib/validations/product";
-
+import { LatestProductsResponseSchema, ProductSchema } from "@/lib/validations/product";
+import { cache } from "react";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function getLatestProducts(): Promise<LatestProduct[]> {
+export async function getLatestProducts() {
   try {
     const response = await fetch(`${API_BASE}/api/latest-products`);
     if (!response.ok) {
@@ -26,14 +26,14 @@ export async function getLatestProducts(): Promise<LatestProduct[]> {
   }
 }
 
-export async function getProduct(slug: string): Promise<Product | null> {
-  try {
+export const getProduct = cache(async (slug:string)=> { 
+   try {
     const response = await fetch(`${API_BASE}/api/product/${slug}`);
     if (!response.ok) {
       console.error(`Failed to fetch product ${slug}:`, response.statusText);
       return null;
     }
-    const rawData = await response.json()
+    const rawData = await response.json();
     const result = ProductSchema.safeParse(rawData);
     if (!result.success) {
       console.error(
@@ -43,8 +43,8 @@ export async function getProduct(slug: string): Promise<Product | null> {
       return null;
     }
     return result.data;
-  } catch(err){
+  } catch (err) {
     console.log(err);
-    return null
+    return null;
   }
-}
+})

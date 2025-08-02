@@ -17,8 +17,10 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+
 import { calculate_product_variant_prices, getPriceHistoryChartData } from "@/lib/utils";
 import { ProductVariant } from "@/lib/validations/product"; 
+
 const chartConfig = {
   minPrice: {
     label: "Мин. цена",
@@ -77,6 +79,19 @@ export default function PriceHistoryChart({ variants }: PriceHistoryChartProps) 
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center justify-center gap-4 border-t pt-4">
+          {Object.entries(chartConfig).map(([key, config]) => (
+            <div key={key} className="flex items-center gap-2 text-sm">
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: config.color }}
+              />
+              <div className="flex-1">
+                <p className="font-medium text-foreground">{config.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
         <ChartContainer config={chartConfig} className="h-[450px] w-full">
           <LineChart
             accessibilityLayer

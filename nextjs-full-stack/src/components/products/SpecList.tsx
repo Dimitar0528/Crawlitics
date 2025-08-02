@@ -31,7 +31,7 @@ const SpecItem = ({
     <span className="font-medium text-slate-600 dark:text-slate-300 capitalize">
       {specKey.replace(/_/g, " ")}
     </span>
-    <span className="font-semibold text-slate-800 dark:text-slate-100 text-right">
+    <span className="font-semibold text-slate-800 dark:text-slate-200 text-right">
       {String(specValue)}
     </span>
   </div>

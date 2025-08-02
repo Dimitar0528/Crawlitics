@@ -86,10 +86,9 @@ export default function InteractiveHero() {
                 focus:border-purple-500 focus:ring-purple-500
                 transition-all duration-200 ease-in-out
               "
-              required
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-red-400" />
                 </FormItem>
               )}
             />
