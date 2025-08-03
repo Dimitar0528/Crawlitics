@@ -16,6 +16,7 @@ import { SpecList } from "@/components/products/SpecList";
 import ProductImage from "@/components/products/images/ProductImage";
 import PriceHistoryChart from "@/components/products/charts/PriceHistoryChart";
 import { Suspense } from "react";
+import PriceAlertForm from "@/components/products/forms/PriceAlertForm";
 export const revalidate = 3600;
 
 
@@ -75,7 +76,7 @@ export default async function ProductPage({
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">
           <header>
-            <p className="text-base font-bold text-blue-600 dark:text-blue-300 uppercase">
+            <p className="text-base font-extrabold text-blue-600 dark:text-blue-300 uppercase">
               {product.brand}
             </p>
             <h1
@@ -199,6 +200,10 @@ export default async function ProductPage({
           <TrendingUp className="w-8 h-8 text-purple-500" /> Ценова история
         </h2>
         <PriceHistoryChart variants={product.variants} />
+      </section>
+
+      <section aria-labelledby="price-alert-section" className="mt-12">
+        <PriceAlertForm />
       </section>
     </div>
   );

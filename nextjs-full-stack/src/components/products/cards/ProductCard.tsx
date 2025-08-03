@@ -23,7 +23,7 @@ export default function ProductCard(product: LatestProduct) {
   const latest_lowest_available_price = product.variants
     ?.filter((variant) => variant.availability === "В наличност")
     .reduce((min, variant) => {
-      const priceNum = variant.latest_lowest_price_record!.price;
+      const priceNum = variant.latest_lowest_price_record.price;
       return priceNum < min ? priceNum : min;
     }, Infinity);
   const { price_bgn, price_eur } = calculate_product_variant_prices(

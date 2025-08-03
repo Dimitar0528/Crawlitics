@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, LinkIcon, ShoppingCart } from "lucide-react";
+import { BellRing, CheckCircle, LinkIcon, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { SpecList } from "../SpecList";
 import { ProductVariant } from "@/lib/validations/product";
 import { calculate_product_variant_prices } from "@/lib/utils";
+import AvailabilityAlertModal from "../forms/AvailabilityAlertForm";
 
 export default function VariantCard({
   variants,
@@ -28,6 +29,10 @@ export default function VariantCard({
   );
   const variantRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const isInitialLoad = useRef(true);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedVariantForAlert, setSelectedVariantForAlert] =
+    useState<ProductVariant | null>(null);
 
   useEffect(() => {
     if (isInitialLoad.current) {
@@ -70,6 +75,12 @@ export default function VariantCard({
       }, 4000);
   };
 
+  const handleNotifyClick = (e: React.MouseEvent, variant: ProductVariant) => {
+    e.stopPropagation();
+    setSelectedVariantForAlert(variant);
+    setModalOpen(true);
+  };
+  
   return (
     <TooltipProvider>
       <div className="space-y-4 pr-4">
@@ -134,10 +145,10 @@ export default function VariantCard({
 
               <div className="md:col-span-1 flex flex-row md:flex-col items-center justify-between md:justify-center gap-2">
                 <div>
-                  <p className="text-xl text-center font-bold text-blue-700 dark:text-blue-300 leading-none">
+                  <p className="text-lg sm:text-xl text-center font-bold text-blue-700 dark:text-blue-300 leading-none">
                     {price_bgn}
                   </p>
-                  <p className="text-xl text-center font-bold text-blue-700 dark:text-blue-300 leading-none my-2">
+                  <p className="text-lg sm:text-xl text-center font-bold text-blue-700 dark:text-blue-300 leading-none my-2">
                     {price_eur}
                   </p>
                 </div>
@@ -151,23 +162,38 @@ export default function VariantCard({
                 </div>
               </div>
 
-              <div className="md:col-span-1 flex justify-center">
-                <Link
-                  href={variant.source_url || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full md:w-auto"
-                  onClick={(e) => e.stopPropagation()}>
-                  <Button className="w-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-blue-600 dark:hover:bg-blue-400">
-                    <ShoppingCart className="w-5 h-5" />
-                    <span>Към магазина</span>
+              <div className="md:col-span-1 flex flex-col gap-4 justify-center">
+                  <Link
+                    href={variant.source_url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full md:w-auto"
+                    onClick={(e) => e.stopPropagation()}>
+                    <Button className="w-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-blue-600 dark:hover:bg-blue-400">
+                      <ShoppingCart className="w-5 h-5" />
+                      <span>Към магазина</span>
+                    </Button>
+                  </Link>
+                  {!isAvailable && (
+                  <Button
+                    onClick={(e) => handleNotifyClick(e, variant)}
+                    className="w-full bg-amber-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-amber-700">
+                    <BellRing className="w-5 h-5" />
+                    <span>Уведоми при наличност</span>
                   </Button>
-                </Link>
+                  )}
               </div>
             </div>
           );
         })}
       </div>
+      {selectedVariantForAlert && (
+        <AvailabilityAlertModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          variant={selectedVariantForAlert}
+        />
+      )}
     </TooltipProvider>
   );
 }

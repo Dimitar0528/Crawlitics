@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import DOMPurify from "dompurify";
 import { Plus, X } from "lucide-react";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
@@ -27,23 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const specialSearchFormSchema = z.object({
-  product_name: z.string().trim().min(3, "Името на продукта трябва да бъде поне 3 символа.", ),
-  product_category: z.string("Моля изберете категория на продукта"),
-  filters: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1, "Името на филтъра е задължително."),
-        value: z
-          .string()
-          .trim()
-          .min(1, "Стойността на филтъра е задължителна."),
-      })
-    )
-    .optional(),
-});
-
-type SpecialSearchFormValues = z.infer<typeof specialSearchFormSchema>;
+import {
+  SpecialSearchFormValues,
+  specialSearchFormSchema,
+} from "@/lib/validations/form";
 
 export default function SpecialSearchForm() {
   const searchParams = useSearchParams();
@@ -166,7 +152,10 @@ export default function SpecialSearchForm() {
                 render={({ field }) => (
                   <FormItem className="flex-1">
                     <FormControl>
-                      <Input {...field} placeholder="Стойност (напр. 1669-2420)" />
+                      <Input
+                        {...field}
+                        placeholder="Стойност (напр. 1669-2420)"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

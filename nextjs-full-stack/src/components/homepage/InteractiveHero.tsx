@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,19 +11,13 @@ import {
 } from "@/components/ui/form";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
+import { SearchQueryForm, searchQueryFormSchema } from "@/lib/validations/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 export default function InteractiveHero() {
   const router = useRouter();
-  const searchQueryFormSchema = z.object({
-    search_query: z
-      .string()
-      .min(3, "Полето за търсене трябва да съдържа поне 3 символа."),
-  });
-
-  const onSubmit = (values: z.infer<typeof searchQueryFormSchema>) => {
+  const onSubmit = (values: SearchQueryForm) => {
     const sanitized_query = values.search_query;
     const params = new URLSearchParams();
     params.set("q", sanitized_query);
@@ -31,13 +25,13 @@ export default function InteractiveHero() {
   };
 
   // define form structure.
-  const form = useForm<z.infer<typeof searchQueryFormSchema>>({
+  const form = useForm<SearchQueryForm>({
     resolver: zodResolver(searchQueryFormSchema),
     defaultValues: {
       search_query: "",
     },
   });
-  
+
   return (
     <section
       aria-labelledby="cta-tag"
@@ -71,9 +65,10 @@ export default function InteractiveHero() {
               control={form.control}
               name="search_query"
               render={({ field }) => (
-                <FormItem >
+                <FormItem>
                   <FormControl>
-                    <Input {...field} 
+                    <Input
+                      {...field}
                       type="text"
                       placeholder="Напр. Samsung Galaxy S25..."
                       className="
