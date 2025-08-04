@@ -7,6 +7,8 @@ import { Toaster } from "@/components/ui/sonner";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { CookieBanner } from "@/components/cookies/CookieBanner";
+import { CompareProvider } from "@/context/CompareContext";
+import CompareTray from "@/components/products/CompareTray";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -37,16 +39,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" richColors closeButton />
         <ThemeProvider
           attribute="class"
-          defaultTheme="system" 
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
           enableColorScheme>
           <CookieBanner />
           <Navigation />
-          <main>{children}</main>
+          <CompareProvider>
+            <CompareTray />
+            <main>{children}</main>
+          </CompareProvider>
           <Footer />
         </ThemeProvider>
       </body>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BellRing, CheckCircle, LinkIcon, ShoppingCart } from "lucide-react";
+import { BellRing, LinkIcon, PlusCircle, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -16,12 +16,13 @@ import { SpecList } from "../SpecList";
 import { ProductVariant } from "@/lib/validations/product";
 import { calculate_product_variant_prices } from "@/lib/utils";
 import AvailabilityAlertModal from "../forms/AvailabilityAlertForm";
-
+import { useCompare } from "@/context/CompareContext";
 export default function VariantCard({
   variants,
 }: {
   variants: ProductVariant[];
 }) {
+  const {addToCompare} = useCompare()
   const searchParams = useSearchParams();
 
   const [selectedVariantSlug, setSelectedVariantSlug] = useState<string | null>(
@@ -64,7 +65,7 @@ export default function VariantCard({
     navigator.clipboard
       .writeText(newUrl)
       .then(() => {
-        toast.success("Shareable link copied to clipboard!");
+        toast.success("Линкът е копиран в клипборда!");
       })
       .catch((err) => {
         console.error("Failed to copy text: ", err);
@@ -83,7 +84,7 @@ export default function VariantCard({
   
   return (
     <TooltipProvider>
-      <div className="space-y-4 pr-4">
+      <div className="space-y-4 ">
         {variants.map((variant) => {
           const isSelected = selectedVariantSlug === variant.slug;
           const isAvailable = variant.availability === "В наличност";
@@ -110,29 +111,46 @@ export default function VariantCard({
                     : "border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-purple-500 dark:hover:border-purple-400"
                 }
               `}>
-              {isSelected && (
-                <div className="absolute -top-3 -right-3 bg-blue-600 text-white rounded-full p-1.5 shadow-md z-10">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-              )}
-              <div className="absolute top-0 left-0 z-10">
+              <div className="absolute top-0 left-0.5 z-10">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full w-6 h-6 bg-slate-300 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      className="rounded-full w-8 h-8 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-200 dark:hover:bg-slate-600"
                       onClick={(e) => handleShareVariant(e, variant.slug)}>
                       <LinkIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Copy shareable link</p>
+                    <p>Копирай линка на клипборда</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
 
-              <div className="md:col-span-1">
+              <div className="absolute top-0 right-0.5 z-10">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-20 h-8 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCompare(variant);
+                      }}>
+                      <PlusCircle className="h-4 w-4" />
+                      Сравни
+                      <span className="sr-only">Сравни</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Сравни продукта</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              <div className="md:col-span-1 mt-4 sm:mt-2">
                 {Object.keys(variants).length === 0 ? (
                   <p className="text-center text-gray-700 italic bg-gray-200 px-4 py-2 rounded-md">
                     Всички характеристики за този вариант съвпадат с общите
@@ -163,25 +181,25 @@ export default function VariantCard({
               </div>
 
               <div className="md:col-span-1 flex flex-col gap-4 justify-center">
-                  <Link
-                    href={variant.source_url || "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full md:w-auto"
-                    onClick={(e) => e.stopPropagation()}>
-                    <Button className="w-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-blue-600 dark:hover:bg-blue-400">
-                      <ShoppingCart className="w-5 h-5" />
-                      <span>Към магазина</span>
-                    </Button>
-                  </Link>
-                  {!isAvailable && (
+                <Link
+                  href={variant.source_url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full md:w-auto"
+                  onClick={(e) => e.stopPropagation()}>
+                  <Button className="w-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-blue-600 dark:hover:bg-blue-400">
+                    <ShoppingCart className="w-5 h-5" />
+                    <span>Към магазина</span>
+                  </Button>
+                </Link>
+                {!isAvailable && (
                   <Button
                     onClick={(e) => handleNotifyClick(e, variant)}
                     className="w-full bg-amber-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-amber-700">
                     <BellRing className="w-5 h-5" />
                     <span>Уведоми при наличност</span>
                   </Button>
-                  )}
+                )}
               </div>
             </div>
           );
