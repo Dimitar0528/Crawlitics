@@ -17,6 +17,7 @@ import ProductImage from "@/components/products/images/ProductImage";
 import PriceHistoryChart from "@/components/products/charts/PriceHistoryChart";
 import { Suspense } from "react";
 import PriceAlertForm from "@/components/products/forms/PriceAlertForm";
+import ProductHeaderActions from "@/components/products/ProductHeaderActions";
 export const revalidate = 3600;
 
 
@@ -84,6 +85,9 @@ export default async function ProductPage({
               className="mt-1 text-2xl lg:text-3xl font-extrabold tracking-tighter text-slate-900 dark:text-white capitalize">
               {product.name}
             </h1>
+            <div className="mt-6">
+              <ProductHeaderActions product={product} />
+            </div>
           </header>
 
           <section aria-labelledby="product-description">
@@ -125,7 +129,7 @@ export default async function ProductPage({
             </p>
           </div>
 
-          <div className="space-y-6 max-h-[40rem] overflow-y-auto">
+          <div className="space-y-6 px-4 sm:px-0 max-h-[40rem] overflow-y-auto">
             {Object.entries(groupVariantsByStore(product.variants || []))
               .length > 0 ? (
               Object.entries(groupVariantsByStore(product.variants || [])).map(

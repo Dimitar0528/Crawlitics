@@ -9,7 +9,7 @@ export async function getLatestProducts() {
       console.error("Failed to fetch latest products:", response.statusText);
       return [];
     }
-    const rawData = await response.json()
+    const rawData: unknown = await response.json()
     const result = LatestProductsResponseSchema.safeParse(rawData);
     if (!result.success) {
       console.error(
@@ -33,7 +33,7 @@ export const getProduct = cache(async (slug:string)=> {
       console.error(`Failed to fetch product ${slug}:`, response.statusText);
       return null;
     }
-    const rawData = await response.json();
+    const rawData: unknown = await response.json();
     const result = ProductSchema.safeParse(rawData);
     if (!result.success) {
       console.error(

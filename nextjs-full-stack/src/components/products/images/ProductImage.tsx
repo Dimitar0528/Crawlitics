@@ -30,13 +30,18 @@ export default function ProductImage({name, variants}: {name: string, variants: 
           fill
           className="object-contain"
           priority
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <span className="absolute top-0 left-0 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
           Кликни, за да видиш галерията с изображения
         </span>
       </div>
       {open !== undefined && (
-        <ProductImagesGallery open={open} close={() => setOpen(false)} slides={slides} />
+        <ProductImagesGallery
+          open={open}
+          close={() => setOpen(false)}
+          slides={slides}
+        />
       )}
     </div>
   );

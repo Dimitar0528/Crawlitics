@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import DOMPurify from "dompurify";
-import { Plus, X } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
@@ -28,14 +28,14 @@ import {
 
 import {
   SpecialSearchFormValues,
-  specialSearchFormSchema,
+  SpecialSearchFormSchema,
 } from "@/lib/validations/form";
 
 export default function SpecialSearchForm() {
   const searchParams = useSearchParams();
 
   const form = useForm<SpecialSearchFormValues>({
-    resolver: zodResolver(specialSearchFormSchema),
+    resolver: zodResolver(SpecialSearchFormSchema),
     defaultValues: {
       product_name: "",
       filters: [],
@@ -185,9 +185,13 @@ export default function SpecialSearchForm() {
 
         <div className="text-center">
           <Button
+            disabled={form.formState.isSubmitting}
             type="submit"
             size="lg"
             className="w-full max-w-xs h-14 text-lg font-semibold bg-gradient-to-r from-sky-500 to-purple-600 hover:scale-105 transition-transform duration-300">
+            {form.formState.isSubmitting && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
             Анализирай пазара с {2 + (form.watch("filters")?.length || 0)}{" "}
             Критерия
           </Button>

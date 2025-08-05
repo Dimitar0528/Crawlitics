@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/form";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SearchQueryForm, searchQueryFormSchema } from "@/lib/validations/form";
+import { SearchQueryForm, SearchQueryFormSchema } from "@/lib/validations/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -26,7 +26,7 @@ export default function InteractiveHero() {
 
   // define form structure.
   const form = useForm<SearchQueryForm>({
-    resolver: zodResolver(searchQueryFormSchema),
+    resolver: zodResolver(SearchQueryFormSchema),
     defaultValues: {
       search_query: "",
     },

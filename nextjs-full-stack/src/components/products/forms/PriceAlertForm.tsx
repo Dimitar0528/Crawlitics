@@ -20,7 +20,7 @@ import { toast } from "sonner";
 
 import {
   BASE_EMAIL_FORM_SCHEMA,
-  extendedPriceAlertFormSchema,
+  ExtendedPriceAlertFormSchema,
   ExtendedPriceAlertForm,
 } from "@/lib/validations/form";
 
@@ -30,7 +30,7 @@ export default function PriceAlertForm() {
 
   const form = useForm<ExtendedPriceAlertForm>({
     resolver: zodResolver(
-      showTargetPrice ? extendedPriceAlertFormSchema : BASE_EMAIL_FORM_SCHEMA
+      showTargetPrice ? ExtendedPriceAlertFormSchema : BASE_EMAIL_FORM_SCHEMA
     ),
     defaultValues: {
       email: "",
@@ -113,7 +113,7 @@ export default function PriceAlertForm() {
             <Button
               type="button"
               variant="link"
-              className="p-0 text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400"
+              className="p-0 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-300"
               onClick={() => setShowTargetPrice(!showTargetPrice)}>
               {showTargetPrice
                 ? "- Премахни желаната цена"
