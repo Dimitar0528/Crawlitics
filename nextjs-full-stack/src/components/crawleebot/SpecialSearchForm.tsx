@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DOMPurify from "dompurify";
 import { Loader2, Plus, X } from "lucide-react";
@@ -30,9 +30,11 @@ import {
   SpecialSearchFormValues,
   SpecialSearchFormSchema,
 } from "@/lib/validations/form";
+import { startCrawleeBot } from "@/lib/data";
 
 export default function SpecialSearchForm() {
   const searchParams = useSearchParams();
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<SpecialSearchFormValues>({
     resolver: zodResolver(SpecialSearchFormSchema),
@@ -55,20 +57,14 @@ export default function SpecialSearchForm() {
     }
   }, [searchParams, form]);
 
-  const onSubmit = (values: SpecialSearchFormValues) => {
-    console.log("Form submitted with valid data:", values);
-
-    const searchPayload = {
-      category: values.product_category,
-      query: values.product_name,
-      filters: values.filters?.reduce((acc, filter) => {
-        acc[filter.name] = filter.value;
-        return acc;
-      }, {} as Record<string, string>),
-    };
-
-    toast.success("Започване на анализ...");
-    console.log("Starting analysis with payload:", searchPayload);
+  const onSubmit = async (values: SpecialSearchFormValues) => {
+    setServerError(null);
+      const result = await startCrawleeBot(values);
+      if (!result.success) {
+        setServerError(result.error);
+        return;
+      }
+      toast.success(result.data.message);
   };
 
   return (
@@ -196,6 +192,9 @@ export default function SpecialSearchForm() {
             Критерия
           </Button>
         </div>
+        {serverError && (
+          <p className="text-sm text-red-500 text-center">{serverError}</p>
+        )}
       </form>
     </Form>
   );

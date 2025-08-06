@@ -22,8 +22,9 @@ export const revalidate = 3600;
 
 
 export async function generateStaticParams() {
-  const newest_products = await getLatestProducts();
-  return newest_products.map((product) => ({
+  const result = await getLatestProducts();
+  if(!result.success) return []
+  return result.data.map((product) => ({
     parent_slug: product.slug,
   }));
 }
@@ -34,16 +35,16 @@ export async function generateMetadata({
   params: Promise<{ parent_slug: string }>;
 }): Promise<Metadata> {
   const { parent_slug } = await params;
-  const product = await getProduct(parent_slug);
-  if (!product) {
+  const result = await getProduct(parent_slug);
+  if (!result.success) {
     notFound();
   }
   return {
-    title: product.name
+    title: result.data.name
       .split(" ")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" "),
-    description: product.description.split(".").slice(0, 1).join("").trim(),
+    description: result.data.description.split(".").slice(0, 1).join("").trim(),
   };
 }
 
@@ -53,11 +54,12 @@ export default async function ProductPage({
   params: Promise<{ parent_slug: string }>;
 }) {
   const { parent_slug } = await params;
-  const product = await getProduct(parent_slug);
+  const result = await getProduct(parent_slug);
 
-  if (!product) {
+  if (!result.success) {
     notFound();
   }
+  const product = result.data
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <div className="mb-6">

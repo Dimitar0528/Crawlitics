@@ -1,50 +1,133 @@
-import { LatestProductsResponseSchema, ProductSchema } from "@/lib/validations/product";
+import { LatestProductsResponseSchema, ProductSchema, LatestProduct, Product } from "@/lib/validations/product";
 import { cache } from "react";
+import {  SpecialSearchFormValues } from "./validations/form";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export async function getLatestProducts() {
+type DataResponse<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+  
+export async function getLatestProducts(): Promise<
+  DataResponse<LatestProduct[]>
+> {
   try {
     const response = await fetch(`${API_BASE}/api/latest-products`);
+
     if (!response.ok) {
-      console.error("Failed to fetch latest products:", response.statusText);
-      return [];
+      const errorText = await response.text();
+      console.error(
+        "Failed to fetch latest products",
+        response.status,
+        errorText
+      );
+      return {
+        success: false,
+        error: `Неуспешно извличане на данни. Сървърът отговори със статус ${response.status}.`,
+      };
     }
-    const rawData: unknown = await response.json()
+
+    const rawData: unknown = await response.json();
+
     const result = LatestProductsResponseSchema.safeParse(rawData);
+
     if (!result.success) {
       console.error(
         "Validation Error: The latest products data is malformed.",
         result.error
       );
-      return [];
+      return {
+        success: false,
+        error: "Получени са неправилно форматирани данни от сървъра.",
+      };
     }
 
-    return result.data;
+    return { success: true, data: result.data };
   } catch (err) {
-    console.error("Error fetching latest products:", err);
-    return [];
+    console.error(
+      "Мрежова или неочаквана грешка при извличане на най-новите продукти",
+      err
+    );
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Възникна неизвестна грешка." };
   }
 }
-
-export const getProduct = cache(async (slug:string)=> { 
+export const getProduct = cache(async (slug:string): Promise<DataResponse<Product>> => { 
    try {
-    const response = await fetch(`${API_BASE}/api/product/${slug}`);
-    if (!response.ok) {
-      console.error(`Failed to fetch product ${slug}:`, response.statusText);
-      return null;
-    }
-    const rawData: unknown = await response.json();
-    const result = ProductSchema.safeParse(rawData);
-    if (!result.success) {
-      console.error(
-        "Validation Error: The product data is malformed.",
-        result.error
-      );
-      return null;
-    }
-    return result.data;
-  } catch (err) {
-    console.log(err);
-    return null;
-  }
+     const response = await fetch(`${API_BASE}/api/product/${slug}`);
+
+     if (!response.ok) {
+       const errorText = await response.text();
+       console.error(
+         `Failed to fetch product ${slug}:`, 
+         response.status,
+         errorText
+       );
+       return {
+         success: false,
+         error: `Неуспешно извличане на данни за продукт ${slug}. Сървърът отговори със статус ${response.status}.`,
+       };
+     }
+
+     const rawData: unknown = await response.json();
+
+     const result = ProductSchema.safeParse(rawData);
+
+     if (!result.success) {
+       console.error(
+         "Validation Error: The product data is malformed.",
+         result.error
+       );
+       return {
+         success: false,
+         error: "Получени са неправилно форматирани данни от сървъра.",
+       };
+     }
+
+     return { success: true, data: result.data };
+   } catch (err) {
+     console.error(
+       "Мрежова или неочаквана грешка при извличане на най-новите продукти",
+       err
+     );
+     if (err instanceof Error) {
+       return { success: false, error: err.message };
+     }
+     return { success: false, error: "Възникна неизвестна грешка." };
+   }
 })
+
+type CrawleeSuccessResponse = {
+  message: string;
+}
+
+export async function startCrawleeBot(
+  values: SpecialSearchFormValues
+): Promise<DataResponse<CrawleeSuccessResponse>> {
+  try {
+    const response = await fetch(`${API_BASE}/api/crawleebot`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      const errorMessage =
+        errorData.detail ||
+        `Заявката е неуспешна със статус ${response.status}`;
+      console.error("API Error:", errorMessage);
+      return { success: false, error: errorMessage };
+    }
+
+    const data: CrawleeSuccessResponse = await response.json();
+    return { success: true, data: data };
+  } catch (err) {
+    console.error("Network or client-side error:", err);
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Възникна неизвестна мрежова грешка." };
+  }
+}

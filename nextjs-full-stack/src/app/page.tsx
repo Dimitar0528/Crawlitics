@@ -38,8 +38,7 @@ const processSteps = [
   },
 ];
 export default async function HomePage() {
-  const newest_products = await getLatestProducts();
-
+  const result = await getLatestProducts();
   return (
     <div className=" min-h-screen p-8 font-[family-name:var(--font-geist-sans)]">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
@@ -50,12 +49,27 @@ export default async function HomePage() {
           <h2 id="new-products" className="text-3xl font-semibold mb-6">
             Последни Находки
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-            {newest_products.map((product) => {
-              return(
-              <ProductCard key={product.id} {...product} />
-            )})}
-          </div>
+          {!result.success ? (
+            <div
+              className="min-h-100 flex flex-col align-center justify-center text-center bg-red-100 border-l-4 border-red-500 text-red-700 p-4"
+              role="alert">
+              <h1 className="font-extrabold text-2xl">
+                Продуктите не можаха да се заредят. Опитайте отново.
+              </h1>
+              <p className="mt-4">
+                Причина:{" "}
+                {result.error === "fetch failed" ?
+                  "Неуспешно извличане на данни": 
+                  result.error}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+              {result.data.map((product) => {
+                return <ProductCard key={product.id} {...product} />;
+              })}
+            </div>
+          )}
         </section>
 
         <section className="relative bg-slate-50 dark:bg-slate-800 py-8 mx-auto">

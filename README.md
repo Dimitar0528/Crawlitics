@@ -10,28 +10,26 @@
 
 ## Introduction
 
-**Crawlitics** is an AI-powered eCommerce web crawler, scraper, and data analysis platform, built with Next.js and Python.
+**Crawlitics** is an AI-powered eCommerce intelligence platform, built with a modern Next.js and Python stack. It is designed to autonomously crawl, extract, and analyze product data from multiple online retailers, transforming chaotic web information into structured, actionable insights.
 
-It combines asynchronous web automation using Playwright, NLP-powered matching via sentence-transformers, cosine similarity, and fuzzy matching, with modular scraping powered by Crawl4AI. 
+The platform leverages a powerful Python backend for asynchronous web automation using Playwright, enhanced NLP-powered matching via sentence-transformers, cosine similarity, and fuzzy matching, with modular scraping powered by Crawl4AI. 
+It also features structured data extraction and multiple product analysis AI agents, implemented using the Agno framework and powered by the Qwen3 local LLM model (via Ollama). 
 
-It also features structured data extraction and multiple product analysis AI agents, implemented using the Agno framework and powered by the Gemma3 local LLM model (via Ollama). 
+The fast, responsive Next.js frontend provides a sophisticated and intuitive UI for searching, data visualization and product comparison, featuring interactive charts, dynamic forms, and more. On the backend, a combination of Next.js API Routes and Server Actions serves as the powerful orchestration layer, used to handle data orchestration, ensuring seamless communication with the Python backend.
 
-The fast, responsive Next.js frontend provides an intuitive UI, while Next.js backend routes handle data orchestration and API integration efficiently. 
-
-Crawlitics is purpose-built for collecting, analyzing, and comparing product data across many different online retailers.
+Crawlitics is purpose-built for collecting, analyzing, and comparing product data at scale, providing users with unparalleled market clarity.
 
 ---
 
 ## Features
-- Full-stack Next.js app with React frontend (using TailwindCSS and shadcn/ui components) and backend API routes (for data orchestration and integration with the Python backend via REST APIs).
-- Asynchronous crawling and scraping across multiple eCommerce platforms (e.g. Ozone, Emag, Technomarket)
-- Automated and intelligent UI interaction using Playwright (filters, price sliders, next pages, etc.)
-- Support for custom user-defined filters (e.g. brand, model, RAM, storage, color, price range, etc.)
-- Semantic and accurate filter matching via SentenceTransformers, cosine similarity and fuzzy matching
-- Seamless integration with Ollama’s Gemma3 model for extracting structured data and performing product analysis, using the Ollama API combined with the Agno framework.
-- Secure and robust data storing using PostgreSQL
+- Full-stack Next.js 15 app with React frontend (using TailwindCSS and shadcn/ui components) and a robust backend layer for data fetching, API routes, and Server Actions.
+- Robust data validation & typing via Zod, which is used as the single source of truth for all data structures, providing end-to-end type safety and runtime validation.
+- Asynchronous crawling & Ssraping, which employs Crawl4AI and Playwright to efficiently crawl and process multiple eCommerce platforms concurrently.
+- Automated and intelligent UI interaction via Playwright, including dynamic handling of user-defined filters (brand, model, RAM, storage, color, price range), sliders, pagination, and more.
+- Seamless integration with Ollama’s Qwen3 model for extracting structured data and performing product analysis, using the Ollama API combined with the Agno framework.
+- Secure and scalable foundation for storing product data using PostgreSQL
 - Dynamic concurrency and auto-throttling
-- Extensible scraping logic with site-specific configs and selectors
+- Extensible architecture logic with site-specific configs and selectors
 ---
 
 ## Installation
@@ -72,9 +70,9 @@ npm run dev
 Crawlitics supports local large language model inference using Ollama. There are two main ways to install and use Ollama:
 ### Option 1: Native Install
 - Download Ollama from https://ollama.com
-- Install and / or run a LLM model (e.g. gemma3, llama3.1, mistral or others) with:
+- Install and / or run a LLM model (e.g. Qwen3, Gemma3 or others) with:
 ```bash
-ollama run gemma3:latest
+ollama run qwen3:4b
 ```
 ### Option 2: Docker
 - Download Ollama Docker Image via:
@@ -87,7 +85,7 @@ docker run --rm --gpus=all -d -v ollama_data:/root/.ollama -p 11434:11434 --name
 ```
 - Install and / or run a LLM model with:
 ```bash
-docker exec -it ollama ollama run gemma3 
+docker exec -it ollama ollama run qwen3:4b 
 ```
 
 ## Roadmap
