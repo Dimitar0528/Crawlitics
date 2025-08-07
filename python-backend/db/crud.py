@@ -1,5 +1,5 @@
 from decimal import Decimal
-from sqlalchemy.orm import Session, selectinload, load_only
+from sqlalchemy.orm import Session, selectinload, load_only, joinedload
 from sqlalchemy.sql import func, select
 from sqlalchemy.exc import IntegrityError
 
@@ -71,7 +71,6 @@ def create_product_variant(session: Session, product_id: int, data: dict[str, an
         raise
 
     print(f"  [DB CRUD] Created Variant for Product ID {product_id} from URL: {data['source_url']}")
-    return new_variant
 
 def create_product_category_schema(session: Session, category: str, schema_def: dict[str, any]) -> ProductCategorySchema:
     """
@@ -138,6 +137,36 @@ def get_product_by_slug(session: Session, slug: str) -> Product:
     )
     result = session.execute(stmt).scalars().first()
     return result
+
+def get_product_variants_for_comparison(session: Session, variant_ids: list[int]) -> list[ProductVariant]:
+    """
+    Fetches variants by their IDs, loading only specific columns for the variant,
+    its latest price, and its parent product in the most efficient way.
+    """
+    stmt = (
+        select(ProductVariant)
+        .options(
+            load_only(
+                ProductVariant.slug,
+                ProductVariant.image_url,
+                ProductVariant.availability,
+                ProductVariant.variant_specs
+            ),
+            selectinload(ProductVariant.latest_lowest_price_record).load_only(
+                PriceHistory.price,
+                PriceHistory.currency
+            ),
+            # eagerly load the PARENT product with specific columns using join 
+            joinedload(ProductVariant.parent_product).load_only(
+                Product.name,
+                Product.common_specs,
+                Product.slug
+            )
+        )
+        .where(ProductVariant.id.in_(variant_ids))
+    )
+    
+    return session.execute(stmt).scalars().unique().all()
 
 def get_parent_product_by_name(session: Session, name: str) -> Product:
     """Fetches a single parent product by its exact name."""

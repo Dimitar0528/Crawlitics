@@ -41,7 +41,7 @@ export const ProductSchema = z.object({
   created_at: z.coerce.date(),
   variants: z.array(ProductVariantSchema),
 });
-
+// latest product card schemas 
 const ProductBaseSchema = ProductSchema.pick({
   id: true,
   name: true,
@@ -61,7 +61,7 @@ const ProductBaseSchema = ProductSchema.pick({
   availability: true,
 }).extend({
   latest_lowest_price_record:
-    LatestProductCardPriceRecordSchema.nullable().optional(),
+    LatestProductCardPriceRecordSchema
 });
 
 export const LatestProductCardSchema = ProductBaseSchema.extend({
@@ -69,9 +69,31 @@ export const LatestProductCardSchema = ProductBaseSchema.extend({
 });
 
 export const LatestProductsResponseSchema = z.array(LatestProductCardSchema);
+// comparasion product schemas
+const ComparisonParentProductSchema = ProductSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  common_specs:true,
+});
+
+export const ComparisonProductSchema = ProductVariantSchema.pick({
+  id: true,
+  slug: true,
+  image_url: true,
+  availability: true,
+  variant_specs: true,
+}).extend({
+  parent_product: ComparisonParentProductSchema,
+  latest_lowest_price_record: LatestProductCardPriceRecordSchema,
+});
+
+export const ComparisonResponseSchema = z.array(ComparisonProductSchema);
 
 export type PriceHistory = z.infer<typeof PriceHistorySchema>;
 export type ProductVariant = z.infer<typeof ProductVariantSchema>;
 export type Product = z.infer<typeof ProductSchema>;
 
 export type LatestProduct = z.infer<typeof LatestProductCardSchema>;
+
+export type ComparisonProduct = z.infer<typeof ComparisonProductSchema>;

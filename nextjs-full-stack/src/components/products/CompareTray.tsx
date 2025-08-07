@@ -6,12 +6,11 @@ import { X, ArrowRight, Trash2 } from "lucide-react";
 import { useCompare } from "@/context/CompareContext";
 import { Button } from "@/components/ui/button";
 export default function CompareTray() {
-  const { compareItems, removeFromCompare, clearCompare } = useCompare();
+  const { compareProducts, removeFromCompare, clearCompare } = useCompare();
   const router = useRouter();
-  if (compareItems.length === 0) {
+  if (compareProducts.length === 0) {
     return null;
   }
-
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-50"
@@ -23,7 +22,7 @@ export default function CompareTray() {
             <div className="flex items-center gap-3">
               <span className="font-bold text-lg hidden sm:block">Сравни:</span>
               <div className="flex items-center gap-2">
-                {compareItems.map((item) => (
+                {compareProducts.map((item) => (
                   <div key={item.id} className="relative group last:mr-4">
                     <Image
                       src={item.image_url}
@@ -53,10 +52,10 @@ export default function CompareTray() {
                 <span className="sr-only">Изчисти всичко</span>
               </Button>
               <Button
-                disabled={compareItems.length < 2}
+                disabled={compareProducts.length < 2}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
                 onClick={() => router.push("/compare")}>
-                Сравни ({compareItems.length}/4)
+                Сравни ({compareProducts.length}/4)
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

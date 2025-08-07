@@ -1,4 +1,11 @@
-import { LatestProductsResponseSchema, ProductSchema, LatestProduct, Product } from "@/lib/validations/product";
+import {
+  LatestProductsResponseSchema,
+  ProductSchema,
+  ComparisonResponseSchema,
+  LatestProduct,
+  Product,
+  ComparisonProduct,
+} from "@/lib/validations/product";
 import { cache } from "react";
 import {  SpecialSearchFormValues } from "./validations/form";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -44,7 +51,7 @@ export async function getLatestProducts(): Promise<
     return { success: true, data: result.data };
   } catch (err) {
     console.error(
-      "Мрежова или неочаквана грешка при извличане на най-новите продукти",
+      "Мрежова или неочаквана грешка при извличане на най-новите продукти.",
       err
     );
     if (err instanceof Error) {
@@ -88,7 +95,7 @@ export const getProduct = cache(async (slug:string): Promise<DataResponse<Produc
      return { success: true, data: result.data };
    } catch (err) {
      console.error(
-       "Мрежова или неочаквана грешка при извличане на най-новите продукти",
+       "Мрежова или неочаквана грешка при извличане на продукта.",
        err
      );
      if (err instanceof Error) {
@@ -97,6 +104,55 @@ export const getProduct = cache(async (slug:string): Promise<DataResponse<Produc
      return { success: false, error: "Възникна неизвестна грешка." };
    }
 })
+
+export default async function getComparisonProductData(
+  ids: number[]
+): Promise<DataResponse<ComparisonProduct[]>> {
+  if (!ids || ids.length === 0) {
+    return { success: true, data: [] };
+  }
+  const idQueryString = ids.join(",");
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/compare-products?ids=${idQueryString}`
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to fetch product:`, response.status, errorText);
+      return {
+        success: false,
+        error: `Неуспешно извличане на данни за продуктите за сравнение. Сървърът отговори със статус ${response.status}.`,
+      };
+    }
+
+    const rawData: unknown = await response.json();
+
+    const result = ComparisonResponseSchema.safeParse(rawData);
+
+    if (!result.success) {
+      console.error(
+        "Validation Error: The product data is malformed.",
+        result.error
+      );
+      return {
+        success: false,
+        error: "Получени са неправилно форматирани данни от сървъра.",
+      };
+    }
+
+    return { success: true, data: result.data };
+  } catch (err) {
+    console.error(
+      "Мрежова или неочаквана грешка при извличане на продуктите за сравнение.",
+      err
+    );
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Възникна неизвестна грешка." };
+  }
+}
 
 type CrawleeSuccessResponse = {
   message: string;
