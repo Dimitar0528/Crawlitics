@@ -150,7 +150,7 @@ export default function VariantCard({
                 </Tooltip>
               </div>
 
-              <div className="md:col-span-1 mt-4 sm:mt-2">
+              <div className="md:col-span-1 mt-4 md:mt-2">
                 {Object.keys(variants).length === 0 ? (
                   <p className="text-center text-gray-700 italic bg-gray-200 px-4 py-2 rounded-md">
                     Всички характеристики за този вариант съвпадат с общите

@@ -29,7 +29,8 @@ import Hero from "@/components/how-it-works/Hero";
 
 export const metadata: Metadata = {
   title: "Как работи приложението",
-  description: "Страница, описваща основните характеристики и начин на работа на сайта ",
+  description:
+    "Научете как Crawlitics ви помага да намирате най-добрите оферти, като опознаете нашите основни функции.",
 };
 export default function HowItWorksPage() {
     return (

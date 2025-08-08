@@ -4,6 +4,8 @@ import SpecialSearchForm from "@/components/crawleebot/SpecialSearchForm";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Интелигентно търсене",
+  description:
+    "Задайте критерии и филтри на CrawleeBot, за да сканира онлайн магазините и да намери най-добрите оферти за продукти, съобразени с вашите нужди.",
 };
 
 

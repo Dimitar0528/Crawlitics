@@ -37,7 +37,14 @@ export function CompareProvider({ children }: { children: ReactNode }) {
       try {
         window.localStorage.setItem(
           LOCAL_STORAGE_KEY,
-          JSON.stringify(compareProducts)
+          JSON.stringify(compareProducts.map((product)=>{
+            const productStorage = {
+              id: product.id,
+              image_url: product.image_url,
+              slug: product.slug,
+            }
+          return productStorage
+          }))
         );
       } catch (error) {
         console.error("Error writing to localStorage", error);
