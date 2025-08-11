@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,10 +9,21 @@ import getComparisonProductData from "@/lib/data";
 import { ComparisonProduct } from "@/lib/validations/product";
 import { calculate_product_variant_prices } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { X, ClipboardX, ArrowLeft, Info, Loader2 } from "lucide-react";
+import { X, ClipboardX, ArrowLeft, Info, Loader2, Share2 } from "lucide-react";
 import BackButton from "@/components/products/BackButton";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
-export default function ComparePage() {
+export default function ComparePage(){
+  return (
+    <Suspense>
+      <Compare />
+    </Suspense>
+  );
+}
+
+ function Compare() {
   const router = useRouter();
   const params = useSearchParams();
   const { removeFromCompare } = useCompare();
@@ -25,6 +36,7 @@ export default function ComparePage() {
   const [comparisonData, setComparisonData] = useState<ComparisonProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showOnlyDifferences, setShowOnlyDifferences] = useState(false);
 
   // fetch comparison data
   useEffect(() => {
@@ -47,6 +59,7 @@ export default function ComparePage() {
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRemove = (id: number) => {
@@ -64,6 +77,56 @@ export default function ComparePage() {
     }
     router.replace(`?${decodeURIComponent(newParams.toString())}`);
   };
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Линкът е копиран в клипборда!");
+    } catch (error) {
+      toast.error(
+        `Имаше проблем с копирането на линка!. Опитайте пак. ${error}`
+      );
+    }
+  };
+
+   const { specRows, getSpecValue, doesSpecDiffer } = useMemo(() => {
+     const allSpecKeys = new Set<string>();
+     comparisonData.forEach((product) => {
+       Object.keys(product.parent_product.common_specs || {}).forEach((key) =>
+         allSpecKeys.add(key)
+       );
+       Object.keys(product.variant_specs || {}).forEach((key) =>
+         allSpecKeys.add(key)
+       );
+     });
+
+     const specRows = Array.from(allSpecKeys).sort();
+
+     const getSpecValue = (product: ComparisonProduct, key: string): string => {
+       const value =
+         product.variant_specs?.[key] ??
+         product.parent_product.common_specs?.[key];
+       if (value === null || value === undefined) return "N/A";
+       if (typeof value === "boolean") return value ? "Да" : "Не";
+       return String(value);
+     };
+
+     const doesSpecDiffer = (key: string): boolean => {
+       if (comparisonData.length < 2) return false;
+       const firstValue = JSON.stringify(getSpecValue(comparisonData[0], key));
+       return comparisonData
+         .slice(1)
+         .some(
+           (item) => JSON.stringify(getSpecValue(item, key)) !== firstValue
+         );
+     };
+
+     return { specRows, getSpecValue, doesSpecDiffer };
+   }, [comparisonData]);
+
+   // --- Filtered specs based on the toggle state ---
+   const filteredSpecRows = showOnlyDifferences
+     ? specRows.filter((key) => doesSpecDiffer(key))
+     : specRows;
 
   if (isLoading) {
     return (
@@ -107,45 +170,44 @@ export default function ComparePage() {
     );
   }
 
-  // build list of all spec keys
-  const allSpecKeys = new Set<string>();
-  comparisonData.forEach((product) => {
-    Object.keys(product.parent_product.common_specs || {}).forEach((key) =>
-      allSpecKeys.add(key)
-    );
-    Object.keys(product.variant_specs || {}).forEach((key) =>
-      allSpecKeys.add(key)
-    );
-  });
-  const specRows = Array.from(allSpecKeys).sort();
-
-  const getSpecValue = (product: ComparisonProduct, key: string): string => {
-    const value =
-      product.variant_specs?.[key] ??
-      product.parent_product.common_specs?.[key];
-    if (value === null || value === undefined) return "N/A";
-    if (typeof value === "boolean") return value ? "Да" : "Не";
-    return String(value);
-  };
-
-  const doesSpecDiffer = (key: string): boolean => {
-    if (comparisonData.length < 2) return false;
-    const firstValue = JSON.stringify(getSpecValue(comparisonData[0], key));
-    return comparisonData
-      .slice(1)
-      .some((item) => JSON.stringify(getSpecValue(item, key)) !== firstValue);
-  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <BackButton />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <BackButton />
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex-1 text-center sm:text-left">
+          Сравни продукти ({comparisonData.length})
+        </h1>
+      </div>
 
-      <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-4">
-        Сравни продукти ({comparisonData.length})
-      </h1>
-      <div className="flex items-center gap-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 p-3 text-sm text-blue-800 dark:text-blue-200 mb-8">
-        <Info className="h-5 w-5 shrink-0" />
-        <p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-2 mb-4">
+        <Button
+          variant="outline"
+          onClick={handleCopyUrl}
+          className="bg-white dark:bg-slate-800">
+          <Share2 className="mr-2 h-4 w-4" />
+          Копирай линк за сравнение
+        </Button>
+
+        <div className="flex items-center justify-center space-x-3">
+          <Label
+            htmlFor="show-differences"
+            className="font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+            Покажи само разликите
+          </Label>
+          <Switch
+            className="cursor-pointer"
+            id="show-differences"
+            checked={showOnlyDifferences}
+            onCheckedChange={setShowOnlyDifferences}
+            aria-label="Show only differences"
+          />
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-start gap-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 p-2 text-sm text-blue-800 dark:text-blue-200 text-center">
+        <Info className="h-5 w-5 flex-shrink-0 mt-1" />
+        <p className="leading-relaxed">
           Характеристиките, които са оцветени, се различават поне при един от
           сравняваните продукти.
         </p>
@@ -199,7 +261,7 @@ export default function ComparePage() {
             );
           })}
 
-          {specRows.map((key) => {
+          {filteredSpecRows.map((key) => {
             const isDifferent = doesSpecDiffer(key);
             return (
               <div key={key} className="contents">
@@ -256,7 +318,7 @@ export default function ComparePage() {
                 </div>
                 <div className="space-y-2 pt-4">
                   <h4 className="font-bold text-lg mb-2">Характеристики:</h4>
-                  {specRows.map((key) => {
+                  {filteredSpecRows.map((key) => {
                     const isDifferent = doesSpecDiffer(key);
                     return (
                       <div

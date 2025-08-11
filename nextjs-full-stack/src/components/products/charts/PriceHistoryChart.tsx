@@ -144,11 +144,22 @@ export default function PriceHistoryChart({ variants }: PriceHistoryChartProps) 
                     }
                     return (
                       <div className="flex w-full items-center justify-between gap-x-4">
-                        <span className="text-muted-foreground">
-                          {chartConfig[name as keyof typeof chartConfig]?.label}
+                        <span
+                          className="font-bold"
+                          style={{
+                            color:
+                              chartConfig[name as keyof typeof chartConfig]
+                                .color,
+                          }}>
+                          {chartConfig[name as keyof typeof chartConfig].label}:
                         </span>
 
-                        <span className="">
+                        <span className="font-bold"
+                          style={{
+                            color:
+                              chartConfig[name as keyof typeof chartConfig]
+                                .color,
+                          }}>
                           {priceData.bgn.toLocaleString("bg-BG", {
                             style: "currency",
                             currency: "BGN",

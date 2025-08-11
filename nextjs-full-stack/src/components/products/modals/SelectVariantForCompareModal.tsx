@@ -1,5 +1,3 @@
-// components/products/modals/SelectVariantForCompareModal.tsx
-
 "use client";
 
 import Image from "next/image";
@@ -12,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { PlusCircle, ShoppingBag } from "lucide-react";
+import { PlusCircle, MinusCircle, ShoppingBag } from "lucide-react";
 import { calculate_product_variant_prices } from "@/lib/utils";
 
 interface SelectVariantModalProps {
@@ -26,11 +24,7 @@ export default function SelectVariantForCompareModal({
   onClose,
   variants,
 }: SelectVariantModalProps) {
-  const { addToCompare } = useCompare();
-
-  const handleSelectVariant = (variant: ProductVariant) => {
-    addToCompare(variant);
-  };
+  const { compareProducts, addToCompare, removeFromCompare } = useCompare();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -41,8 +35,12 @@ export default function SelectVariantForCompareModal({
             Избери продукти за сравнение
           </DialogTitle>
           <DialogDescription className="text-slate-700 dark:text-slate-300">
-            Избери кой от продуктите искаш да добавиш към списъка
-            за сравнение.
+            Избери кои от продуктите да добавиш в списъка за сравнение. <br /> <i>
+               <strong>
+                Вече добавените са
+                оцветени.
+              </strong>
+            </i>
           </DialogDescription>
         </DialogHeader>
 
@@ -53,11 +51,16 @@ export default function SelectVariantForCompareModal({
                 variant.price_history[variant.price_history.length - 1]?.price;
               const { price_bgn, price_eur } =
                 calculate_product_variant_prices(latestPrice);
-                
+              const compareItemIds = new Set(
+                compareProducts.map((item) => item.id)
+              );
+              const isInCompareList = compareItemIds.has(variant.id);
               return (
                 <div
                   key={variant.id}
-                  className="w-full flex flex-col md:flex-row items-center text-left p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                  className={`w-full flex flex-col md:flex-row items-center text-left p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group ${
+                    isInCompareList && "border border-purple-500"
+                  }`}
                   aria-label={`Add ${variant.slug} to comparison`}>
                   <div className="relative h-20 w-20 shrink-0 mr-4">
                     <Image
@@ -89,10 +92,19 @@ export default function SelectVariantForCompareModal({
                         {price_eur}
                       </span>
                     </div>
-                    <PlusCircle
-                      onClick={() => handleSelectVariant(variant)}
-                      className="h-7 w-7 text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
-                    />
+                    <div title={`${isInCompareList ? "Премахни от списъка" : "Добави към списъка"}`}>
+                      {isInCompareList ? (
+                        <MinusCircle
+                          onClick={() => removeFromCompare(variant.id)}
+                          className="h-7 w-7 text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
+                        />
+                      ) : (
+                        <PlusCircle
+                          onClick={() => addToCompare(variant)}
+                          className="h-7 w-7 text-slate-400 hover:text-purple-500 transition-colors cursor-pointer"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               );

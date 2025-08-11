@@ -53,14 +53,14 @@ export function CompareProvider({ children }: { children: ReactNode }) {
     
   const addToCompare = (variant: ProductVariant) => {
     setCompareProducts((prevItems) => {
+      if (prevItems.some((item) => item.id === variant.id)) {
+        toast.info("Този продукт вече е във вашия списък за сравнение.");
+        return prevItems;
+      }
       if (prevItems.length >= MAX_COMPARE_ITEMS) {
         toast.warning(
           `Може да сравняваш максимално до ${MAX_COMPARE_ITEMS} продукта.`
         );
-        return prevItems;
-      }
-      if (prevItems.some((item) => item.id === variant.id)) {
-        toast.info("Този продукт вече е във вашия списък за сравнение.");
         return prevItems;
       }
       toast("Продукта е добавен за сравнение", {

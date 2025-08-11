@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BellRing, LinkIcon, PlusCircle, ShoppingCart } from "lucide-react";
+import { BellRing, LinkIcon, PlusCircle, MinusCircle, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import {
   Tooltip,
@@ -22,7 +22,7 @@ export default function VariantCard({
 }: {
   variants: ProductVariant[];
 }) {
-  const {addToCompare} = useCompare()
+  const { compareProducts, addToCompare, removeFromCompare} = useCompare()
   const searchParams = useSearchParams();
 
   const [selectedVariantSlug, setSelectedVariantSlug] = useState<string | null>(
@@ -69,7 +69,7 @@ export default function VariantCard({
       })
       .catch((err) => {
         console.error("Failed to copy text: ", err);
-        toast.error("Could not copy link.");
+        toast.error("Имаше проблем с копирането на линка!");
       });
       setTimeout(() => {
         setSelectedVariantSlug(null)
@@ -93,7 +93,10 @@ export default function VariantCard({
           const { price_bgn, price_eur } = calculate_product_variant_prices(
             latestPriceRecord?.price
           );
-
+          const compareItemIds = new Set(
+            compareProducts.map((item) => item.id)
+          );
+          const isInCompareList = compareItemIds.has(variant.id);
           return (
             <div
               key={variant.id}
@@ -103,12 +106,15 @@ export default function VariantCard({
               }}
               className={`
                 relative grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-white dark:bg-slate-800 
-                border-1 rounded-xl p-5 shadow-md 
-                transition-all duration-300 ease-in-out
+                border rounded-xl p-5 shadow-md 
+                transition-all duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors
                 ${
-                  isSelected
-                    ? "border-blue-500 dark:border-blue-400 shadow-lg"
-                    : "border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-purple-500 dark:hover:border-purple-400"
+                  isSelected && "border-blue-500 dark:border-blue-400 shadow-lg"
+                }
+                ${
+                  isInCompareList &&
+                  !isSelected &&
+                  "border-purple-500 dark:border-purple-400"
                 }
               `}>
               <div className="absolute top-0 left-0.5 z-10">
@@ -134,18 +140,25 @@ export default function VariantCard({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-20 h-8 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      className="w-25 h-8 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-400 dark:hover:bg-slate-800"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (isInCompareList) return removeFromCompare(variant.id);
                         addToCompare(variant);
                       }}>
-                      <PlusCircle className="h-4 w-4" />
-                      Сравни
-                      <span className="sr-only">Сравни</span>
+                      {isInCompareList ? (
+                        <MinusCircle className="h-4 w-4" />
+                      ) : (
+                        <PlusCircle className="h-4 w-4" />
+                      )}
+                      {isInCompareList ? "Премахни" : "Сравни"}
+                      <span className="sr-only">
+                        {isInCompareList ? "Премахни" : "Сравни"}
+                      </span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Сравни продукта</p>
+                    {isInCompareList ? "Премахни от списъка за сравнение" : "Сравни продукта"}
                   </TooltipContent>
                 </Tooltip>
               </div>

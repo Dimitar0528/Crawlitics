@@ -20,7 +20,7 @@ export default function ProductHeaderActions({
       <Button
         variant="outline"
         onClick={() => setIsModalOpen(true)}
-        className="w-full sm:w-auto">
+        className="w-full sm:w-auto bg-blue-700 hover:bg-blue-500 text-white hover:text-white dark:bg-blue-300 dark:text-black dark:hover:bg-blue-400">
         <PlusCircle className="mr-2 h-4 w-4" />
         Избери продукти за сравнение
       </Button>
