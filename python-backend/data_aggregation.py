@@ -13,15 +13,14 @@ def get_grouping_key(item: dict[str,any], existing_keys: list, score_cutoff=90) 
     """
     Creates a key to group similar products.
     """
-    brand = item.get('brand', 'unknown').strip()
+    brand = item.get('brand', 'unknown').strip().lower()
 
-    generic_name = item.get('name', '').split(',')[0].strip()
+    generic_name = item.get('name', '').split(',')[0].strip().lower()
     
-    candidate_name = f"{brand} {generic_name}"
-
+    candidate_name = f"{brand}::{generic_name}"
     if not existing_keys:
         print(f"  -> No existing groups. Creating new group for '{generic_name}'")
-        return f"{brand}::{generic_name}"
+        return candidate_name
 
     # compare the generic candidate against the existing generic keys.
     best_match = process.extractOne(
@@ -36,7 +35,7 @@ def get_grouping_key(item: dict[str,any], existing_keys: list, score_cutoff=90) 
         return best_match[0]
     else:
         print(f"  -> No Fuzzy Match: Creating new group for '{generic_name}'")
-        return f"{brand}::{generic_name}"
+        return candidate_name
 
 
 def normalize_value(value: str) -> str:

@@ -77,9 +77,8 @@ class PriceHistory(Base):
         server_default=func.now()
     )
     variant: Mapped["ProductVariant"] = relationship("ProductVariant", back_populates="price_history")
-
     def __repr__(self):
-         return f"<PriceHistory(product_id={self.product_id}, price={self.price})>"
+         return f"<PriceHistory(variant_id={self.variant_id}, price={self.price})>"
     
 class ProductCategorySchema(Base):
     __tablename__ = 'product_category_schema'

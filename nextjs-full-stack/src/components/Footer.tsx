@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Footer() {
@@ -9,10 +9,15 @@ export default function Footer() {
       <div className="container mx-auto px-4 lg:px-18">
         <div className="grid text-center md:text-left justify-center sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <Link href='/'>
+            <Link href="/">
               <div className="flex items-center justify-center md:justify-start space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Search className="w-5 h-5 text-white" />
+                <div className="bg-transparent dark:bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Image
+                    width={20}
+                    height={20}
+                    src="/favicon.ico"
+                    alt="App logo"
+                  />
                 </div>
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent dark:bg-gradient-to-r dark:from-blue-400 dark:to-purple-400">
                   Crawlitics

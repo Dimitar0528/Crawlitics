@@ -49,7 +49,7 @@ def generate_unique_slug(
     
     if isinstance(source_data, str):
         # generating slug for a parent Product from its name
-        base_slug = slugify(source_data)
+        base_slug = source_data
         
     elif isinstance(source_data, dict):
         # generating slug for a ProductVariant from its sorted spec keys
@@ -57,7 +57,7 @@ def generate_unique_slug(
         slug_parts = [slugify(str(source_data.get(key, ''))) for key in sorted_keys]
         base_slug = "-".join(part for part in slug_parts if part)
     
-    slug = base_slug
+    slug = slugify(base_slug, max_length=64)
     while True:
         query = session.query(model.id).filter(model.slug == slug)
 

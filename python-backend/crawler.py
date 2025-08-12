@@ -304,12 +304,12 @@ async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], u
         await page.close()
 
 
-async def crawl_sites() -> tuple[str, list[str]]:
-    user_criteria = get_user_criteria()
+async def crawl_sites(user_criteria: dict[str, any]) -> tuple[str, list[str]]:
 
-    user_selected_category: str = user_criteria['category']
-    user_input: str = user_criteria['query']
-    user_filters: dict[str,str] = user_criteria['filters']
+    user_selected_category: str = user_criteria['product_category']
+    user_input: str = user_criteria['product_name']
+    user_filters_list: list[dict[str,str]] = user_criteria['filters']
+    user_filters: dict[str,str] = {item['name']: item['value'] for item in user_filters_list}
     print(f"--- Starting crawling for '{user_input}' ---")
     if user_filters:
         print("With filters:")
