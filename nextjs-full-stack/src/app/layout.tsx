@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import {
+  ClerkProvider,
+} from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -36,25 +39,27 @@ export default function RootLayout({
 }>) {
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Toaster position="top-center" richColors closeButton />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-          enableColorScheme>
-          <CookieBanner />
-          <Navigation />
-          <CompareProvider>
-            <CompareTray />
-            <main>{children}</main>
-          </CompareProvider>
-          <Footer />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <Toaster position="top-center" richColors closeButton />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            enableColorScheme>
+            <CookieBanner />
+            <Navigation />
+            <CompareProvider>
+              <CompareTray />
+              <main>{children}</main>
+            </CompareProvider>
+            <Footer />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

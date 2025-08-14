@@ -11,13 +11,8 @@ export default function Footer() {
           <div className="space-y-4">
             <Link href="/">
               <div className="flex items-center justify-center md:justify-start space-x-2 mb-4">
-                <div className="bg-transparent dark:bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Image
-                    width={20}
-                    height={20}
-                    src="/favicon.ico"
-                    alt="App logo"
-                  />
+                <div className="bg-transparent dark:bg-gray-200 p-1 rounded-md flex items-center justify-center">
+                  <Image width={20} height={20} src="/favicon.ico" alt="App logo" />
                 </div>
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent dark:bg-gradient-to-r dark:from-blue-400 dark:to-purple-400">
                   Crawlitics
