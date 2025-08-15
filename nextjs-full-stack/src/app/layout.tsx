@@ -12,6 +12,9 @@ import Footer from "@/components/Footer";
 import { CookieBanner } from "@/components/cookies/CookieBanner";
 import { CompareProvider } from "@/context/CompareContext";
 import CompareTray from "@/components/products/CompareTray";
+import { shadcn } from "@clerk/themes";
+import { bgBG } from "@clerk/localizations";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -39,7 +42,14 @@ export default function RootLayout({
 }>) {
 
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        theme: shadcn,
+        layout: {
+          socialButtonsVariant: "blockButton",
+        },
+      }}
+      localization={bgBG}>
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import '@clerk/themes/shadcn.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -225,4 +226,9 @@ html {
 .animate-aurora {
   background-size: 400% 400%;
   animation: aurora 10s ease-in-out infinite alternate;
+}
+.cl-avatarBox{
+  
+  height: 2.3rem;
+  width: 2.3rem;
 }

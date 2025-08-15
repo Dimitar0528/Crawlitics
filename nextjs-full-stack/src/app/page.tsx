@@ -46,9 +46,14 @@ export default async function HomePage() {
         <section
           className="w-full grid justify-items-center"
           aria-labelledby="new-products">
-          <h2 id="new-products" className="text-3xl font-semibold mb-6">
-            Последни Находки
-          </h2>
+            <h2
+              id="new-products"
+              className="
+      text-3xl font-extrabold tracking-tight sm:text-4xl 
+      bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent mb-6
+    ">
+              Последни Находки
+            </h2>
           {!result.success ? (
             <div
               className="min-h-100 flex flex-col align-center justify-center text-center bg-red-100 border-l-4 border-red-500 text-red-700 p-4"
@@ -58,9 +63,9 @@ export default async function HomePage() {
               </h1>
               <p className="mt-4">
                 Причина:{" "}
-                {result.error === "fetch failed" ?
-                  "Неуспешно извличане на данни": 
-                  result.error}
+                {result.error === "fetch failed"
+                  ? "Неуспешно извличане на данни"
+                  : result.error}
               </p>
             </div>
           ) : (

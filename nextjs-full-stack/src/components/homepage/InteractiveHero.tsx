@@ -14,10 +14,15 @@ import { useRouter } from "next/navigation";
 import { SearchQueryForm, SearchQueryFormSchema } from "@/lib/validations/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { Typewriter } from "react-simple-typewriter";
+import { useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
 
 export default function InteractiveHero() {
   const router = useRouter();
+  const { isSignedIn } = useUser();
   const onSubmit = (values: SearchQueryForm) => {
+    if(!isSignedIn) return toast.warning("Трябва да влезете в акаунта си за да достъпите тази функционалност!")
     const sanitized_query = values.search_query;
     const params = new URLSearchParams();
     params.set("q", sanitized_query);
@@ -45,9 +50,20 @@ export default function InteractiveHero() {
         <h1
           id="cta-tag"
           className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl md:text-5xl leading-14">
-          Спрете да търсите. <br className="hidden md:block" />
-          <span className="bg-gradient-to-r from-sky-400 to-purple-500 bg-clip-text text-transparent">
-            Започнете да намирате.
+          Спрете да търсите. Започнете <br />
+          <span className="bg-gradient-to-r from-sky-300 to-purple-400 bg-clip-text text-transparent">
+            да{" "}
+            <Typewriter
+              words={["намирате.", "откривате.", "избирате.", "действате."]}
+              loop={0}
+              typeSpeed={100}
+              deleteSpeed={100}
+              delaySpeed={1800}
+              cursor
+              
+              cursorColor="white"
+              cursorStyle="|"
+            />
           </span>
         </h1>
 

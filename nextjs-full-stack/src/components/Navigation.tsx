@@ -49,9 +49,13 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
+  ClerkLoading,
+  useUser,
 } from "@clerk/nextjs";
-
+import { toast } from "sonner";
 export default function Navigation() {
+    const { isSignedIn } = useUser();
+
   const { setTheme, theme } = useTheme();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -105,13 +109,23 @@ export default function Navigation() {
             <NavigationMenuList>
               <NavigationMenuItem>
                 <Link
-                  href="/crawleebot/search"
+                  href={isSignedIn ? "/crawleebot/search" : "#"}
+                  onClick={(e) => {
+                    if (!isSignedIn) {
+                      e.preventDefault();
+                      toast.warning(
+                        "Трябва да влезете в акаунта си, за да достъпите тази функционалност!"
+                      );
+                    }
+                  }}
                   className={navigationMenuTriggerStyle()}>
                   CrawleeBot
                 </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-transparent">Категории</NavigationMenuTrigger>
+                <NavigationMenuTrigger className="bg-transparent">
+                  Категории
+                </NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                     {categories.map((category) => (
@@ -170,6 +184,9 @@ export default function Navigation() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <ClerkLoading>
+              <div className="h-9.5 w-9 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse"></div>
+            </ClerkLoading>
             <SignedOut>
               <SignInButton>
                 <Button
