@@ -1,7 +1,7 @@
 import { ProductVariant } from "@/lib/validations/product";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-
+import slugify from "slugify";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -27,13 +27,14 @@ export function calculate_product_variant_prices(price: number) {
 }
 
 function getStoreNameFromUrl(url: string): string {
-    const hostname = new URL(url).hostname;
-    const formattedName = hostname.replace(/^www\./, '');
-    return formattedName.charAt(0).toUpperCase() + formattedName.slice(1);
+  const hostname = new URL(url).hostname;
+  const formattedName = hostname.replace(/^www\./, "");
+  return formattedName.charAt(0).toUpperCase() + formattedName.slice(1);
 }
 
-export function groupVariantsByStore(variants: ProductVariant[]): Record<string, ProductVariant[]> {
-
+export function groupVariantsByStore(
+  variants: ProductVariant[]
+): Record<string, ProductVariant[]> {
   return variants.reduce((acc, variant) => {
     const storeName = getStoreNameFromUrl(variant.source_url);
     if (!acc[storeName]) {
@@ -44,9 +45,7 @@ export function groupVariantsByStore(variants: ProductVariant[]): Record<string,
   }, {} as Record<string, ProductVariant[]>);
 }
 
-export function getVariantSummary(
-  variants: ProductVariant[]
-) {
+export function getVariantSummary(variants: ProductVariant[]) {
   const summary = variants.reduce(
     (acc, variant) => {
       if (variant.availability === "В наличност") {
@@ -78,7 +77,6 @@ export function getVariantSummary(
   return { ...summary, totalCount: variants.length };
 }
 
-
 export const getPriceHistoryChartData = (variants: ProductVariant[]) => {
   if (!variants || variants.length === 0) {
     return [];
@@ -101,8 +99,9 @@ export const getPriceHistoryChartData = (variants: ProductVariant[]) => {
 
   const variantPriceHistories = variants.map((variant) => ({
     ...variant,
-    price_history: variant.price_history
-      .sort((a, b) => a.recorded_at.getTime() - b.recorded_at.getTime()),
+    price_history: variant.price_history.sort(
+      (a, b) => a.recorded_at.getTime() - b.recorded_at.getTime()
+    ),
   }));
 
   const dailySnapshots = new Map<string, number[]>();
@@ -176,3 +175,7 @@ export const getPriceHistoryChartData = (variants: ProductVariant[]) => {
 
   return filteredChartData;
 };
+
+export function slugifyString(category: string) {
+  return slugify(category);
+}

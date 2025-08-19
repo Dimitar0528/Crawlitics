@@ -13,9 +13,10 @@ import { calculate_product_variant_prices } from "@/lib/utils";
 import { BadgeCheckIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { LatestProduct } from "@/lib/validations/product";
+import { ProductPreview } from "@/lib/validations/product";
+import { slugifyString } from "@/lib/utils";
 
-export default function ProductCard(product: LatestProduct) {
+export default function ProductCard(product: ProductPreview) {
   const heroImageUrl = product.variants.find(
     (variant) => variant.image_url
   )!.image_url;
@@ -34,11 +35,11 @@ export default function ProductCard(product: LatestProduct) {
     product.variants?.filter(
       (variant) => variant.availability === "В наличност"
     ).length ?? 0;
-    const percentage = totalCount > 0 ? (availableCount / totalCount) * 100 : 0;
-    const isAvailable = availableCount > 0;
-
+  const percentage = totalCount > 0 ? (availableCount / totalCount) * 100 : 0;
+  const isAvailable = availableCount > 0;
+  const slugCategory = slugifyString(product.category);
   return (
-    <Link className="block group" href={`/product/${product.slug}`}>
+    <Link className="block group" href={`/${slugCategory}/${product.slug}`}>
       <Card
         className="cursor-pointer w-72 max-w-xs
         max-w-xs rounded-2xl border border-gray-200 dark:border-gray-700 

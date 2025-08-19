@@ -95,6 +95,39 @@ def create_product_category_schema(session: Session, category: str, schema_def: 
 
     return db_schema
 
+def get_products_by_category(session: Session, category: str):
+    """
+    Returns a list of Product objects filtered by category,
+    loading only the fields needed to display them as preview cards.
+    """
+
+    stmt = (
+        select(Product)
+        .where(Product.category == category)
+        .options(
+            load_only(
+                Product.id,     
+                Product.name,
+                Product.slug,
+                Product.category,
+            ),
+            selectinload(Product.variants).load_only(
+                ProductVariant.id,        
+                ProductVariant.product_id,
+                ProductVariant.image_url,
+                ProductVariant.availability  
+            ),
+            selectinload(Product.variants).selectinload(ProductVariant.latest_lowest_price_record).load_only( 
+                PriceHistory.price, 
+                PriceHistory.currency
+            )
+        )
+        .order_by(Product.created_at.desc())
+    )
+
+    result = session.execute(stmt)
+    return result.scalars().all()
+
 def get_newest_products(session: Session, limit: int = 20) -> list[Product]:
     """
     Reads the newest parent products, loading only the essential fields 

@@ -38,7 +38,6 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
@@ -67,8 +66,8 @@ export default function Navigation() {
   ];
 
   const categories = [
-    { name: "Смартфони", href: "/category/smartphones" },
-    { name: "Лаптопи", href: "/category/laptops" },
+    { name: "Смартфони", href: "/Smartfon" },
+    { name: "Лаптопи", href: "/Laptop" },
   ];
 
   const switchTheme = (value: string) => {
@@ -129,15 +128,15 @@ export default function Navigation() {
                 <NavigationMenuContent>
                   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                     {categories.map((category) => (
-                      <li key={category.name}>
-                        <NavigationMenuLink
-                          href={category.href}
-                          className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                          <div className="text-sm font-medium leading-none">
-                            {category.name}
-                          </div>
-                        </NavigationMenuLink>
-                      </li>
+                      <NavigationMenuItem key={category.name}>
+                          <Link
+                            href={category.href}
+                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                            <div className="text-sm font-medium leading-none">
+                              {category.name}
+                            </div>
+                          </Link>
+                        </NavigationMenuItem>
                     ))}
                   </ul>
                 </NavigationMenuContent>

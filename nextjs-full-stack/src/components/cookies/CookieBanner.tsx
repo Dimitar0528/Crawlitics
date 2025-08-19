@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { CookiePreferencesContent } from "./CookiePreferencesContent";
+import Link from "next/link";
 
 export interface CookiePreferences {
   functional: boolean;
@@ -87,9 +88,9 @@ export function CookieBanner() {
             <p className="text-xs text-muted-foreground flex-grow">
               Използваме бисквитки, за да осигурим най-доброто изживяване на
               нашия уебсайт. За повече подробности, моля, вижте нашата{" "}
-              <a href="/privacy-policy" className="underline">
+              <Link href="/privacy-policy" className="underline">
                 Политика за поверителност
-              </a>
+              </Link>
               .
             </p>
             <div className="flex flex-col sm:flex-row gap-2 min-w-[200px]">

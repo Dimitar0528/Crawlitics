@@ -49,26 +49,26 @@ const ProductBaseSchema = ProductSchema.pick({
   category: true,
 });
 
- const LatestProductCardPriceRecordSchema = PriceHistorySchema.pick({
+ const ProductPreviewCardPriceRecordSchema = PriceHistorySchema.pick({
   price: true,
   currency: true,
 });
 
- const LatestProductCardVariantSchema = ProductVariantSchema.pick({
+ const ProductPreviewCardVariantSchema = ProductVariantSchema.pick({
   id: true,
   product_id: true,
   image_url: true,
   availability: true,
 }).extend({
   latest_lowest_price_record:
-    LatestProductCardPriceRecordSchema
+    ProductPreviewCardPriceRecordSchema
 });
 
-export const LatestProductCardSchema = ProductBaseSchema.extend({
-  variants: z.array(LatestProductCardVariantSchema),
+export const ProductPreviewCardSchema = ProductBaseSchema.extend({
+  variants: z.array(ProductPreviewCardVariantSchema),
 });
 
-export const LatestProductsResponseSchema = z.array(LatestProductCardSchema);
+export const ProductPreviewsResponseSchema = z.array(ProductPreviewCardSchema);
 // comparasion product schemas
 const ComparisonParentProductSchema = ProductSchema.pick({
   id: true,
@@ -85,7 +85,7 @@ export const ComparisonProductSchema = ProductVariantSchema.pick({
   variant_specs: true,
 }).extend({
   parent_product: ComparisonParentProductSchema,
-  latest_lowest_price_record: LatestProductCardPriceRecordSchema,
+  latest_lowest_price_record: ProductPreviewCardPriceRecordSchema,
 });
 
 export const ComparisonResponseSchema = z.array(ComparisonProductSchema);
@@ -94,6 +94,6 @@ export type PriceHistory = z.infer<typeof PriceHistorySchema>;
 export type ProductVariant = z.infer<typeof ProductVariantSchema>;
 export type Product = z.infer<typeof ProductSchema>;
 
-export type LatestProduct = z.infer<typeof LatestProductCardSchema>;
+export type ProductPreview = z.infer<typeof ProductPreviewCardSchema>;
 
 export type ComparisonProduct = z.infer<typeof ComparisonProductSchema>;

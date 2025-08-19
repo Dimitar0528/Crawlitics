@@ -1,8 +1,8 @@
 import {
-  LatestProductsResponseSchema,
+  ProductPreviewsResponseSchema,
   ProductSchema,
   ComparisonResponseSchema,
-  LatestProduct,
+  ProductPreview,
   Product,
   ComparisonProduct,
 } from "@/lib/validations/product";
@@ -14,9 +14,7 @@ type DataResponse<T> =
   | { success: true; data: T }
   | { success: false; error: string };
   
-export async function getLatestProducts(): Promise<
-  DataResponse<LatestProduct[]>
-> {
+export async function getLatestProducts(): Promise<DataResponse<ProductPreview[]>> {
   try {
     const response = await fetch(`${API_BASE}/api/latest-products`);
 
@@ -35,7 +33,7 @@ export async function getLatestProducts(): Promise<
 
     const rawData: unknown = await response.json();
 
-    const result = LatestProductsResponseSchema.safeParse(rawData);
+    const result = ProductPreviewsResponseSchema.safeParse(rawData);
 
     if (!result.success) {
       console.error(
@@ -164,7 +162,9 @@ export async function startCrawleeBot(
   try {
     const response = await fetch(`${API_BASE}/api/crawleebot`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(values),
     });
 
@@ -185,5 +185,58 @@ export async function startCrawleeBot(
       return { success: false, error: err.message };
     }
     return { success: false, error: "Възникна неизвестна мрежова грешка." };
+  }
+}
+
+export async function getProductsByCategory(
+  category: string
+): Promise<DataResponse<ProductPreview[]>> {
+  try {
+    const response = await fetch(`${API_BASE}/api/category-products`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ category: category }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "Failed to fetch category products",
+        response.status,
+        errorText
+      );
+      return {
+        success: false,
+        error: `Неуспешно извличане на данни. Сървърът отговори със статус ${response.status}.`,
+      };
+    }
+
+    const rawData: unknown = await response.json();
+
+    const result = ProductPreviewsResponseSchema.safeParse(rawData);
+
+    if (!result.success) {
+      console.error(
+        "Validation Error: The category products data is malformed.",
+        result.error
+      );
+      return {
+        success: false,
+        error: "Получени са неправилно форматирани данни от сървъра.",
+      };
+    }
+
+    return { success: true, data: result.data };
+  } catch (err) {
+    console.error(
+      "Мрежова или неочаквана грешка при извличане на най-новите продукти.",
+      err
+    );
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Възникна неизвестна грешка." };
   }
 }

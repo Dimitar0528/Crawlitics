@@ -1,5 +1,6 @@
 from fastapi import Body, FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
+from urllib.parse import unquote
 
 from sqlalchemy.orm import Session
 
@@ -7,6 +8,7 @@ from contextlib import asynccontextmanager
 from db.crud import (
     get_newest_products,
     get_product_by_slug,
+    get_products_by_category,
     get_product_variants_for_comparison
 )
 from db.helpers import get_db
@@ -27,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+    
 def read_root():
     return {"message": "Hello from FastAPI"}
 
@@ -69,6 +71,18 @@ def get_comparison_data(ids_str: str = Query(..., alias="ids"), session: Session
     if not variants_to_compare:
         raise HTTPException(status_code=404, detail="None of the provided variant IDs could be found.")
     return variants_to_compare
+
+@app.post("/api/category-products")
+async def read_products_by_category(
+    category: str = Body(..., embed=True),
+    session: Session = Depends(get_db)
+):
+    decoded_category = unquote(category)
+    products = get_products_by_category(session, decoded_category)
+    if not products:
+        raise HTTPException(status_code=404, detail="Products not found for this category")
+
+    return products
 
 if __name__ == "__main__":
     import uvicorn
