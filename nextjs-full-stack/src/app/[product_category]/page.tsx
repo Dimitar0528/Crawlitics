@@ -1,22 +1,16 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ShoppingCart, SlidersHorizontal } from "lucide-react";
-
+import type { ProductPreview } from "@/lib/validations/product";
 import { getProductsByCategory } from "@/lib/data";
 import ProductCard from "@/components/products/cards/ProductCard";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ProductSortDropdown } from "@/components/products/ProductSortDropdown";
 
 export const revalidate = 3600;
 
 const CATEGORIES = [
-  { slug: "Laptop", name_bg: "Лаптоп" },
-  { slug: "Smartfon", name_bg: "Смартфон" },
+  { slug: "laptop", name_bg: "Лаптоп" },
+  { slug: "smartfon", name_bg: "Смартфон" },
 ];
 
 function getBgCategory(slug: string): string {
@@ -38,15 +32,17 @@ export async function generateMetadata({
   const { product_category } = await params;
  const categoryBG = getBgCategory(product_category);
   return {
-    title: `${categoryBG}и`,
-    description: `Разгледайте най-новите продукти в категория ${categoryBG}и.`,
+    title: `${categoryBG}`,
+    description: `Разгледайте най-новите продукти в категория ${categoryBG}.`,
   };
 }
 
 export default async function CategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ product_category: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { product_category } = await params;
   const categoryBG = getBgCategory(product_category);
@@ -59,9 +55,36 @@ export default async function CategoryPage({
 
   const productList = res.data || [];
 
-  const displayName = 
-    `${categoryBG.charAt(0).toUpperCase() + categoryBG.slice(1).replace(/-/g, " ")}и`
+  const displayName =
+    categoryBG.charAt(0).toUpperCase() + categoryBG.slice(1).replace(/-/g, " ");
+  const sortBy =
+    typeof (await searchParams).sort === "string"
+      ? (await searchParams).sort
+      : "name-asc";
+      
+    const getLowestPrice = (product: ProductPreview): number => {
+    if (!product.variants || product.variants.length === 0) {
+        return Infinity;
+    }
+      const prices = product.variants
+      .map(variant => variant.latest_lowest_price_record.price)
+      .filter((price): price is number => typeof price === 'number' && isFinite(price));
 
+    return Math.min(...prices);
+  }
+      const sortedProducts = [...productList].sort((a, b) => {
+        switch (sortBy) {
+          case "price-asc":
+             return getLowestPrice(a) - getLowestPrice(b);
+          case "price-desc":
+           return getLowestPrice(b) - getLowestPrice(a);
+          case "name-desc":
+            return b.name.localeCompare(a.name);
+          case "name-asc":
+          default:
+            return a.name.localeCompare(b.name);
+        }
+      });
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-800 dark:to-slate-900 min-h-screen">
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -82,33 +105,12 @@ export default async function CategoryPage({
             </span>{" "}
             продукта
           </div>
-          <div className="flex items-center gap-4">
-            <label
-              htmlFor="sort-select"
-              className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              Сортирай по:
-            </label>
-            <Select>
-              <SelectTrigger className="w-[180px] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-400">
-                <SelectValue placeholder="Препоръчано" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name-asc">Име (А-Я)</SelectItem>
-                <SelectItem value="name-desc">Име (Я-А)</SelectItem>
-                <SelectItem value="price-asc">
-                  Цена (ниска към висока)
-                </SelectItem>
-                <SelectItem value="price-desc">
-                  Цена (висока към ниска)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <ProductSortDropdown />
         </div>
 
-        {productList.length > 0 ? (
+        {sortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {productList.map((product) => (
+            {sortedProducts.map((product) => (
               <ProductCard key={product.id} {...product} />
             ))}
           </div>

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import {
-  ClerkProvider,
-} from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -11,7 +9,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { CookieBanner } from "@/components/cookies/CookieBanner";
 import { CompareProvider } from "@/context/CompareContext";
-import CompareTray from "@/components/products/CompareTray";
+import CompareTray from "@/components/products/comparisons/CompareTray";
 import { shadcn } from "@clerk/themes";
 import { bgBG } from "@clerk/localizations";
 
@@ -40,7 +38,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <ClerkProvider
       appearance={{

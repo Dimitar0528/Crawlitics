@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Product } from "@/lib/validations/product"; 
-import SelectVariantForCompareModal from "./modals/SelectVariantForCompareModal";
+import { Product } from "@/lib/validations/product";
+import SelectVariantForCompareModal from "../modals/SelectVariantForCompareModal";
 
 interface ProductHeaderActionsProps {
   product: Product;

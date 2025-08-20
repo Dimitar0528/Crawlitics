@@ -37,7 +37,7 @@ export default function ProductCard(product: ProductPreview) {
     ).length ?? 0;
   const percentage = totalCount > 0 ? (availableCount / totalCount) * 100 : 0;
   const isAvailable = availableCount > 0;
-  const slugCategory = slugifyString(product.category);
+  const slugCategory = slugifyString(product.category.toLowerCase());
   return (
     <Link className="block group" href={`/${slugCategory}/${product.slug}`}>
       <Card
@@ -105,7 +105,7 @@ export default function ProductCard(product: ProductPreview) {
 
             <div className="flex justify-between items-center mt-2">
               <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                Налични варианти
+                Налични оферти
               </span>
               <span
                 className={`text-sm font-bold mb-1 ${

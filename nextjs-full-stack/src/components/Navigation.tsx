@@ -66,8 +66,8 @@ export default function Navigation() {
   ];
 
   const categories = [
-    { name: "Смартфони", href: "/Smartfon" },
-    { name: "Лаптопи", href: "/Laptop" },
+    { name: "Смартфон", href: "/smartfon" },
+    { name: "Лаптоп", href: "/laptop" },
   ];
 
   const switchTheme = (value: string) => {
@@ -98,7 +98,7 @@ export default function Navigation() {
             <div className="bg-transparent dark:bg-gray-200 p-1 rounded-md flex items-center justify-center">
               <Image width={20} height={20} src="/favicon.ico" alt="App logo" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 dark:bg-gradient-to-r dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
               Crawlitics
             </span>
           </Link>
@@ -129,14 +129,14 @@ export default function Navigation() {
                   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                     {categories.map((category) => (
                       <NavigationMenuItem key={category.name}>
-                          <Link
-                            href={category.href}
-                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
-                            <div className="text-sm font-medium leading-none">
-                              {category.name}
-                            </div>
-                          </Link>
-                        </NavigationMenuItem>
+                        <Link
+                          href={category.href}
+                          className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+                          <div className="text-sm font-medium leading-none">
+                            {category.name}
+                          </div>
+                        </Link>
+                      </NavigationMenuItem>
                     ))}
                   </ul>
                 </NavigationMenuContent>

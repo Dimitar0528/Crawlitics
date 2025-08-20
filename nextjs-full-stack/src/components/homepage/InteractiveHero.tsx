@@ -42,7 +42,7 @@ export default function InteractiveHero() {
       aria-labelledby="cta-tag"
       className="relative w-full overflow-hidden rounded-3xl bg-slate-900 p-8 md:p-12">
       <div className="absolute inset-0 z-0">
-        <div className="absolute -inset-24 animate-[spin_80s_linear_infinite] bg-gradient-to-r from-purple-600/50 via-sky-500/50 to-transparent" />
+        <div className="absolute -inset-24 animate-[spin_100s_linear_infinite] bg-gradient-to-r from-purple-600/50 via-sky-500/50 to-transparent" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_3px,transparent_1px),linear-gradient(to_bottom,#80808012_3px,transparent_1px)] bg-[size:36px_36px]" />
       </div>
 

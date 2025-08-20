@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -18,8 +17,11 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-import { calculate_product_variant_prices, getPriceHistoryChartData } from "@/lib/utils";
-import { ProductVariant } from "@/lib/validations/product"; 
+import {
+  calculate_product_variant_prices,
+  getPriceHistoryChartData,
+} from "@/lib/utils";
+import { ProductVariant } from "@/lib/validations/product";
 
 const chartConfig = {
   minPrice: {
@@ -40,25 +42,27 @@ interface PriceHistoryChartProps {
   variants: ProductVariant[];
 }
 
-export default function PriceHistoryChart({ variants }: PriceHistoryChartProps) {
+export default function PriceHistoryChart({
+  variants,
+}: PriceHistoryChartProps) {
   const chartData = useMemo(
     () => getPriceHistoryChartData(variants),
     [variants]
   );
-   const yAxisTicks = useMemo(() => {
-     if (chartData.length < 2) return [];
-     const min_price_value = Math.min(...chartData.map((d) => d.minPrice.bgn));
-     const max_price_value = Math.max(...chartData.map((d) => d.maxPrice.bgn));
-     const tickCount = 6;
-     const tickArray: number[] = [];
-     // calculate the interval between each tick mark to create a uniform scale.
-     const interval = (max_price_value - min_price_value) / (tickCount - 1);
-     for (let i = 0; i < tickCount; i++) {
-       // calculate the tick value and round it to the nearest 10
-       tickArray.push(Math.round((min_price_value + i * interval) / 10) * 10);
-     }
-     return [...new Set(tickArray)];
-   }, [chartData]);
+  const yAxisTicks = useMemo(() => {
+    if (chartData.length < 2) return [];
+    const min_price_value = Math.min(...chartData.map((d) => d.minPrice.bgn));
+    const max_price_value = Math.max(...chartData.map((d) => d.maxPrice.bgn));
+    const tickCount = 6;
+    const tickArray: number[] = [];
+    // calculate the interval between each tick mark to create a uniform scale.
+    const interval = (max_price_value - min_price_value) / (tickCount - 1);
+    for (let i = 0; i < tickCount; i++) {
+      // calculate the tick value and round it to the nearest 10
+      tickArray.push(Math.round((min_price_value + i * interval) / 10) * 10);
+    }
+    return [...new Set(tickArray)];
+  }, [chartData]);
 
   if (chartData.length < 2) {
     return (
@@ -73,7 +77,7 @@ export default function PriceHistoryChart({ variants }: PriceHistoryChartProps) 
       <CardHeader>
         <CardTitle>История на цените</CardTitle>
         <CardDescription className="text-slate-600 dark:text-slate-300">
-          Тази графика комбинира цените от всички варианти. Проследете как се
+          Тази графика комбинира цените от всички оферти. Проследете как се
           изменят най-ниската, средната и най-високата цена на продукта с
           течение на времето.
         </CardDescription>
@@ -154,7 +158,8 @@ export default function PriceHistoryChart({ variants }: PriceHistoryChartProps) 
                           {chartConfig[name as keyof typeof chartConfig].label}:
                         </span>
 
-                        <span className="font-bold"
+                        <span
+                          className="font-bold"
                           style={{
                             color:
                               chartConfig[name as keyof typeof chartConfig]

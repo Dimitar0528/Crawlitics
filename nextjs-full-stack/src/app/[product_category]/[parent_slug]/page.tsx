@@ -1,6 +1,14 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Info, Store, BadgeEuro, Cpu, Tag, TrendingUp, Loader2 } from "lucide-react";
+import {
+  Info,
+  Store,
+  BadgeEuro,
+  Cpu,
+  Tag,
+  TrendingUp,
+  Loader2,
+} from "lucide-react";
 
 import BackButton from "@/components/products/BackButton";
 import ReadMore from "@/components/products/ReadMore";
@@ -17,13 +25,13 @@ import ProductImage from "@/components/products/images/ProductImage";
 import PriceHistoryChart from "@/components/products/charts/PriceHistoryChart";
 import { Suspense } from "react";
 import PriceAlertForm from "@/components/products/forms/PriceAlertForm";
-import ProductHeaderActions from "@/components/products/ProductHeaderActions";
+import ProductHeaderActions from "@/components/products/comparisons/ProductHeaderActions";
+import PriceDistributionByStoreChart from "@/components/products/charts/PriceDistributionByStoreChart";
 export const revalidate = 3600;
-
 
 export async function generateStaticParams() {
   const result = await getLatestProducts();
-  if(!result.success) return []
+  if (!result.success) return [];
   return result.data.map((product) => ({
     parent_slug: product.slug,
   }));
@@ -59,7 +67,7 @@ export default async function ProductPage({
   if (!result.success) {
     notFound();
   }
-  const product = result.data
+  const product = result.data;
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <div className="mb-6">
@@ -192,7 +200,7 @@ export default async function ProductPage({
               )
             ) : (
               <div className="text-center text-slate-500 dark:text-slate-400 p-8 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                Няма налични варианти за този продукт.
+                Няма налични оферти за този продукт.
               </div>
             )}
           </div>
@@ -203,9 +211,12 @@ export default async function ProductPage({
         <h2
           id="price-history-chart"
           className="flex items-center justify-center gap-3 text-3xl font-bold text-slate-800 dark:text-gray-200 mb-6">
-          <TrendingUp className="w-8 h-8 text-purple-500" /> Ценова история
+          <TrendingUp className="w-8 h-8 text-purple-500" /> Ценови графики
         </h2>
         <PriceHistoryChart variants={product.variants} />
+        <div className="mt-4">
+          <PriceDistributionByStoreChart variants={product.variants} />
+        </div>
       </section>
 
       <section aria-labelledby="price-alert-section" className="mt-12">
