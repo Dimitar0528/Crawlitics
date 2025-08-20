@@ -26,7 +26,7 @@ export function calculate_product_variant_prices(price: number) {
   return { price_bgn, price_eur };
 }
 
-function getStoreNameFromUrl(url: string): string {
+export function getStoreNameFromUrl(url: string): string {
   const hostname = new URL(url).hostname;
   const formattedName = hostname.replace(/^www\./, "");
   return formattedName.charAt(0).toUpperCase() + formattedName.slice(1);

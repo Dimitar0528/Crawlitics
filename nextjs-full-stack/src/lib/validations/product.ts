@@ -41,7 +41,7 @@ export const ProductSchema = z.object({
   created_at: z.coerce.date(),
   variants: z.array(ProductVariantSchema),
 });
-// latest product card schemas 
+// product preview card schemas 
 const ProductBaseSchema = ProductSchema.pick({
   id: true,
   name: true,

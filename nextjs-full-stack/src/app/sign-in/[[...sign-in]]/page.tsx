@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 
 export default function Page() {
   return (
-    <div className="flex justify-center align-center my-4">
+    <div className="flex h-screen justify-center items-center">
       <ClerkLoading>
         <div
           className="flex flex-col justify-center items-center min-h-[60vh] text-center"
