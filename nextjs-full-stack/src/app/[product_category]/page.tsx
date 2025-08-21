@@ -2,27 +2,16 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ShoppingCart, SlidersHorizontal } from "lucide-react";
 import type { ProductPreview } from "@/lib/validations/product";
-import { getProductsByCategory } from "@/lib/data";
+import { getProductsByCategory, getCategories } from "@/lib/data";
 import ProductCard from "@/components/products/cards/ProductCard";
 import { ProductSortDropdown } from "@/components/products/ProductSortDropdown";
 
 export const revalidate = 3600;
 
-const CATEGORIES = [
-  { slug: "laptop", name_bg: "Лаптоп" },
-  { slug: "smartfon", name_bg: "Смартфон" },
-];
-
-function getBgCategory(slug: string): string {
-  const found = CATEGORIES.find(
-    (c) => c.slug.toLowerCase() === slug.toLowerCase()
-  );
-  return found?.name_bg ?? slug;
-}
 export async function generateStaticParams() {
-  return CATEGORIES.map((cat) => ({
-    product_category: cat.name_bg,
-  }));
+  const result = await getCategories();
+  if (!result.success) return [];
+  return result.data.map((cat) => ({ product_category: cat.slug }));
 }
 export async function generateMetadata({
   params,
@@ -30,7 +19,13 @@ export async function generateMetadata({
   params: Promise<{ product_category: string }>;
 }): Promise<Metadata> {
   const { product_category } = await params;
- const categoryBG = getBgCategory(product_category);
+  const result = await getCategories();
+  if (!result.success) {
+    notFound();
+  }
+  const categoryBG = result.data.find(
+        (c) => c.slug.toLowerCase() === product_category.toLowerCase()
+      )?.name_bg
   return {
     title: `${categoryBG}`,
     description: `Разгледайте най-новите продукти в категория ${categoryBG}.`,
@@ -45,7 +40,12 @@ export default async function CategoryPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { product_category } = await params;
-  const categoryBG = getBgCategory(product_category);
+  const categories = await getCategories();
+  const categoryBG = categories.success
+    ? categories.data.find(
+        (c) => c.slug.toLowerCase() === product_category.toLowerCase()
+      )?.name_bg || product_category
+    : product_category;
 
   const res = await getProductsByCategory(categoryBG);
 
@@ -61,30 +61,32 @@ export default async function CategoryPage({
     typeof (await searchParams).sort === "string"
       ? (await searchParams).sort
       : "name-asc";
-      
-    const getLowestPrice = (product: ProductPreview): number => {
+
+  const getLowestPrice = (product: ProductPreview): number => {
     if (!product.variants || product.variants.length === 0) {
-        return Infinity;
+      return Infinity;
     }
-      const prices = product.variants
-      .map(variant => variant.latest_lowest_price_record.price)
-      .filter((price): price is number => typeof price === 'number' && isFinite(price));
+    const prices = product.variants
+      .map((variant) => variant.latest_lowest_price_record.price)
+      .filter(
+        (price): price is number => typeof price === "number" && isFinite(price)
+      );
 
     return Math.min(...prices);
-  }
-      const sortedProducts = [...productList].sort((a, b) => {
-        switch (sortBy) {
-          case "price-asc":
-             return getLowestPrice(a) - getLowestPrice(b);
-          case "price-desc":
-           return getLowestPrice(b) - getLowestPrice(a);
-          case "name-desc":
-            return b.name.localeCompare(a.name);
-          case "name-asc":
-          default:
-            return a.name.localeCompare(b.name);
-        }
-      });
+  };
+  const sortedProducts = [...productList].sort((a, b) => {
+    switch (sortBy) {
+      case "price-asc":
+        return getLowestPrice(a) - getLowestPrice(b);
+      case "price-desc":
+        return getLowestPrice(b) - getLowestPrice(a);
+      case "name-desc":
+        return b.name.localeCompare(a.name);
+      case "name-asc":
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-800 dark:to-slate-900 min-h-screen">
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -9,7 +9,8 @@ from db.crud import (
     get_newest_products,
     get_product_by_slug,
     get_products_by_category,
-    get_product_variants_for_comparison
+    get_product_variants_for_comparison,
+    get_all_categories,
 )
 from db.helpers import get_db
 
@@ -83,6 +84,14 @@ async def read_products_by_category(
         raise HTTPException(status_code=404, detail="Products not found for this category")
 
     return products
+
+
+@app.get("/api/categories")
+def read_categories(session: Session = Depends(get_db)):
+    categories = get_all_categories(session)
+    if not categories:
+        raise HTTPException(status_code=404, detail="Products categories not found")
+    return categories
 
 if __name__ == "__main__":
     import uvicorn

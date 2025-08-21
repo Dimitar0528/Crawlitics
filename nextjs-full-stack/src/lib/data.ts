@@ -5,16 +5,20 @@ import {
   ProductPreview,
   Product,
   ComparisonProduct,
+  CategoriesResponseSchema,
+  Category,
 } from "@/lib/validations/product";
 import { cache } from "react";
-import {  SpecialSearchFormValues } from "./validations/form";
+import { SpecialSearchFormValues } from "./validations/form";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type DataResponse<T> =
   | { success: true; data: T }
   | { success: false; error: string };
-  
-export async function getLatestProducts(): Promise<DataResponse<ProductPreview[]>> {
+
+export async function getLatestProducts(): Promise<
+  DataResponse<ProductPreview[]>
+> {
   try {
     const response = await fetch(`${API_BASE}/api/latest-products`);
 
@@ -58,50 +62,52 @@ export async function getLatestProducts(): Promise<DataResponse<ProductPreview[]
     return { success: false, error: "Възникна неизвестна грешка." };
   }
 }
-export const getProduct = cache(async (slug:string): Promise<DataResponse<Product>> => { 
-   try {
-     const response = await fetch(`${API_BASE}/api/product/${slug}`);
+export const getProduct = cache(
+  async (slug: string): Promise<DataResponse<Product>> => {
+    try {
+      const response = await fetch(`${API_BASE}/api/product/${slug}`);
 
-     if (!response.ok) {
-       const errorText = await response.text();
-       console.error(
-         `Failed to fetch product ${slug}:`, 
-         response.status,
-         errorText
-       );
-       return {
-         success: false,
-         error: `Неуспешно извличане на данни за продукт ${slug}. Сървърът отговори със статус ${response.status}.`,
-       };
-     }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `Failed to fetch product ${slug}:`,
+          response.status,
+          errorText
+        );
+        return {
+          success: false,
+          error: `Неуспешно извличане на данни за продукт ${slug}. Сървърът отговори със статус ${response.status}.`,
+        };
+      }
 
-     const rawData: unknown = await response.json();
+      const rawData: unknown = await response.json();
 
-     const result = ProductSchema.safeParse(rawData);
+      const result = ProductSchema.safeParse(rawData);
 
-     if (!result.success) {
-       console.error(
-         "Validation Error: The product data is malformed.",
-         result.error
-       );
-       return {
-         success: false,
-         error: "Получени са неправилно форматирани данни от сървъра.",
-       };
-     }
+      if (!result.success) {
+        console.error(
+          "Validation Error: The product data is malformed.",
+          result.error
+        );
+        return {
+          success: false,
+          error: "Получени са неправилно форматирани данни от сървъра.",
+        };
+      }
 
-     return { success: true, data: result.data };
-   } catch (err) {
-     console.error(
-       "Мрежова или неочаквана грешка при извличане на продукта.",
-       err
-     );
-     if (err instanceof Error) {
-       return { success: false, error: err.message };
-     }
-     return { success: false, error: "Възникна неизвестна грешка." };
-   }
-})
+      return { success: true, data: result.data };
+    } catch (err) {
+      console.error(
+        "Мрежова или неочаквана грешка при извличане на продукта.",
+        err
+      );
+      if (err instanceof Error) {
+        return { success: false, error: err.message };
+      }
+      return { success: false, error: "Възникна неизвестна грешка." };
+    }
+  }
+);
 
 export default async function getComparisonProductData(
   ids: number[]
@@ -154,7 +160,7 @@ export default async function getComparisonProductData(
 
 type CrawleeSuccessResponse = {
   message: string;
-}
+};
 
 export async function startCrawleeBot(
   values: SpecialSearchFormValues
@@ -232,6 +238,45 @@ export async function getProductsByCategory(
   } catch (err) {
     console.error(
       "Мрежова или неочаквана грешка при извличане на най-новите продукти.",
+      err
+    );
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Възникна неизвестна грешка." };
+  }
+}
+
+export async function getCategories(): Promise<DataResponse<Category[]>> {
+  try {
+    const response = await fetch(`${API_BASE}/api/categories`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to fetch categories", response.status, errorText);
+      return {
+        success: false,
+        error: `Неуспешно извличане на категории. Сървърът отговори със статус ${response.status}.`,
+      };
+    }
+
+    const rawData: unknown = await response.json();
+    const result = CategoriesResponseSchema.safeParse(rawData);
+    if (!result.success) {
+      console.error(
+        "Validation Error: Categories data is malformed.",
+        result.error
+      );
+      return {
+        success: false,
+        error: "Получени са неправилно форматирани данни от сървъра.",
+      };
+    }
+
+    return { success: true, data: result.data };
+  } catch (err) {
+    console.error(
+      "Мрежова или неочаквана грешка при извличане на категориите.",
       err
     );
     if (err instanceof Error) {

@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Sun,
   Moon,
-  Check,
   Search,
   Menu,
   LogIn,
@@ -12,6 +11,7 @@ import {
   Bot,
   LayoutGrid,
   ChevronRight,
+  Computer,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -52,23 +52,40 @@ import {
   useUser,
 } from "@clerk/nextjs";
 import { toast } from "sonner";
+import { useEffect } from "react";
+import { getCategories } from "@/lib/data";
 export default function Navigation() {
-    const { isSignedIn } = useUser();
+  const { isSignedIn } = useUser();
 
   const { setTheme, theme } = useTheme();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const themes = [
-    { value: "light", label: "Light" },
-    { value: "dark", label: "Dark" },
-    { value: "system", label: "System" },
-  ];
+    { name: "Light", value: "light", Icon: Sun },
+    { name: "Dark", value: "dark", Icon: Moon },
+    { name: "System", value: "system", Icon: Computer },
+  ] as const;
 
-  const categories = [
-    { name: "Смартфон", href: "/smartfon" },
-    { name: "Лаптоп", href: "/laptop" },
-  ];
+  const [categories, setCategories] = useState<
+    { name: string; href: string }[]
+  >([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      const res = await getCategories();
+      if (!isMounted) return;
+      if (res.success) {
+        setCategories(
+          res.data.map((c) => ({ name: c.name_bg, href: `/${c.slug}` }))
+        );
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const switchTheme = (value: string) => {
     if (!document.startViewTransition) {
@@ -161,24 +178,25 @@ export default function Navigation() {
           <div className="hidden sm:flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button
+                  className="focus-visible:ring-0 "
+                  variant="ghost"
+                  size="icon">
                   <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {themes.map((t) => (
+              <DropdownMenuContent className="" align="end">
+                {themes.map(({ name, value, Icon }) => (
                   <DropdownMenuItem
-                    key={t.value}
-                    onClick={() => switchTheme(t.value)}
-                    className={`flex items-center justify-between ${
-                      theme === t.value ? "font-semibold" : ""
+                    key={value}
+                    onClick={() => switchTheme(value)}
+                    className={`group transition-colors cursor-pointer ${
+                      theme === value ? "bg-accent text-accent-foreground" : ""
                     }`}>
-                    {t.label}
-                    {theme === t.value && (
-                      <Check className="w-4 h-4 text-green-600 dark:text-green-300" />
-                    )}
+                    <Icon className="size-4 group-hover:text-white" />
+                    <span className="group-hover:text-white">{name}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

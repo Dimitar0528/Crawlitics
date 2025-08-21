@@ -2,6 +2,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session, selectinload, load_only, joinedload
 from sqlalchemy.sql import func, select
 from sqlalchemy.exc import IntegrityError
+from slugify import slugify
 
 from typing import Literal
 from datetime import datetime, timedelta, timezone
@@ -279,13 +280,22 @@ def get_schema_by_product_category(session: Session, category: str) -> dict[str,
     result = session.execute(stmt).scalars().first()
     return result
 
-def get_all_categories_from_product_schemas(session: Session) -> list[str]:
-    """
-    Retrieves all product category names from the ProductCategorySchema.
-    """
-    stmt = select(ProductCategorySchema.product_category)
-    result = session.execute(stmt).scalars().all()
-    return result
+
+
+def get_all_categories(session: Session) -> list[dict[str, str]]:
+    """Return distinct product categories with URL slugs."""
+    stmt = (
+        select(Product.category)
+        .where(Product.category.is_not(None))
+        .distinct()
+        .order_by(Product.category.asc())
+    )
+    categories: list[str] = session.execute(stmt).scalars().all()
+    return [
+        {"name_bg": category, "slug": slugify(category)}
+        for category in categories
+        if isinstance(category, str) and category.strip()
+    ]
 
 def update_product_variant(
     session: Session,
