@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import { CookieBanner } from "@/components/cookies/CookieBanner";
 import { CompareProvider } from "@/context/CompareContext";
 import CompareTray from "@/components/products/comparisons/CompareTray";
+import DynamicBreadcrumb from "@/components/DynamicBreadcrumb";
 import { shadcn } from "@clerk/themes";
 import { bgBG } from "@clerk/localizations";
 
@@ -61,6 +62,7 @@ export default function RootLayout({
             <Navigation />
             <CompareProvider>
               <CompareTray />
+              <DynamicBreadcrumb />
               <main>{children}</main>
             </CompareProvider>
             <Footer />

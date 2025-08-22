@@ -179,3 +179,48 @@ export const getPriceHistoryChartData = (variants: ProductVariant[]) => {
 export function slugifyString(category: string) {
   return slugify(category);
 }
+
+const segmentLabels: Record<string, string> = {
+  "compare": "Сравнение",
+  "crawleebot": "CrawleeBot",
+  "search": "Търсене",
+  "how-it-works": "Как работи",
+  "sign-in": "Вход",
+  "sign-up": "Регистрация",
+  "user-profile": "Профил",
+};
+
+export function generateBreadcrumbs(
+  pathname: string
+): Array<{ label: string; href: string; isCurrentPage: boolean }> {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments.length === 0) {
+    return [{ label: "Начало", href: "/", isCurrentPage: true }];
+  }
+
+  const breadcrumbs: Array<{
+    label: string;
+    href: string;
+    isCurrentPage: boolean;
+  }> = [{ label: "Начало", href: "/", isCurrentPage: false }];
+
+  let currentPath = "";
+
+  segments.forEach((segment, index) => {
+    currentPath += `/${segment}`;
+
+    // use mapping if exists, else fallback to "Title Case"
+    const label =
+      segmentLabels[segment] ??
+      segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+
+    breadcrumbs.push({
+      label,
+      href: currentPath,
+      isCurrentPage: index === segments.length - 1,
+    });
+  });
+
+  return breadcrumbs;
+}

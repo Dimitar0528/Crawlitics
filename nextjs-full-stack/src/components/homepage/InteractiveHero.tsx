@@ -26,7 +26,7 @@ export default function InteractiveHero() {
     const sanitized_query = values.search_query;
     const params = new URLSearchParams();
     params.set("q", sanitized_query);
-    router.push(`/crawleebot/search?${params.toString()}`);
+    router.push(`/crawleebot?${params.toString()}`);
   };
 
   // define form structure.

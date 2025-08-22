@@ -125,7 +125,7 @@ export default function Navigation() {
             <NavigationMenuList>
               <NavigationMenuItem>
                 <Link
-                  href={isSignedIn ? "/crawleebot/search" : "#"}
+                  href={isSignedIn ? "/crawleebot" : "#"}
                   onClick={(e) => {
                     if (!isSignedIn) {
                       e.preventDefault();
@@ -243,7 +243,7 @@ export default function Navigation() {
                 <div className="flex-grow overflow-y-auto px-6">
                   <div className="flex flex-col gap-6 py-4">
                     <Link
-                      href="/crawleebot/search"
+                      href="/crawleebot"
                       className="flex items-center gap-3 rounded-lg bg-slate-100 p-3 text-lg font-semibold text-primary transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-sky-400 dark:hover:bg-slate-700"
                       onClick={() => setIsMobileMenuOpen(false)}>
                       <Bot className="h-6 w-6" />
