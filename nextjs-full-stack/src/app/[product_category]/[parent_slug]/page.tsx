@@ -10,7 +10,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-import BackButton from "@/components/products/BackButton";
 import ReadMore from "@/components/products/ReadMore";
 
 import { getLatestProducts, getProduct } from "@/lib/data";
@@ -70,9 +69,6 @@ export default async function ProductPage({
   const product = result.data;
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <div className="mb-6">
-        <BackButton />
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mb-12">
         <Suspense

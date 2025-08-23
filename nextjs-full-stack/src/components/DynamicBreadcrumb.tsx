@@ -84,7 +84,7 @@ export default function DynamicBreadcrumb() {
   }
 
   return (
-    <Breadcrumb className="bg-slate-50 dark:bg-gray-900 py-4 px-4 sm:px-6 lg:px-8 mx-auto border-b-1">
+    <Breadcrumb className="bg-slate-50 dark:bg-gray-900 py-2 px-4 sm:px-6 lg:px-8 mx-auto border-b-1">
       <BreadcrumbList className="text-sm sm:text-base">
         {breadcrumbs.map((breadcrumb, index) => (
           <div key={breadcrumb.href} className="flex items-center">

@@ -10,7 +10,6 @@ import { ComparisonProduct } from "@/lib/validations/product";
 import { calculate_product_variant_prices } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X, ClipboardX, ArrowLeft, Info, Loader2, Share2 } from "lucide-react";
-import BackButton from "@/components/products/BackButton";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -174,7 +173,6 @@ export default function ComparePage(){
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-        <BackButton />
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex-1 text-center sm:text-left">
           Сравни продукти ({comparisonData.length})
         </h1>

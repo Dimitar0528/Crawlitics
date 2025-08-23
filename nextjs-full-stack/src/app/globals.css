@@ -1,3 +1,4 @@
+@layer theme, base, vendor, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
 @import '@clerk/themes/shadcn.css';
@@ -38,6 +39,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -66,6 +69,8 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --warning: oklch(0.77875 0.17259 66.559);
+  --warning-foreground: oklch(0.2435 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -90,7 +95,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.195 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -105,6 +110,8 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --warning: oklch(0.76 0.16 70.49);
+  --warning-foreground: oklch(0.9368 0.0045 34.3092);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -231,4 +238,13 @@ html {
   
   height: 2.3rem;
   width: 2.3rem;
+}
+
+.custom-pricing-table.cl-pricingTableCard__pro {
+  @apply border-primary/50 my-0 py-9 relative overflow-visible;
+
+  &::before {
+    content: "Най-добра стойност";
+    @apply absolute top-0 left-1/2 -translate-1/2 rounded-full px-4 py-1 text-sm text-primary-foreground bg-primary;
+  }
 }
