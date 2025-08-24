@@ -23,8 +23,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductVariant } from "@/lib/validations/product";
 import { BASE_EMAIL_FORM_SCHEMA, BaseEmailForm } from "@/lib/validations/form";
+import { useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
 
-interface AvailabilityAlertModalProps {
+type AvailabilityAlertModalProps = {
   isOpen: boolean;
   onClose: () => void;
   variant: ProductVariant;
@@ -34,6 +36,8 @@ export default function AvailabilityAlertModal({
   isOpen,
   onClose,
 }: AvailabilityAlertModalProps) {
+    const { isSignedIn } = useUser();
+
   const [isSuccess, setIsSuccess] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -43,6 +47,9 @@ export default function AvailabilityAlertModal({
   });
 
   const onSubmit = async (values: BaseEmailForm) => {
+    if(!isSignedIn) return toast.warning(
+      "Трябва да влезеш в акаунта си, за да достъпиш тази функционалност!"
+    );
     setServerError(null);
     console.log(values);
   };

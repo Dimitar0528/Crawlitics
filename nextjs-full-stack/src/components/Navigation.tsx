@@ -130,7 +130,7 @@ export default function Navigation() {
                     if (!isSignedIn) {
                       e.preventDefault();
                       toast.warning(
-                        "Трябва да влезете в акаунта си, за да достъпите тази функционалност!"
+                        "Трябва да влезеш в акаунта си, за да достъпиш тази функционалност!"
                       );
                     }
                   }}

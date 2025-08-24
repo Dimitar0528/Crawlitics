@@ -97,7 +97,7 @@ export default function DynamicBreadcrumb() {
                 <BreadcrumbLink asChild>
                   <Link
                     href={breadcrumb.href}
-                    className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+                    className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
                     {breadcrumb.label}
                   </Link>
                 </BreadcrumbLink>

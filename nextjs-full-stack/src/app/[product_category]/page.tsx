@@ -1,6 +1,11 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ShoppingCart, SlidersHorizontal } from "lucide-react";
+import {
+  ShoppingCart,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import type { ProductPreview } from "@/lib/validations/product";
 import { getProductsByCategory, getCategories } from "@/lib/data";
 import ProductCard from "@/components/products/cards/ProductCard";
@@ -13,6 +18,7 @@ export async function generateStaticParams() {
   if (!result.success) return [];
   return result.data.map((cat) => ({ product_category: cat.slug }));
 }
+
 export async function generateMetadata({
   params,
 }: {
@@ -24,8 +30,8 @@ export async function generateMetadata({
     notFound();
   }
   const categoryBG = result.data.find(
-        (c) => c.slug.toLowerCase() === product_category.toLowerCase()
-      )?.name_bg
+    (c) => c.slug.toLowerCase() === product_category.toLowerCase()
+  )?.name_bg;
   return {
     title: `${categoryBG}`,
     description: `Разгледайте най-новите продукти в категория ${categoryBG}.`,
@@ -87,29 +93,69 @@ export default async function CategoryPage({
         return a.name.localeCompare(b.name);
     }
   });
+
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-800 dark:to-slate-900 min-h-screen">
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-slate-900 dark:text-white mb-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 dark:from-blue-500/10 dark:to-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-emerald-400/20 to-cyan-400/20 dark:from-emerald-500/10 dark:to-cyan-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
+      <main className="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+        <header className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200/50 dark:border-blue-700/50 mb-2">
+            <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              Актуални оферти
+            </span>
+          </div>
+
+          <h1 className="text-6xl font-black tracking-tighter bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent mb-4">
             {displayName}
           </h1>
-          <p className="mt-4 max-w-3xl mx-auto text-lg text-slate-600 dark:text-slate-300">
-            {`Всички налични продукти в категория ${displayName}, анализирани от CrawleeBot.`}
+
+          <p className="max-w-3xl mx-auto text-xl lg:text-2xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
+            Всички продукти в категория{" "}
+            <span className="font-semibold text-slate-800 dark:text-white">
+              {displayName}
+            </span>
+            , анализирани от CrawleeBot
           </p>
         </header>
 
-        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 p-4 bg-white/50 dark:bg-slate-700/100 rounded-xl shadow-sm">
-          <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
-            <SlidersHorizontal className="h-5 w-5 text-blue-500 dark:text-blue-300" />
-            <span className="font-semibold text-slate-900 dark:text-white">
-              {productList.length}
-            </span>{" "}
-            продукта
+        <div className="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6 ">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-4 py-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 dark:border-slate-700/50">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                  <SlidersHorizontal className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Общо продукти:
+                </span>
+              </div>
+              <div className="h-8 w-px bg-slate-200 dark:bg-slate-600"></div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {productList.length}
+              </span>
+            </div>
+
+            {productList.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200/50 dark:border-emerald-700/50">
+                <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  Актуализирано наскоро
+                </span>
+              </div>
+            )}
           </div>
-          <ProductSortDropdown />
+
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 dark:border-slate-700/50 p-2">
+            <ProductSortDropdown />
+          </div>
         </div>
 
+        {/* Products Grid */}
         {sortedProducts.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {sortedProducts.map((product) => (
@@ -117,17 +163,28 @@ export default async function CategoryPage({
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center text-center py-24 bg-white dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-            <div className="p-6 bg-blue-100 dark:bg-blue-900/50 rounded-full mb-6">
-              <ShoppingCart className="h-16 w-16 text-blue-500" />
+          <div className="flex flex-col items-center justify-center text-center py-32">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-2xl scale-150"></div>
+              <div className="relative p-8 bg-gradient-to-br from-white to-blue-50/50 dark:from-slate-800 dark:to-slate-700 rounded-3xl shadow-2xl border border-white/50 dark:border-slate-600/50 backdrop-blur-xl">
+                <ShoppingCart className="h-20 w-20 text-slate-400 dark:text-slate-500 mx-auto" />
+              </div>
             </div>
-            <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">
-              Няма намерени продукти
-            </h2>
-            <p className="max-w-md text-slate-500 dark:text-slate-400">
-              Все още няма анализирани продукти в тази категория. Моля,
-              проверете отново по-късно.
-            </p>
+
+            <div className="space-y-4 max-w-lg">
+              <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-br from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                Още няма продукти
+              </h2>
+              <p className="text-lg text-slate-500 dark:text-slate-400 leading-relaxed">
+                Тази категория все още се попълва с продукти. Проверете отново
+                скоро за най-новите добавки.
+              </p>
+
+              <div className="inline-flex items-center gap-2 px-6 py-3 mt-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 cursor-pointer">
+                <Sparkles className="h-4 w-4" />
+                <span className="font-medium">Бъдете първи да знаете</span>
+              </div>
+            </div>
           </div>
         )}
       </main>

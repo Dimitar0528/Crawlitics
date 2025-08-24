@@ -23,8 +23,10 @@ import {
   ExtendedPriceAlertFormSchema,
   ExtendedPriceAlertForm,
 } from "@/lib/validations/form";
+import { useUser } from "@clerk/nextjs";
 
 export default function PriceAlertForm() {
+  const { isSignedIn } = useUser();
   const [isSuccess, setIsSuccess] = useState(false);
   const [showTargetPrice, setShowTargetPrice] = useState(false);
 
@@ -39,6 +41,10 @@ export default function PriceAlertForm() {
   });
 
   const onSubmit = async (values: ExtendedPriceAlertForm) => {
+    if (!isSignedIn)
+      return toast.warning(
+        "Трябва да влезеш в акаунта си, за да достъпиш тази функционалност!"
+      );
     console.log(values);
     setIsSuccess(true);
     if (isSuccess)

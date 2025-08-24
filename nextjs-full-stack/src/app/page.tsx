@@ -149,10 +149,11 @@ export default async function HomePage() {
           </div>
         </section>
         <section id="pricing" className="relative w-full py-4">
-          
-
+          <div className="absolute top-1/2 left-1/2 w-[20rem] sm:w-[40rem] lg:w-[60rem]  h-[60rem] -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-purple-600/20 to-sky-400/20 blur-3xl" />
+          </div>
           <div className="relativecontainer mx-auto px-4 text-center">
-            <header className="mb-8">
+            <header className="mb-6">
               <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
                 План, създаден за вашите нужди
               </h2>
@@ -170,9 +171,7 @@ export default async function HomePage() {
         ">
               <PricingTable
                 fallback={
-                  <section
-                    id="pricing"
-                    className="w-full py-4 animate-pulse">
+                  <section id="pricing" className="w-full py-4 animate-pulse">
                     <div className="container mx-auto px-4 text-center">
                       <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 md:p-8 space-y-6">
