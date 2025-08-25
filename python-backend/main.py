@@ -11,6 +11,7 @@ from db.crud import (
     get_products_by_category,
     get_product_variants_for_comparison,
     get_all_categories,
+    search_products,
 )
 from db.helpers import get_db
 
@@ -91,8 +92,26 @@ def read_categories(session: Session = Depends(get_db)):
     categories = get_all_categories(session)
     if not categories:
         raise HTTPException(status_code=404, detail="Products categories not found")
+
     return categories
 
+
+@app.get("/api/search-products")
+def read_search_products(
+    q: str | None = Query(None, alias="q"),
+    offset: int = Query(0),
+    limit: int = Query(20),
+    session: Session = Depends(get_db),
+):
+    products = search_products(
+        session,
+        query=q,
+        offset=offset,
+        limit=limit,
+    )
+    if not products:
+         raise HTTPException(status_code=404, detail="Search products not found")
+    return products
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

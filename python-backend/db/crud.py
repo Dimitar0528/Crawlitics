@@ -1,4 +1,5 @@
 from decimal import Decimal
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload, load_only, joinedload
 from sqlalchemy.sql import func, select
 from sqlalchemy.exc import IntegrityError
@@ -201,6 +202,48 @@ def get_product_variants_for_comparison(session: Session, variant_ids: list[int]
     )
     
     return session.execute(stmt).scalars().unique().all()
+
+def search_products(
+    session: Session,
+    query: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+):
+    """Return paginated products.
+    """
+    stmt = (
+        select(Product)
+        .order_by(Product.id.asc())
+        .offset(offset)
+        .limit(limit)
+        .options(
+            load_only(
+                Product.id,
+                Product.name,
+                Product.slug,
+                Product.category,
+            ),
+            selectinload(Product.variants).load_only(
+                ProductVariant.id,
+                ProductVariant.product_id,
+                ProductVariant.image_url,
+                ProductVariant.availability,
+            ),
+            selectinload(Product.variants).selectinload(ProductVariant.latest_lowest_price_record).load_only(
+                PriceHistory.price,
+                PriceHistory.currency,
+            ),
+        )
+    )
+    if query:
+        q = f"%{query}%"
+        stmt = stmt.where(
+            or_(
+                Product.name.ilike(q),
+            )
+        )
+    result = session.execute(stmt)
+    return result.scalars().all()
 
 def get_parent_product_by_name(session: Session, name: str) -> Product:
     """Fetches a single parent product by its exact name."""

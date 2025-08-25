@@ -285,3 +285,44 @@ export async function getCategories(): Promise<DataResponse<Category[]>> {
     return { success: false, error: "Възникна неизвестна грешка." };
   }
 }
+
+export async function getSearchProducts(params: URLSearchParams): Promise<DataResponse<ProductPreview[]>> {
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/search-products?${params.toString()}`
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to fetch categories", response.status, errorText);
+      return {
+        success: false,
+        error: `Неуспешно извличане на категории. Сървърът отговори със статус ${response.status}.`,
+      };
+    }
+
+    const rawData: unknown = await response.json();
+    const result = ProductPreviewsResponseSchema.safeParse(rawData);
+    if (!result.success) {
+      console.error(
+        "Validation Error: Categories data is malformed.",
+        result.error
+      );
+      return {
+        success: false,
+        error: "Получени са неправилно форматирани данни от сървъра.",
+      };
+    }
+
+    return { success: true, data: result.data };
+  } catch (err) {
+    console.error(
+      "Мрежова или неочаквана грешка при извличане на категориите.",
+      err
+    );
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Възникна неизвестна грешка." };
+  }
+}
