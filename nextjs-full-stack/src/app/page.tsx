@@ -51,7 +51,7 @@ export default async function HomePage() {
             id="new-products"
             className="
       text-3xl font-extrabold tracking-tight sm:text-4xl 
-      bg-gradient-to-r from-sky-500 to-purple-600 bg-clip-text text-transparent mb-6
+      bg-gradient-to-r from-sky-500 to-purple-500 bg-clip-text text-transparent mb-6
     ">
             Последни Находки
           </h2>
@@ -105,7 +105,7 @@ export default async function HomePage() {
                 </p>
               </div>
 
-              <ChevronRight className="h-12 w-12 flex-shrink-0 text-slate-300 dark:text-slate-600 hidden md:block" />
+              <ChevronRight className="h-12 w-12 flex-shrink-0 text-purple-600 dark:text-purple-300 hidden md:block" />
 
               <div className="flex flex-col items-center text-center p-6 rounded-2xl max-w-sm transition-all duration-300 hover:bg-white dark:hover:bg-slate-500/50 hover:shadow-xl hover:-translate-y-2">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-300 mb-6">
@@ -119,7 +119,7 @@ export default async function HomePage() {
                 </p>
               </div>
 
-              <ChevronRight className="h-12 w-12 flex-shrink-0 text-slate-300 dark:text-slate-600 hidden md:block" />
+              <ChevronRight className="h-12 w-12 flex-shrink-0 text-purple-600 dark:text-purple-300 hidden md:block" />
 
               <div className="flex flex-col items-center text-center p-6 rounded-2xl max-w-sm transition-all duration-300 hover:bg-white dark:hover:bg-slate-500/50 hover:shadow-xl hover:-translate-y-2">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-300 mb-6">

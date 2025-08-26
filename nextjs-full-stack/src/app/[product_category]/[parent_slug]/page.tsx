@@ -83,7 +83,7 @@ export default async function ProductPage({
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">
           <header>
-            <p className="text-base font-extrabold text-blue-600 dark:text-blue-300 uppercase">
+            <p className="text-base font-extrabold text-purple-600 dark:text-purple-300 uppercase">
               {product.brand}
             </p>
             <h1

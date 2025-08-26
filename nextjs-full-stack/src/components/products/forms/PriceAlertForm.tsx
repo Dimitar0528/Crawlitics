@@ -57,7 +57,7 @@ export default function PriceAlertForm() {
         <Mail className="h-5 w-5 text-purple-500" />
         Получаване на известие при спад на цената
       </h4>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
         Ще ви изпратим известие при всяка промяна или когато цената падне под
         определена от вас стойност.
       </p>

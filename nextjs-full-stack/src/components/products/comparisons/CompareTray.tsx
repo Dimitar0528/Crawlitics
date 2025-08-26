@@ -49,14 +49,18 @@ export default function CompareTray() {
                 size="icon"
                 onClick={clearCompare}
                 className="hidden sm:inline-flex bg-slate-200 dark:bg-slate-600 dark:hover:bg-slate-500">
-                <Trash2 className="h-5 w-5 text-black dark:text-white" />
+                <Trash2 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                 <span className="sr-only">Изчисти всичко</span>
               </Button>
               <Button
                 disabled={compareProducts.length < 2}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
                 onClick={() => {
-                  router.push(`/compare?ids=${compareProducts.map((product)=> product.id)}`)
+                  router.push(
+                    `/compare?ids=${compareProducts.map(
+                      (product) => product.id
+                    )}`
+                  );
                 }}>
                 Сравни ({compareProducts.length}/4)
                 <ArrowRight className="h-4 w-4" />

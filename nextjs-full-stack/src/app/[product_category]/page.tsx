@@ -103,18 +103,18 @@ export default async function CategoryPage({
 
       <main className="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8">
         <header className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200/50 dark:border-blue-700/50 mb-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200/50 dark:border-blue-700/50 mb-2">
             <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Актуални оферти
             </span>
           </div>
 
-          <h1 className="text-6xl font-black tracking-tighter bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent mb-4">
+          <h1 className="text-5xl font-black tracking-tighter bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent mb-4">
             {displayName}
           </h1>
 
-          <p className="max-w-3xl mx-auto text-xl lg:text-2xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
+          <p className="max-w-3xl mx-auto text-xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
             Всички продукти в категория{" "}
             <span className="font-semibold text-slate-800 dark:text-white">
               {displayName}
@@ -135,7 +135,7 @@ export default async function CategoryPage({
                 </span>
               </div>
               <div className="h-8 w-px bg-slate-200 dark:bg-slate-600"></div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
                 {productList.length}
               </span>
             </div>

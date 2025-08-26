@@ -104,7 +104,7 @@ export default function DynamicBreadcrumb() {
               )}
             </BreadcrumbItem>
             {index < breadcrumbs.length - 1 && (
-              <BreadcrumbSeparator className="text-slate-400 dark:text-slate-600" />
+              <BreadcrumbSeparator className="text-purple-600 dark:text-purple-300" />
             )}
           </div>
         ))}

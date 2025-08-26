@@ -178,7 +178,7 @@ export default function ComparePage(){
         </h1>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-2 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-lg bg-gradient-to-r from-sky-500 to-purple-500 border-slate-200 dark:border-slate-700 p-2 mb-4">
         <Button
           variant="outline"
           onClick={handleCopyUrl}
@@ -187,7 +187,7 @@ export default function ComparePage(){
           Копирай линк за сравнение
         </Button>
 
-        <div className="flex items-center justify-center space-x-3">
+        <div className="bg-white dark:bg-slate-800 p-2 flex items-center justify-center space-x-3">
           <Label
             htmlFor="show-differences"
             className="font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
