@@ -248,10 +248,10 @@ html {
     @apply absolute top-0 left-1/2 -translate-1/2 rounded-full px-4 py-1 text-sm text-primary-foreground bg-primary;
   }
 }
-.cl-badge{
+.cl-internal-qnwljn{
   visibility: hidden;
 }
-.cl-badge::before{
+.cl-internal-qnwljn::before{
   content: 'Активен';
   visibility: visible;
   display: block;
@@ -259,5 +259,4 @@ html {
   border-radius: .5rem;
   position: absolute;
   padding: .25rem;
-  top: 2.5rem;
 }
