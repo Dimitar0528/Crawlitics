@@ -159,14 +159,14 @@ export default async function getComparisonProductData(
 }
 
 type CrawleeSuccessResponse = {
-  message: string;
+  task_id: string;
 };
 
 export async function startCrawleeBot(
   values: SpecialSearchFormValues
 ): Promise<DataResponse<CrawleeSuccessResponse>> {
   try {
-    const response = await fetch(`${API_BASE}/api/crawleebot`, {
+    const response = await fetch(`${API_BASE}/api/start-analysis`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

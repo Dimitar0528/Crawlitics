@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DOMPurify from "dompurify";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus, X, CheckCircle, Bot } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
@@ -31,41 +31,177 @@ import {
   SpecialSearchFormSchema,
 } from "@/lib/validations/form";
 import { startCrawleeBot } from "@/lib/data";
+import { ProductPreview } from "@/lib/validations/product";
 
-export default function SpecialSearchForm() {
+type TaskUpdate = {
+  status: string;
+  message?: string;
+  data?: ProductPreview[];
+}
+export default function SpecialSearch(){
+  return (
+    <Suspense>
+      <SpecialSearchComponent />
+    </Suspense>
+  )
+}
+ function SpecialSearchComponent() {
   const searchParams = useSearchParams();
+  const [isMounted, setIsMounted] = useState(false);
+
+  const [componentState, setComponentState] = useState<
+    "form" | "analyzing" | "results"
+  >("form");
+  const [statusHistory, setStatusHistory] = useState<TaskUpdate[]>([]);
+  const [results, setResults] = useState<ProductPreview[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
 
   const form = useForm<SpecialSearchFormValues>({
     resolver: zodResolver(SpecialSearchFormSchema),
     defaultValues: {
       product_name: "",
+      product_category: "",
       filters: [],
     },
   });
-  // used for dynamic filter inputs
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "filters",
   });
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
     const rawQuery = searchParams.get("q") || "";
-    const cleanQuery = DOMPurify.sanitize(rawQuery);
-    if (cleanQuery) {
-      form.setValue("product_name", cleanQuery);
+    if (typeof window !== "undefined") {
+      const cleanQuery = DOMPurify.sanitize(rawQuery);
+      if (cleanQuery) {
+        form.setValue("product_name", cleanQuery);
+      }
     }
   }, [searchParams, form]);
 
   const onSubmit = async (values: SpecialSearchFormValues) => {
     setServerError(null);
-      const result = await startCrawleeBot(values);
-      if (!result.success) {
-        setServerError(result.error);
+    setStatusHistory([]);
+    setResults([]);
+    setComponentState("analyzing");
+
+    try {
+      const startResult = await startCrawleeBot(values);
+      if (!startResult.success) {
+        setServerError(startResult.error);
+        setComponentState("form");
         return;
       }
-      toast.success(result.data.message);
+
+      const task_id  = startResult.data.task_id;
+      toast.success("Анализът започна успешно! Моля изчакайте.");
+
+      const ws = new WebSocket(
+        `${process.env.NEXT_PUBLIC_WS_URL}/ws/analysis/${task_id}`
+      );
+
+      ws.onopen = () => console.log("WebSocket connection established.");
+
+      ws.onmessage = (event) => {
+        const update: TaskUpdate = JSON.parse(event.data);
+        setStatusHistory((prevHistory) => {
+          const lastMessage =
+            prevHistory.length > 0
+              ? prevHistory[prevHistory.length - 1].message
+              : null;
+
+          // only add the new update if its message is different from the last one.
+          if (update.message && update.message !== lastMessage) {
+            return [update];
+          }
+
+          return prevHistory;
+        });
+
+        if (update.status === "COMPLETE") {
+          setResults(update.data || []);
+          setComponentState("results");
+          ws.close();
+        } else if (update.status === "ERROR") {
+          setServerError(
+            update.message || "Възникна грешка по време на анализа."
+          );
+          setComponentState("form");
+          ws.close();
+        }
+      };
+
+      ws.onerror = () => {
+        setServerError("Връзката със сървъра за анализ беше прекъсната.");
+        setComponentState("form");
+      };
+
+      ws.onclose = () => console.log("WebSocket connection closed.");
+    } catch (err) {
+      console.error(err);
+      setServerError(
+        "Неуспешно свързване със сървъра за стартиране на анализ."
+      );
+      setComponentState("form");
+    }
   };
+  if (!isMounted) {
+    return null;
+  }
+
+  if (componentState === "analyzing") {
+    return (
+      <div className="mt-12 max-w-2xl mx-auto p-6 border rounded-lg bg-card shadow-sm text-left">
+        <h2 className="font-semibold mb-4 text-center text-lg flex items-center justify-center gap-2">
+          <Bot className="h-6 w-6 text-primary" />
+          CrawleeBot Анализ в реално време
+        </h2>
+        <div className="space-y-4">
+          {statusHistory.map((update, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-4 animate-in fade-in duration-500">
+              {update.status === "COMPLETE" ? (
+                <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
+              ) : (
+                <Loader2 className="h-6 w-6 text-blue-500 animate-spin flex-shrink-0" />
+              )}
+              <span className="text-card-foreground shimmer-text ">{update.message}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (componentState === "results") {
+    return (
+      <div className="mt-12 text-left w-full">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-2xl font-bold">Резултати от анализа</h2>
+          <Button onClick={() => setComponentState("form")}>
+            Ново търсене
+          </Button>
+        </div>
+        {results.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {results.map((product) => (
+              <div key={product.id}>
+                <div>{product.name}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>Няма намерени резултати за вашата заявка.</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -161,7 +297,7 @@ export default function SpecialSearchForm() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={() => remove(index)} // remove field
+                onClick={() => remove(index)}
                 className="text-slate-500"
                 title="Изтрий филтър">
                 <X className="h-4 w-4" />

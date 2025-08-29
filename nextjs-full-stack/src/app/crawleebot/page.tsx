@@ -1,6 +1,6 @@
 
 import {  Info } from "lucide-react";
-import SpecialSearchForm from "@/components/crawleebot/SpecialSearchForm";
+import SpecialSearch from "@/components/crawleebot/SpecialSearch";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Интелигентно търсене",
@@ -100,7 +100,7 @@ export default function SpecialSearchPage() {
           </div>
         </div>
 
-        <SpecialSearchForm />
+        <SpecialSearch />
 
       </div>
     </div>
