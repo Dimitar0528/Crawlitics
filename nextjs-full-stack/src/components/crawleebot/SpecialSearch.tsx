@@ -60,7 +60,7 @@ export default function SpecialSearch(){
     resolver: zodResolver(SpecialSearchFormSchema),
     defaultValues: {
       product_name: "",
-      product_category: "",
+      product_category: undefined,
       filters: [],
     },
   });
@@ -167,9 +167,9 @@ export default function SpecialSearch(){
               key={index}
               className="flex items-center gap-4 animate-in fade-in duration-500">
               {update.status === "COMPLETE" ? (
-                <CheckCircle className="h-6 w-6 text-green-500 flex-shrink-0" />
+                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
               ) : (
-                <Loader2 className="h-6 w-6 text-blue-500 animate-spin flex-shrink-0" />
+                <Loader2 className="h-5 w-5 text-blue-500 animate-spin flex-shrink-0" />
               )}
               <span className="text-card-foreground shimmer-text ">{update.message}</span>
             </div>

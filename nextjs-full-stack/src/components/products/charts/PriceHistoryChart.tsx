@@ -22,6 +22,7 @@ import {
   getPriceHistoryChartData,
 } from "@/lib/utils";
 import { ProductVariant } from "@/lib/validations/product";
+import Link from "next/link";
 
 const chartConfig = {
   minPrice: {
@@ -38,17 +39,30 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface PriceHistoryChartProps {
+type PriceHistoryChartProps = {
   variants: ProductVariant[];
-}
+  has_basic_price_history_access: boolean
+};
 
 export default function PriceHistoryChart({
   variants,
+  has_basic_price_history_access,
 }: PriceHistoryChartProps) {
-  const chartData = useMemo(
-    () => getPriceHistoryChartData(variants),
-    [variants]
-  );
+  const chartData = useMemo(() => {
+    const fullChartData = getPriceHistoryChartData(variants);
+    // if the user has basic price history access, filter chart data for the last 7 days only.
+    if (has_basic_price_history_access) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+
+      return fullChartData.filter((dataPoint) => {
+        return new Date(dataPoint.date) >= sevenDaysAgo;
+      });
+    }
+    return fullChartData;
+  }, [variants, has_basic_price_history_access]);
+
   const yAxisTicks = useMemo(() => {
     if (chartData.length < 2) return [];
     const min_price_value = Math.min(...chartData.map((d) => d.minPrice.bgn));
@@ -64,7 +78,7 @@ export default function PriceHistoryChart({
     return [...new Set(tickArray)];
   }, [chartData]);
 
-  if (chartData.length < 2) {
+  if (chartData.length < 1) {
     return (
       <div className="text-center text-slate-500 dark:text-slate-400 p-8 bg-slate-100 dark:bg-slate-800 rounded-lg">
         Няма достатъчно данни за показване на графика на цените.
@@ -80,6 +94,19 @@ export default function PriceHistoryChart({
           Тази графика комбинира цените от всички оферти. Проследете как се
           изменят най-ниската, средната и най-високата цена на продукта с
           течение на времето.
+          {has_basic_price_history_access && (
+            <div className="mt-2 rounded-md bg-amber-100 p-3 dark:bg-amber-900/30">
+              <p className="text-sm text-amber-800 dark:text-amber-400">
+                Виждате данни само за последните 7 дни.{" "}
+                <Link
+                  href="/pricing" // Replace with your actual pricing page URL
+                  className="font-semibold underline hover:text-amber-900 dark:hover:text-amber-300 underline-offset-4">
+                  Надстройте плана си
+                </Link>
+                , за да отключите пълната история на цените.
+              </p>
+            </div>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>

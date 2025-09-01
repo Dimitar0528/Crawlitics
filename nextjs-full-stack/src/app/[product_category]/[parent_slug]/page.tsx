@@ -26,7 +26,9 @@ import { Suspense } from "react";
 import PriceAlertForm from "@/components/products/forms/PriceAlertForm";
 import ProductHeaderActions from "@/components/products/comparisons/ProductHeaderActions";
 import PriceDistributionByStoreChart from "@/components/products/charts/PriceDistributionByStoreChart";
+import { auth } from "@clerk/nextjs/server";
 export const revalidate = 3600;
+
 
 export async function generateStaticParams() {
   const result = await getLatestProducts();
@@ -67,9 +69,13 @@ export default async function ProductPage({
     notFound();
   }
   const product = result.data;
+  const { has } = await auth();
+
+  const has_basic_price_history_access = has({
+    feature: "7_dnevna_istoriya_na_tsenite_na_produktite",
+  });
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mb-12">
         <Suspense
           fallback={
@@ -127,8 +133,8 @@ export default async function ProductPage({
           </h2>
 
           <div className="mb-4 flex items-start gap-4 rounded-lg bg-amber-100 p-4 text-sm dark:bg-amber-900/30">
-            <Info className="w-5 h-5 text-amber-900 dark:text-amber-100" />
-            <p className="text-amber-900 dark:text-amber-100">
+            <Info className="w-5 h-5 text-amber-800 dark:text-amber-400" />
+            <p className="text-amber-800 dark:text-amber-400">
               За най-точна и подробна информация за съответния продукт, моля,
               посетете страницата на продукта, като използвате бутона{" "}
               <span className="font-bold">&quot;Към магазина&quot;</span>.
@@ -209,7 +215,10 @@ export default async function ProductPage({
           className="flex items-center justify-center gap-3 text-3xl font-bold text-slate-800 dark:text-gray-200 mb-6">
           <TrendingUp className="w-8 h-8 text-purple-500" /> Ценови графики
         </h2>
-        <PriceHistoryChart variants={product.variants} />
+        <PriceHistoryChart
+          variants={product.variants}
+          has_basic_price_history_access={has_basic_price_history_access}
+        />
         <div className="mt-4">
           <PriceDistributionByStoreChart variants={product.variants} />
         </div>

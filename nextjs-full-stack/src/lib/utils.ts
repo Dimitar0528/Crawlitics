@@ -188,6 +188,7 @@ const segmentLabels: Record<string, string> = {
   "sign-in": "Вход",
   "sign-up": "Регистрация",
   "user-profile": "Профил",
+  "pricing": "Цени и абонаменти"
 };
 
 export function generateBreadcrumbs(
