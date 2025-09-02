@@ -7,7 +7,7 @@
     "dev": "next dev --turbopack",
     "build": "rimraf .next && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@clerk/localizations": "^3.21.1",

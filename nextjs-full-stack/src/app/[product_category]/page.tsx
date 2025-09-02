@@ -19,12 +19,10 @@ export async function generateStaticParams() {
   return result.data.map((cat) => ({ product_category: cat.slug }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ product_category: string }>;
-}): Promise<Metadata> {
-  const { product_category } = await params;
+export async function generateMetadata(
+  props: PageProps<"/[product_category]">
+): Promise<Metadata> {
+  const { product_category } = await props.params;
   const result = await getCategories();
   if (!result.success) {
     notFound();
@@ -38,14 +36,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ product_category: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const { product_category } = await params;
+export default async function CategoryPage(
+  props: PageProps<"/[product_category]">
+) {
+  const { product_category } = await props.params;
   const categories = await getCategories();
   const categoryBG = categories.success
     ? categories.data.find(
@@ -64,8 +58,8 @@ export default async function CategoryPage({
   const displayName =
     categoryBG.charAt(0).toUpperCase() + categoryBG.slice(1).replace(/-/g, " ");
   const sortBy =
-    typeof (await searchParams).sort === "string"
-      ? (await searchParams).sort
+    typeof (await props.searchParams).sort === "string"
+      ? (await props.searchParams).sort
       : "name-asc";
 
   const getLowestPrice = (product: ProductPreview): number => {

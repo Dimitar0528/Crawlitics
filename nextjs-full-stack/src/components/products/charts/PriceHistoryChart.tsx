@@ -99,7 +99,7 @@ export default function PriceHistoryChart({
               <p className="text-sm text-amber-800 dark:text-amber-400">
                 Виждате данни само за последните 7 дни.{" "}
                 <Link
-                  href="/pricing" // Replace with your actual pricing page URL
+                  href="/pricing"
                   className="font-semibold underline hover:text-amber-900 dark:hover:text-amber-300 underline-offset-4">
                   Надстройте плана си
                 </Link>

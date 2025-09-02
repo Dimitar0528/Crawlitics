@@ -38,12 +38,10 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ parent_slug: string }>;
-}): Promise<Metadata> {
-  const { parent_slug } = await params;
+export async function generateMetadata(
+  props: PageProps<"/[product_category]/[parent_slug]">
+): Promise<Metadata> {
+  const { parent_slug } = await props.params;
   const result = await getProduct(parent_slug);
   if (!result.success) {
     notFound();
@@ -57,12 +55,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ parent_slug: string }>;
-}) {
-  const { parent_slug } = await params;
+export default async function ProductPage(
+  props: PageProps<"/[product_category]/[parent_slug]">
+) {
+  const { parent_slug } = await props.params;
   const result = await getProduct(parent_slug);
 
   if (!result.success) {

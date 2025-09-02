@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Route } from "next";
 
 export function ProductSortDropdown() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export function ProductSortDropdown() {
   const handleSortChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
     params.set("sort", value);
-    router.replace(`${pathname}?${params.toString()}`, {scroll: false});
+    router.replace((`${pathname}?${params.toString()}`) as Route, {scroll: false});
   };
 
   return (

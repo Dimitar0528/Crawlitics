@@ -14,6 +14,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Route } from "next";
 
 export default function DynamicBreadcrumb() {
   const pathname = usePathname();
@@ -96,7 +97,7 @@ export default function DynamicBreadcrumb() {
               ) : (
                 <BreadcrumbLink asChild>
                   <Link
-                    href={breadcrumb.href}
+                    href={(breadcrumb.href) as Route}
                     className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
                     {breadcrumb.label}
                   </Link>

@@ -17,6 +17,7 @@ import { ProductVariant } from "@/lib/validations/product";
 import { calculate_product_variant_prices } from "@/lib/utils";
 import AvailabilityAlertModal from "../forms/AvailabilityAlertForm";
 import { useCompare } from "@/context/CompareContext";
+import { Route } from "next";
 export default function VariantCard({
   variants,
 }: {
@@ -195,7 +196,7 @@ export default function VariantCard({
 
               <div className="md:col-span-1 flex flex-col gap-4 justify-center">
                 <Link
-                  href={variant.source_url || "#"}
+                  href={(variant.source_url) as Route || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full md:w-auto"

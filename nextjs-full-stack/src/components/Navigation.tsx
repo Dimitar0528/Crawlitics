@@ -55,6 +55,7 @@ import {
 } from "@clerk/nextjs";
 
 import { getCategories } from "@/lib/data";
+import { Route } from "next";
 
 export default function Navigation() {
   const { isSignedIn } = useUser();
@@ -141,7 +142,7 @@ export default function Navigation() {
                     {categories.map((category) => (
                       <NavigationMenuItem key={category.name}>
                         <Link
-                          href={category.href}
+                          href={(category.href) as Route}
                           className="block p-3 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground">
                           {category.name}
                         </Link>
@@ -154,7 +155,7 @@ export default function Navigation() {
               {navLinks.map((link) => (
                 <NavigationMenuItem key={link.label}>
                   <Link
-                    href={isSignedIn || !link.protected ? link.href : "#"}
+                    href={isSignedIn || !link.protected ? (link.href) as Route : "#"}
                     onClick={(e) => {
                       if (link.protected && !isSignedIn) {
                         e.preventDefault();
@@ -278,7 +279,7 @@ export default function Navigation() {
                       {categories.map((cat) => (
                         <Link
                           key={cat.name}
-                          href={cat.href}
+                          href={(cat.href) as Route}
                           className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
                           onClick={() => setIsMobileMenuOpen(false)}>
                           {cat.name}
@@ -290,7 +291,7 @@ export default function Navigation() {
                   {navLinks.map((link) => (
                     <Link
                       key={link.label}
-                      href={isSignedIn || !link.protected ? link.href : "#"}
+                      href={isSignedIn || !link.protected ? (link.href) as Route : "#"}
                       onClick={(e) => {
                         if (link.protected && !isSignedIn) {
                           e.preventDefault();
