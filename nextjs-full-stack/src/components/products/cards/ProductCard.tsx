@@ -59,6 +59,14 @@ export default function ProductCard(product: ProductPreview) {
           <BadgeCheckIcon />
           {product.category}
         </Badge>
+        {!isAvailable && (
+          <Badge
+            variant="destructive"
+            className="absolute top-2 right-2 bg-red-500 text-white dark:bg-red-600">
+            <BadgeCheckIcon />
+            Изчерпан
+          </Badge>
+        )}
         <CardHeader className="p-0 relative border-b">
           <div className="aspect-square w-full overflow-hidden">
             <Image

@@ -52,7 +52,7 @@ export default async function HomePage() {
             id="new-products"
             className="
       text-3xl font-extrabold tracking-tight sm:text-4xl 
-      bg-gradient-to-r from-sky-500 to-purple-500 bg-clip-text text-transparent mb-6
+      bg-gradient-to-r from-sky-500 to-purple-500 bg-clip-text text-transparent mb-8
     ">
             Последни Находки
           </h2>
@@ -79,7 +79,7 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section className="relative bg-slate-50 dark:bg-slate-800 py-8 mx-auto">
+        <section className="relative bg-slate-50 dark:bg-slate-800 py-8 my-4 mx-auto">
           <div className="absolute inset-0 bg-grid-slate-100/[0.4] [mask-image:radial-gradient(ellipse_at_center,white,transparent_85%)] dark:bg-grid-slate-700/[0.2]"></div>
 
           <div className="relative container mx-auto px-4 z-10">

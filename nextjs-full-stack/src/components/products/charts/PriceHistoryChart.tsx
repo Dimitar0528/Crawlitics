@@ -23,6 +23,7 @@ import {
 } from "@/lib/utils";
 import { ProductVariant } from "@/lib/validations/product";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 
 const chartConfig = {
   minPrice: {
@@ -41,13 +42,18 @@ const chartConfig = {
 
 type PriceHistoryChartProps = {
   variants: ProductVariant[];
-  has_basic_price_history_access: boolean
 };
 
+  
 export default function PriceHistoryChart({
   variants,
-  has_basic_price_history_access,
 }: PriceHistoryChartProps) {
+  const { has, isSignedIn } = useAuth();
+
+  const has_basic_price_history_access =
+    typeof has === "function"
+      ? has({ feature: "7_dnevna_istoriya_na_tsenite_na_produktite" })
+      : false;
   const chartData = useMemo(() => {
     const fullChartData = getPriceHistoryChartData(variants);
     // if the user has basic price history access, filter chart data for the last 7 days only.
@@ -78,10 +84,17 @@ export default function PriceHistoryChart({
     return [...new Set(tickArray)];
   }, [chartData]);
 
-  if (chartData.length < 1) {
+  if (chartData.length < 1 || !isSignedIn) {
     return (
-      <div className="text-center text-slate-500 dark:text-slate-400 p-8 bg-slate-100 dark:bg-slate-800 rounded-lg">
-        Няма достатъчно данни за показване на графика на цените.
+      <div
+        className={`text-center p-8 rounded-lg ${
+          !isSignedIn
+            ? "text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30"
+            : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800"
+        }`}>
+        {!isSignedIn
+          ? "Трябва да влезете в профила си, за да имате достъп до тази графика"
+          : "Няма достатъчно данни за показване на графика на цените."}
       </div>
     );
   }
@@ -95,7 +108,7 @@ export default function PriceHistoryChart({
           изменят най-ниската, средната и най-високата цена на продукта с
           течение на времето.
           {has_basic_price_history_access && (
-            <div className="mt-2 rounded-md bg-amber-100 p-3 dark:bg-amber-900/30">
+            <div className="mt-2 rounded-md p-3 bg-amber-100 dark:bg-amber-900/30">
               <p className="text-sm text-amber-800 dark:text-amber-400">
                 Виждате данни само за последните 7 дни.{" "}
                 <Link

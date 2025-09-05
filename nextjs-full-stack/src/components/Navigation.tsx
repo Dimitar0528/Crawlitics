@@ -6,8 +6,6 @@ import {
   Moon,
   SearchCheck,
   Menu,
-  LogIn,
-  UserPlus,
   Bot,
   LayoutGrid,
   BadgeEuro,
@@ -34,7 +32,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import {
   NavigationMenu,
@@ -308,27 +305,6 @@ export default function Navigation() {
                     </Link>
                   ))}
                 </div>
-                <SheetFooter className="p-6 border-t border-slate-200 dark:border-slate-800">
-                  <SignedOut>
-                    <div className="flex w-full gap-2">
-                      <SignInButton>
-                        <Button className="w-full flex gap-2">
-                          <LogIn className="h-4 w-4" /> Вход
-                        </Button>
-                      </SignInButton>
-                      <SignUpButton>
-                        <Button className="w-full flex gap-2 bg-gradient-to-r from-sky-500 to-purple-600 text-white">
-                          <UserPlus className="h-4 w-4" /> Регистрация
-                        </Button>
-                      </SignUpButton>
-                    </div>
-                  </SignedOut>
-                  <SignedIn>
-                    <div className="flex w-full justify-end">
-                      <UserButton />
-                    </div>
-                  </SignedIn>
-                </SheetFooter>
               </SheetContent>
             </Sheet>
           </div>

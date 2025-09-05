@@ -26,7 +26,6 @@ import { Suspense } from "react";
 import PriceAlertForm from "@/components/products/forms/PriceAlertForm";
 import ProductHeaderActions from "@/components/products/comparisons/ProductHeaderActions";
 import PriceDistributionByStoreChart from "@/components/products/charts/PriceDistributionByStoreChart";
-import { auth } from "@clerk/nextjs/server";
 export const revalidate = 3600;
 
 
@@ -65,11 +64,7 @@ export default async function ProductPage(
     notFound();
   }
   const product = result.data;
-  const { has } = await auth();
 
-  const has_basic_price_history_access = has({
-    feature: "7_dnevna_istoriya_na_tsenite_na_produktite",
-  });
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 mb-12">
@@ -213,9 +208,8 @@ export default async function ProductPage(
         </h2>
         <PriceHistoryChart
           variants={product.variants}
-          has_basic_price_history_access={has_basic_price_history_access}
         />
-        <div className="mt-4">
+        <div className="mt-8">
           <PriceDistributionByStoreChart variants={product.variants} />
         </div>
       </section>
