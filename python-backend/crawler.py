@@ -10,8 +10,9 @@ from helpers.crawler_helpers import (
     extract_and_match_filter_values,
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
-    get_user_criteria
 )
+from configs.pydantic_models import SearchPayload, Filter
+
 COSINE_WEIGHT = 0.7
 FUZZY_WEIGHT = 0.45
 SEMANTIC_PRODUCT_TITLE_THRESHOLD = 0.55
@@ -101,16 +102,16 @@ async def apply_text_filter(page: Page, selectors: dict, user_values_str: str, f
         await _click_and_track_option(page, selectors, best_match_text, applied_filters)
     
 
-async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_filters: dict[str, str]):
+async def apply_all_user_filters(page: Page, site_config: dict[str, any], user_filters_list: list[Filter]):
     """Applies filters by finding the best semantic match for each filter section."""
     selectors = site_config.get("side_filter_selectors")
-    if not user_filters or not selectors:
+    if not user_filters_list or not selectors:
         print("INFO: No user filters or missing selectors.")
         return
 
     applied_filter_names = set()
     applied_options = set()
-
+    user_filters: dict[str, str] = {f.name: f.value for f in user_filters_list}
     max_passes = len(user_filters) + 1
     for _ in range(max_passes):
         remaining_filters = {k: v for k, v in user_filters.items() if k not in applied_filter_names}
@@ -280,7 +281,7 @@ async def crawl_paginated_results(page: Page, site_config: dict[str, any], user_
     return product_urls
 
 
-async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], user_criteria: dict) -> list[str]:
+async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], user_criteria: SearchPayload) -> list[str]:
     """Orchestrates the entire crawling process for a single site."""
     page = await context.new_page()
     site_name = site_config['site_name']
@@ -292,10 +293,10 @@ async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], u
             print(f"ERROR: Could not navigate to category page for {site_name}. Aborting.")
             return []
 
-        await apply_all_user_filters(page, site_config, user_criteria['filters'])
+        await apply_all_user_filters(page, site_config, user_criteria.filters)
         
         return await crawl_paginated_results(
-            page, site_config, user_criteria['query'], max_pages=3
+            page, site_config, user_criteria.product_name, max_pages=3
         )
     except Exception as e:
         print(f"FATAL ERROR during crawling of {site_name}: {e}")
@@ -304,12 +305,12 @@ async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], u
         await page.close()
 
 
-async def crawl_sites(user_criteria: dict[str, any]) -> tuple[str, list[str]]:
+async def crawl_sites(user_criteria: SearchPayload) -> tuple[str, list[str]]:
+    user_selected_category: str = user_criteria.product_category
+    user_input: str = user_criteria.product_name
 
-    user_selected_category: str = user_criteria['product_category']
-    user_input: str = user_criteria['product_name']
-    user_filters_list: list[dict[str,str]] = user_criteria['filters']
-    user_filters: dict[str,str] = {item['name']: item['value'] for item in user_filters_list}
+    # Convert list[Filter] into dict[name -> value]
+    user_filters: dict[str, str] = {f.name: f.value for f in user_criteria.filters}
     print(f"--- Starting crawling for '{user_input}' ---")
     if user_filters:
         print("With filters:")

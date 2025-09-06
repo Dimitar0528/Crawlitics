@@ -1,12 +1,12 @@
+import asyncio
 from fastapi import Body, FastAPI, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect,BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from urllib.parse import unquote
 
+ 
 from sqlalchemy.orm import Session
 
-import asyncio
 import uuid
-from pydantic import BaseModel
 
 from contextlib import asynccontextmanager
 from db.crud import (
@@ -18,6 +18,8 @@ from db.crud import (
     search_products,
 )
 from db.helpers import get_db
+from configs.pydantic_models import SearchPayload
+from crawler import crawl_sites  
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -131,28 +133,14 @@ manager = ConnectionManager()
 
 tasks = {}
 
-class Filter(BaseModel):
-    name: str
-    value: str
-
-class SearchPayload(BaseModel):
-    product_name: str
-    product_category: str
-    filters: list[Filter] = []
 
 # dummy CrawleeBot function that simulates work
 async def run_crawleebot_task(task_id: str, payload: SearchPayload):
     """A long-running task that simulates the CrawleeBot process."""
     print(f"Starting task {task_id} for query: {payload.product_name}")
     tasks[task_id] = {"status": "STARTED", "message": "Мисията започна..."}
-    
-    await asyncio.sleep(5) 
-    tasks[task_id] = {"status": "CRAWLING", "message": "Сканирам Ozone.bg..."}
-    
-    await asyncio.sleep(8) 
-    tasks[task_id] = {"status": "ANALYZING", "message": f"Анализирам 5 намерени продукта от Ozone.bg..."}
-    
-    await asyncio.sleep(5) 
+    user_selected_category, urls_to_process = await crawl_sites(payload)
+
     tasks[task_id] = {"status": "COMPLETE", "data": [
         {"id": 1, "name": "Примерен Продукт 1", "price": 1299},
         {"id":2,"name": "Примерен Продукт 2", "price": 1399},
@@ -163,7 +151,6 @@ async def run_crawleebot_task(task_id: str, payload: SearchPayload):
 async def start_analysis(payload: SearchPayload, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
     tasks[task_id] = {"status": "PENDING", "message": "Задачата е създадена..."}
-
     background_tasks.add_task(run_crawleebot_task, task_id, payload)
 
     return {"task_id": task_id}
@@ -189,4 +176,4 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
             
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
