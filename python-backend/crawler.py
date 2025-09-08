@@ -309,7 +309,7 @@ async def crawl_sites(user_criteria: SearchPayload) -> tuple[str, list[str]]:
     user_selected_category: str = user_criteria.product_category
     user_input: str = user_criteria.product_name
 
-    # Convert list[Filter] into dict[name -> value]
+    # convert list[Filter] into dict[name -> value]
     user_filters: dict[str, str] = {f.name: f.value for f in user_criteria.filters}
     print(f"--- Starting crawling for '{user_input}' ---")
     if user_filters:

@@ -19,7 +19,7 @@ from db.crud import (
 )
 from db.helpers import get_db
 from configs.pydantic_models import SearchPayload
-from crawler import crawl_sites  
+from scraper import scrape_sites  
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -139,8 +139,9 @@ async def run_crawleebot_task(task_id: str, payload: SearchPayload):
     """A long-running task that simulates the CrawleeBot process."""
     print(f"Starting task {task_id} for query: {payload.product_name}")
     tasks[task_id] = {"status": "STARTED", "message": "Мисията започна..."}
-    user_selected_category, urls_to_process = await crawl_sites(payload)
 
+    await scrape_sites(payload)
+    
     tasks[task_id] = {"status": "COMPLETE", "data": [
         {"id": 1, "name": "Примерен Продукт 1", "price": 1299},
         {"id":2,"name": "Примерен Продукт 2", "price": 1399},
@@ -151,6 +152,15 @@ async def run_crawleebot_task(task_id: str, payload: SearchPayload):
 async def start_analysis(payload: SearchPayload, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
     tasks[task_id] = {"status": "PENDING", "message": "Задачата е създадена..."}
+    if not payload.product_name.strip():
+        raise HTTPException(status_code=400, detail="Product name cannot be empty")
+    if not payload.product_category.strip():
+        raise HTTPException(status_code=400, detail="Product category cannot be empty")
+    if len(payload.filters) == 0:
+        raise HTTPException(status_code=400, detail="At least one product filter required")
+    if len(payload.filters) > 10:
+        raise HTTPException(status_code=400, detail="Too many filters provided")
+        
     background_tasks.add_task(run_crawleebot_task, task_id, payload)
 
     return {"task_id": task_id}

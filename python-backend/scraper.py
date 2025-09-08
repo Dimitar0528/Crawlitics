@@ -31,11 +31,12 @@ from db.crud import (
 from db.models import ProductCategorySchema
 from data_aggregation import analyze_and_store_group, get_grouping_key
 from crawler import crawl_sites
+from configs.pydantic_models import SearchPayload
 
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
 
-# Base schema to guide the LLM to generate a more specific one.
+# base schema to guide the LLM to generate a more specific one.
 BASE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -48,7 +49,7 @@ BASE_SCHEMA = {
         },
         "category": {
             "type": "string",
-            "description": "A product category that MUST BE written in Bulgarian (e.g., 'Компютър', 'Смартфон', 'Телевизор'). The value must be a ONE OR MAX TWO singular noun(s) describing what the product fundamentally is, not its purpose, usage, or features. Start with a capital letter. Do not return adjectives like 'Гейминг', 'Бизнес', 'Смарт'"
+            "description": "A product category that MUST BE written in Bulgarian (e.g., 'Компютри', 'Смартфони', 'Телевизори'). The value must be a ONE OR MAX TWO noun(s), the first one plural, describing what the product fundamentally is, not its purpose, usage, or features. Start with a capital letter. Do not return adjectives like 'Гейминг', 'Бизнес', 'Смарт'"
         },
         "description": {
             "type": "string",
@@ -163,7 +164,7 @@ async def extract_data_with_schema(markdown_text: str, schema: dict[str, any]) -
     Extract complete information for the product in the markdown text below, strictly following the provided JSON schema.
     If a value is not found, you MUST use the string "null". Do not extract prices labeled "ПЦД:".
     The product description MUST be 4-5 sentences MAX.
-    In the product name include ONLY the core brand and name of the product.
+    In the product name include ONLY the core brand and name of the product. Strictly set the product category based on information about the product.
     --- SCHEMA ---
     {json.dumps(schema, indent=2, ensure_ascii=False)}
     --- END OF SCHEMA ---
@@ -194,7 +195,7 @@ async def extract_data_with_schema(markdown_text: str, schema: dict[str, any]) -
             
     return json.loads(clean_output(data_json_text))
 
-async def process_single_crawled_result(result: CrawlResult, session: Session, schema_to_use: dict[str, any], is_called_from_schema_gen_mode_func = False, schema_gen_mode_parsed_data: dict[str, any] = None):
+async def process_single_crawled_and_scraped_result(result: CrawlResult, session: Session, schema_to_use: dict[str, any], is_called_from_schema_gen_mode_func = False, schema_gen_mode_parsed_data: dict[str, any] = None):
     """Orchestrates the full scraping workflow for a given page."""
     url = result.url
     if not result.success:
@@ -206,7 +207,7 @@ async def process_single_crawled_result(result: CrawlResult, session: Session, s
     
     existing_product_variant = await asyncio.to_thread(get_product_variant_by_url, session, url)
     if existing_product_variant:
-        print(f"  Product variant exists. Checking for updated data. LLM data extraction skipped.")
+        print(f"  Product variant exists. Checking for fresh new data. LLM data extraction skipped.")
         new_price, new_availability = extract_dynamic_data_from_markdown(markdown)
         await asyncio.to_thread(
             update_product_variant, 
@@ -238,7 +239,7 @@ async def process_single_crawled_result(result: CrawlResult, session: Session, s
             print(f"   Error: {e}")
             return None
 
-async def main():
+async def scrape_sites(user_criteria: SearchPayload):
     start_time = time.perf_counter()
     browser_config = BrowserConfig(
         headless=True,
@@ -260,7 +261,7 @@ async def main():
         locale="bg-BG",
         override_navigator=True,
         check_robots_txt=True,
-        user_agent="CrawliticsBot/1.0",
+        user_agent="CrawleeBot/1.0",
         stream=True,
     )
 
@@ -277,97 +278,99 @@ async def main():
         ),
     ) 
     
-    user_selected_category, urls_to_process = await crawl_sites()
+    user_selected_category, urls_to_process = await crawl_sites(user_criteria)
     
     if not urls_to_process:
         print("No URLs to crawl. Exiting.")
         return
     
-    # found_products, urls_to_crawl = read_products_from_db(urls_to_process)
+    found_products, urls_to_scrape = read_products_from_db(urls_to_process)
     
-    print(f"Starting scraping for {len(urls_to_process)} URLs...")
-    all_scraped_data: list[dict[str, any]] = []
-    with SessionLocal() as db_check_session:
-        print(f"Checking database for existing schema for category: '{user_selected_category}'...")
-        db_schema = get_schema_by_product_category(db_check_session, user_selected_category)
+    if urls_to_scrape:
+        print(f"Starting scraping for {len(urls_to_scrape)} URLs...")
+        all_scraped_data: list[dict[str, any]] = []
+        with SessionLocal() as db_check_session:
+            print(f"Checking database for existing schema for category: '{user_selected_category}'...")
+            db_schema = get_schema_by_product_category(db_check_session, user_selected_category)
 
-    if db_schema:
-        print(" Schema found in database. Entering high-speed 'Extraction-Only' mode for all URLs.")
-        universal_schema_dict = db_schema
-        urls_for_concurrent_extraction = urls_to_process
-    else:
-        print(" No schema found. Entering 'Schema Generation' mode using the first URL.")
-        first_url = urls_to_process[0]
-        urls_for_concurrent_extraction = urls_to_process[1:]
+        if db_schema:
+            print(" Schema found in database. Entering high-speed 'Extraction-Only' mode for all URLs.")
+            universal_schema_dict = db_schema
+            urls_for_concurrent_extraction = urls_to_scrape
+        else:
+            print(" No schema found. Entering 'Schema Generation' mode using the first URL.")
+            first_url = urls_to_scrape[0]
+            urls_for_concurrent_extraction = urls_to_scrape[1:]
 
-        async with AsyncWebCrawler(config=browser_config) as crawler:
-            print(f"--- Processing seed URL for schema: {first_url} ---")
-            first_result = await crawler.arun(url=first_url, config=config)
-            if not first_result.success:
-                raise Exception(f"Failed to crawl seed URL: {first_result.error_message}")
-            
-            with SessionLocal() as generation_session:    
-                #  generate the schema, save it, and extract the product data based on it
-                initial_run_result = await generate_schema_and_extract_data(
-                    generation_session, truncate_markdown(first_result.markdown.raw_markdown), user_selected_category
-                )
-                # process the data from this first run
-                universal_schema_dict = initial_run_result["schema"].schema_definition
-                first_url_data_raw = initial_run_result["data"]
-
-                first_url_data = await process_single_crawled_result(
-                    first_result, 
-                    generation_session, 
-                    universal_schema_dict, 
-                    is_called_from_schema_gen_mode_func=True, 
-                    schema_gen_mode_parsed_data=first_url_data_raw
-                    )
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                print(f"--- Processing seed URL for schema: {first_url} ---")
+                first_result = await crawler.arun(url=first_url, config=config)
+                if not first_result.success:
+                    raise Exception(f"Failed to crawl seed URL: {first_result.error_message}")
                 
-            all_scraped_data.append(first_url_data)
+                with SessionLocal() as generation_session:    
+                    #  generate the schema, save it, and extract the product data based on it
+                    initial_run_result = await generate_schema_and_extract_data(
+                        generation_session, truncate_markdown(first_result.markdown.raw_markdown), user_selected_category
+                    )
+                    # process the data from this first run
+                    universal_schema_dict = initial_run_result["schema"].schema_definition
+                    first_url_data_raw = initial_run_result["data"]
 
-    if not universal_schema_dict:
-        print("\nFATAL: Failed to obtain a schema. Aborting.")
-        return
-    
-    if not urls_for_concurrent_extraction:
-        print("\nNo further URLs to process.")
-    else:
-        print(f"\n--- Starting CONCURRENT processing for remaining {len(urls_for_concurrent_extraction)} URLs ---")
-        async with AsyncWebCrawler(config=browser_config) as crawler:
-            async def scrape_site_task(result: CrawlResult):
-                with SessionLocal() as session:
-                    return await process_single_crawled_result(result, session, universal_schema_dict)
+                    first_url_data = await process_single_crawled_and_scraped_result(
+                        first_result, 
+                        generation_session, 
+                        universal_schema_dict, 
+                        is_called_from_schema_gen_mode_func=True, 
+                        schema_gen_mode_parsed_data=first_url_data_raw
+                        )
+                    
+                all_scraped_data.append(first_url_data)
 
-            tasks = []
-            async for result in await crawler.arun_many(urls=urls_for_concurrent_extraction, config=config, dispatcher=dispatcher):
-                print(f"Scrape completed for: {result.url}")
-                tasks.append(asyncio.create_task(scrape_site_task(result)))
-
-            remaining_scraped_data = [res for res in await asyncio.gather(*tasks)]
-            all_scraped_data.extend(remaining_scraped_data)
-    
-    elapsed = time.perf_counter() - start_time
-    print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
-    
-    if any(all_scraped_data):
-        print("\n--- Starting PASS 2: Aggregating and Storing Data ---")
+        if not universal_schema_dict:
+            print("\nFATAL: Failed to obtain a schema. Aborting.")
+            return
         
-        product_groups = defaultdict(list)
-        for item in all_scraped_data:
-            key = get_grouping_key(item, list(product_groups.keys()))
-            product_groups[key].append(item)
+        if not urls_for_concurrent_extraction:
+            print("\nNo further URLs to process.")
+        else:
+            print(f"\n--- Starting CONCURRENT processing for remaining {len(urls_for_concurrent_extraction)} URLs ---")
+            async with AsyncWebCrawler(config=browser_config) as crawler:
+                async def scrape_site_task():
+                    with SessionLocal() as session:
+                        return await process_single_crawled_and_scraped_result(result, session, universal_schema_dict)
 
-        print(f"Found {len(product_groups)} unique product groups.")
-        for key in product_groups.keys():
-            print(f"  - Group: {key}")
+                tasks = []
+                async for result in await crawler.arun_many(urls=urls_for_concurrent_extraction, config=config, dispatcher=dispatcher):
+                    result: CrawlResult
+                    print(f"Scrape completed for: {result.url}")
+                    tasks.append(asyncio.create_task(scrape_site_task()))
 
-        db_session = SessionLocal()
-        for key, items in product_groups.items():
-            analyze_and_store_group(db_session, key, items)
-        db_session.close()
-        print("\n" + "="*50 + "\nDATABASE OPERATION COMPLETE\n" + "="*50)
+                remaining_scraped_data = [res for res in await asyncio.gather(*tasks) if res is not None]
+                all_scraped_data.extend(remaining_scraped_data)
+        
+        elapsed = time.perf_counter() - start_time
+        print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
+        
+        # if all_scraped_data:
+        #     print("\n--- Starting PASS 2: Aggregating and Storing Data ---")
+            
+        #     product_groups = defaultdict(list)
+        #     for item in all_scraped_data:
+        #         key = get_grouping_key(item, list(product_groups.keys()))
+        #         product_groups[key].append(item)
 
-    # # The user chooses whether to run the data analyst agent or not
+        #     print(f"Found {len(product_groups)} unique product groups.")
+        #     for key in product_groups.keys():
+        #         print(f"  - Group: {key}")
+
+        #     db_session = SessionLocal()
+        #     for key, items in product_groups.items():
+        #         analyze_and_store_group(db_session, key, items)
+        #     db_session.close()
+        #     print("\n" + "="*50 + "\nDATABASE OPERATION COMPLETE\n" + "="*50)
+
+    # The user chooses whether to run the data analyst agent or not
     # run_product_analysis_choice = input("Would you like to run a comparative analysis on the collected product data using several predefined evaluation criteria? (y/n): ").lower().strip()
     # if run_product_analysis_choice == 'y':
     #     try:
@@ -393,6 +396,3 @@ async def main():
     #         print(f"\n[Error] An error occurred during analysis: {analysis_err}")
     # else:
     #     print("Skipping analysis. Exiting.")
-
-if __name__ == "__main__":
-    asyncio.run(main())
