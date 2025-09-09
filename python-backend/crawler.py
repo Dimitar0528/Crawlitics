@@ -11,7 +11,11 @@ from helpers.crawler_helpers import (
     filter_urls_by_query_relaxed,
     get_semantic_similarity, 
 )
+
 from configs.pydantic_models import SearchPayload, Filter
+from typing import Callable, Coroutine
+from configs.status_manager import TaskStatus, SubStatus
+UpdateStatusCallable = Callable[[TaskStatus, SubStatus | None], Coroutine[None, None, None]]
 
 COSINE_WEIGHT = 0.7
 FUZZY_WEIGHT = 0.45
@@ -304,8 +308,9 @@ async def run_site_crawl(context: BrowserContext, site_config: dict[str, any], u
     finally:
         await page.close()
 
+async def crawl_sites(user_criteria: SearchPayload, update_status: UpdateStatusCallable) -> tuple[str, list[str]]:
+    await update_status(TaskStatus.CRAWLING, SubStatus.INITIALIZING)
 
-async def crawl_sites(user_criteria: SearchPayload) -> tuple[str, list[str]]:
     user_selected_category: str = user_criteria.product_category
     user_input: str = user_criteria.product_name
 
@@ -318,6 +323,8 @@ async def crawl_sites(user_criteria: SearchPayload) -> tuple[str, list[str]]:
             print(f"  - {name}: {value}")
     
     site_configs = get_site_configs(user_input, user_filters)
+    await update_status(TaskStatus.CRAWLING, SubStatus.STARTING_SITES, count=len(site_configs))
+
     start_time = time.perf_counter()
 
     async with async_playwright() as playwright:
@@ -336,8 +343,9 @@ async def crawl_sites(user_criteria: SearchPayload) -> tuple[str, list[str]]:
     
     print(f"\n\n{'='*20} CRAWL COMPLETE {'='*20}")
     print(f"Found {len(all_urls)} total URLs before final filtering.")
-    
+    await update_status(TaskStatus.CRAWLING, SubStatus.COLLECTING_URLS)
     filtered_urls = filter_urls_by_query_relaxed(all_urls, user_input)
+    await update_status(TaskStatus.CRAWLING, SubStatus.FILTERING_URLS, count=len(filtered_urls))
     print(f"Found {len(filtered_urls)} relevant product URLs.")
 
     for i, url in enumerate(filtered_urls, 1):

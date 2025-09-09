@@ -3,6 +3,7 @@ from fastapi import Body, FastAPI, HTTPException, Depends, Query, WebSocket, Web
 from fastapi.middleware.cors import CORSMiddleware
 from urllib.parse import unquote
 
+from configs.status_manager import TaskStatus, SubStatus, STATUS_MESSAGES
  
 from sqlalchemy.orm import Session
 
@@ -133,29 +134,38 @@ manager = ConnectionManager()
 
 tasks = {}
 
-
-# dummy CrawleeBot function that simulates work
-async def run_crawleebot_task(task_id: str, payload: SearchPayload):
-    """A long-running task that simulates the CrawleeBot process."""
-    print(f"Starting task {task_id} for query: {payload.product_name}")
-    tasks[task_id] = {"status": "STARTED", "message": "Мисията започна..."}
-
-    await scrape_sites(payload)
+async def update_task_status(task_id: str, status: TaskStatus, sub_status: SubStatus | None, **kwargs):
+    """Centralized function to update and send task status."""
+    message = STATUS_MESSAGES.get((status, sub_status), "Неизвестен статус...")
     
-    tasks[task_id] = {"status": "COMPLETE", "data": [
-        {"id": 1, "name": "Примерен Продукт 1", "price": 1299},
-        {"id":2,"name": "Примерен Продукт 2", "price": 1399},
-    ]}
-    print(f"Task {task_id} completed.")
+    # format message with dynamic counts if provided
+    if 'count' in kwargs:
+        message = message.format(count=kwargs['count'])
+    
+    payload = {"status": status.value, "message": message}
+    if 'data' in kwargs:
+        payload['data'] = kwargs['data']
+        
+    tasks[task_id] = payload
+    await manager.send_json_update(task_id, payload)
+
+async def run_crawleebot_task(task_id: str, payload: SearchPayload):
+    """The main orchestrator for the background task."""
+    try:
+        await scrape_sites(payload, lambda s, ss, **kwargs: update_task_status(task_id, s, ss, **kwargs))
+    except Exception as e:
+        print(f"FATAL ERROR in task {task_id}: {e}")
+        await update_task_status(task_id, TaskStatus.ERROR, None)
 
 @app.post("/api/start-analysis")
 async def start_analysis(payload: SearchPayload, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
+    print(payload)
     tasks[task_id] = {"status": "PENDING", "message": "Задачата е създадена..."}
     if not payload.product_name.strip():
         raise HTTPException(status_code=400, detail="Product name cannot be empty")
     if not payload.product_category.strip():
-        raise HTTPException(status_code=400, detail="Product category cannot be empty")
+        raise HTTPException(status_code=400, detail="Категорията на продукта не може да е празна")
     if len(payload.filters) == 0:
         raise HTTPException(status_code=400, detail="At least one product filter required")
     if len(payload.filters) > 10:
@@ -169,7 +179,7 @@ async def start_analysis(payload: SearchPayload, background_tasks: BackgroundTas
 async def websocket_endpoint(websocket: WebSocket, task_id: str):
     await manager.connect(task_id, websocket)
     try:
-        while task_id in tasks and tasks[task_id].get("status") != "COMPLETE":
+        while task_id in tasks and tasks[task_id].get("status") not in [TaskStatus.COMPLETE.value, TaskStatus.ERROR.value]:
             # send the current status of the task
             current_status = tasks.get(task_id, {})
             await manager.send_json_update(task_id, current_status)

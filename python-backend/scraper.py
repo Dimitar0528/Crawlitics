@@ -33,6 +33,12 @@ from data_aggregation import analyze_and_store_group, get_grouping_key
 from crawler import crawl_sites
 from configs.pydantic_models import SearchPayload
 
+from configs.pydantic_models import SearchPayload
+from typing import Callable, Coroutine
+from configs.status_manager import TaskStatus, SubStatus
+UpdateStatusCallable = Callable[[TaskStatus, SubStatus | None], Coroutine[None, None, None]]
+
+
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
 
@@ -239,7 +245,7 @@ async def process_single_crawled_and_scraped_result(result: CrawlResult, session
             print(f"   Error: {e}")
             return None
 
-async def scrape_sites(user_criteria: SearchPayload):
+async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatusCallable):
     start_time = time.perf_counter()
     browser_config = BrowserConfig(
         headless=True,
@@ -278,7 +284,7 @@ async def scrape_sites(user_criteria: SearchPayload):
         ),
     ) 
     
-    user_selected_category, urls_to_process = await crawl_sites(user_criteria)
+    user_selected_category, urls_to_process = await crawl_sites(user_criteria, update_status)
     
     if not urls_to_process:
         print("No URLs to crawl. Exiting.")
