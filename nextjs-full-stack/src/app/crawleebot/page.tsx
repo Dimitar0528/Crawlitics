@@ -81,12 +81,12 @@ export default function SpecialSearchPage() {
 
             <p className="mt-4 text-slate-600 dark:text-slate-300 leading-relaxed">
               Като добавите филтри като{" "}
-              <strong className="font-semibold text-purple-600 dark:text-purple-400">
+              <strong className="font-semibold text-purple-700 dark:text-purple-300">
                 оперативна (RAM) памет, интегрирана (SSD) памет, цвят, ценови
                 диапазон
               </strong>{" "}
               или{" "}
-              <strong className="font-semibold text-purple-600 dark:text-purple-400">
+              <strong className="font-semibold text-purple-700 dark:text-purple-300">
                 други специфични за продукта характеристики
               </strong>
               , вие му помагате да елиминира хиляди неподходящи оферти и да се

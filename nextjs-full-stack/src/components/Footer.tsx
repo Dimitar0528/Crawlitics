@@ -19,14 +19,14 @@ export default function Footer() {
                 </span>
               </div>
             </Link>
-            <p className="text-gray-600 dark:text-gray-300 w-70">
+            <p className="text-gray-700 dark:text-gray-300 w-70">
               Сравни цени лесно и бързо
             </p>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4">За Сайта</h4>
-            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+            <ul className="space-y-2 text-gray-700 dark:text-gray-300">
               <li>
                 <Link
                   href="/how-it-works"
@@ -53,7 +53,7 @@ export default function Footer() {
 
           <div>
             <h4 className="font-semibold mb-4">Компания</h4>
-            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+            <ul className="space-y-2 text-gray-700 dark:text-gray-300">
               <li>
                 <a
                   href="#"
@@ -80,7 +80,7 @@ export default function Footer() {
 
           <div>
             <h4 className="font-semibold mb-4">Поддръжка</h4>
-            <ul className="space-y-2 text-gray-600 dark:text-gray-300">
+            <ul className="space-y-2 text-gray-700 dark:text-gray-300">
               <li>
                 <a
                   href="#"
@@ -106,7 +106,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-300 dark:border-gray-700 mt-8 pt-8 text-center text-gray-600 dark:text-gray-300">
+        <div className="border-t border-gray-300 dark:border-gray-700 mt-8 pt-8 text-center text-gray-700 dark:text-gray-300">
           <p>&copy; {YEAR} Crawlitics. Всички права запазени.</p>
         </div>
       </div>

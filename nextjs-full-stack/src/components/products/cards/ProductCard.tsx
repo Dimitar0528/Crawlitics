@@ -141,8 +141,8 @@ export default function ProductCard(product: ProductPreview) {
             <button
               className="cursor-pointer
               inline-block w-full text-center 
-              bg-gradient-to-r from-blue-500 to-purple-600 
-              hover:from-purple-600 hover:to-pink-600
+              bg-gradient-to-r from-blue-800 to-purple-800 
+              hover:from-purple-600 hover:to-pink-700
               text-white font-semibold 
               py-3 rounded-xl 
               shadow-lg

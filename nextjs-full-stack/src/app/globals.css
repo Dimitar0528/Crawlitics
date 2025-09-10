@@ -138,143 +138,124 @@
     @apply bg-background text-foreground;
   }
 }
+@layer utilities{
+  ::view-transition-old(root){
+    animation-delay: 250ms;
+  }
+  ::view-transition-new(root) {
+    animation: circle-in 600ms;
+  }
+  /* Custom animations */
+  @keyframes circle-in {
+    from { clip-path: circle(0% at 50% 0%) }
+    to { clip-path: circle(200% at 50% 0%) }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
 
-::view-transition-old(root){
-  animation-delay: 250ms;
-}
-::view-transition-new(root) {
-  animation: circle-in 600ms;
-}
-/* Custom animations */
-@keyframes circle-in {
-  from { clip-path: circle(0% at 50% 0%) }
-  to { clip-path: circle(200% at 50% 0%) }
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 1s ease-out;
-}
-
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Glassmorphism effects */
-.glass {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.dark .glass {
-  background: rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Custom gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Infinite scrolling animations */
-@keyframes scroll-right {
-  0% {
-    transform: translateX(-50%);
+  .animate-fade-in {
+    animation: fade-in 1s ease-out;
   }
 
-  100% {
-    transform: translateX(0%);
+  html {
+    scroll-behavior: smooth;
   }
-}
-
-@keyframes scroll-left {
-  0% {
-    transform: translateX(0%);
+  img, svg{
+    vertical-align: unset;
   }
+  @keyframes scroll-right {
+    0% {
+      transform: translateX(-50%);
+    }
 
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-scroll-right {
-  animation: scroll-right 20s linear infinite alternate-reverse;
-}
-
-.animate-scroll-left {
-  animation: scroll-left 20s linear infinite alternate-reverse;
-}
-
-@keyframes aurora {
-  from {
-    background-position: 0% 50%;
+    100% {
+      transform: translateX(0%);
+    }
   }
 
-  to {
-    background-position: 100% 50%;
-  }
-}
+  @keyframes scroll-left {
+    0% {
+      transform: translateX(0%);
+    }
 
-.animate-aurora {
-  background-size: 400% 400%;
-  animation: aurora 10s ease-in-out infinite alternate;
-}
-.cl-avatarBox{
-  
-  height: 2.3rem;
-  width: 2.3rem;
-}
-
-.custom-pricing-table.cl-pricingTableCard__pro {
-  @apply border-primary/50 my-0 py-9 relative overflow-visible;
-
-  &::before {
-    content: "Най-добра стойност";
-    @apply absolute top-0 left-1/2 -translate-1/2 rounded-full px-4 py-1 text-sm text-primary-foreground bg-primary;
-  }
-}
-.cl-internal-qnwljn{
-  visibility: hidden;
-}
-.cl-internal-qnwljn::before{
-  content: 'Активен';
-  visibility: visible;
-  display: block;
-  background-color: var(--primary);
-  border-radius: .5rem;
-  position: absolute;
-  padding: .25rem;
-}
-
-.shimmer-text {
-  background: linear-gradient(135deg, hsl(0, 0%, 80%), hsl(0, 0%, 37%), hsl(0, 0%, 80%));
-  background-clip: text;
-  color: transparent;
-  background-size: 200% 100%;
-  animation: shimmer 5s linear infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
+    100% {
+      transform: translateX(-50%);
+    }
   }
 
-  100% {
-    background-position: -200% 0;
+  .animate-scroll-right {
+    animation: scroll-right 20s linear infinite alternate-reverse;
+  }
+
+  .animate-scroll-left {
+    animation: scroll-left 20s linear infinite alternate-reverse;
+  }
+
+  @keyframes aurora {
+    from {
+      background-position: 0% 50%;
+    }
+
+    to {
+      background-position: 100% 50%;
+    }
+  }
+
+  .animate-aurora {
+    background-size: 400% 400%;
+    animation: aurora 10s ease-in-out infinite alternate;
+  }
+  .cl-avatarBox{
+    
+    height: 2.3rem;
+    width: 2.3rem;
+  }
+
+  .custom-pricing-table.cl-pricingTableCard__pro {
+    @apply border-primary/50 my-0 py-9 relative overflow-visible;
+
+    &::before {
+      content: "Най-добра стойност";
+      @apply absolute top-0 left-1/2 -translate-1/2 rounded-full px-4 py-1 text-sm text-primary-foreground bg-primary;
+    }
+  }
+  .cl-internal-qnwljn{
+    visibility: hidden;
+  }
+  .cl-internal-qnwljn::before{
+    content: 'Активен';
+    visibility: visible;
+    display: block;
+    background-color: var(--primary);
+    border-radius: .5rem;
+    position: absolute;
+    padding: .25rem;
+  }
+
+  .shimmer-text {
+    background: linear-gradient(135deg, hsl(0, 0%, 80%), hsl(0, 0%, 37%), hsl(0, 0%, 80%));
+    background-clip: text;
+    color: transparent;
+    background-size: 200% 100%;
+    animation: shimmer 5s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
   }
 }

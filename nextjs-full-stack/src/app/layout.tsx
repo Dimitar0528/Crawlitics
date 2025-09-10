@@ -70,15 +70,15 @@ export default function RootLayout({
           pricingTableCard:
             "custom-pricing-table bg-none bg-[unset] border p-6 my-4 mx-4 shadow-xl",
           pricingTableCardHeader: "p-0 pb-12",
-          pricingTableCardTitle: "text-2xl",
+          pricingTableCardTitle: "text-2xl dark:text-white",
           pricingTableCardBody:
             "flex flex-col justify-end bg-none bg-[unset] *:bg-none *:bg-[unset] [&>.cl-pricingTableCardFeatures]:justify-items-end",
           pricingTableCardDescription:
-            "text-slate-600 dark:text-slate-300 text-sm ",
+            "text-slate-700 dark:text-slate-300 text-sm ",
           pricingTableCardFeeContainer: "items-baseline gap-0.5",
           pricingTableCardFee: "text-4xl",
           pricingTableCardFeePeriodNotice: "hidden",
-          pricingTableCardFeePeriod: "text-base text-muted-foreground",
+          pricingTableCardFeePeriod: "text-base text-foreground",
           pricingTableCardFeatures: "p-0 border-none",
           pricingTableCardFeaturesListItem: "[&>svg]:text-primary",
           pricingTableCardFeaturesListItemTitle: "text-sm",

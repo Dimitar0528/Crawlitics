@@ -85,11 +85,11 @@ export default function SpecialSearch(){
   }, [searchParams, form]);
 
   const onSubmit = async (values: SpecialSearchFormValues) => {
+    if (values.filters?.length === 0) return toast.warning("Не сте въвели никакви допълнителни филтри! За най-точно и прецизно търсене, моля добавете поне един филтър! ")
     setServerError(null);
     setStatusHistory([]);
     setResults([]);
     setComponentState("analyzing");
-
     try {
       const startResult = await startCrawleeBot(values);
       if (!startResult.success) {
@@ -253,11 +253,15 @@ export default function SpecialSearch(){
         <div className="space-y-4">
           <div>
             <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-              Допълнителни филтри (препоръчително)
+              Допълнителни филтри (силно препоръчително)
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-              Натиснете бутона (+), за да добавите филтър. Посочете име (напр.
-              &quot;RAM памет&quot;) и стойност (напр. &quot;16 GB&quot;).
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-2xl mx-auto">
+              За да добавите филтър, моля посочете име (напр.
+              &quot;RAM памет&quot;) и стойност (напр. &quot;16 GB&quot;).{" "}
+              <br /> <strong>
+                За филтър по цена, моля, въведете ценови диапазон във
+                формат: мин. цена - макс. цена (например: 1500 - 2500).
+              </strong>
             </p>
           </div>
 
@@ -320,7 +324,7 @@ export default function SpecialSearch(){
             disabled={form.formState.isSubmitting}
             type="submit"
             size="lg"
-            className="w-full max-w-xs h-14 text-lg font-semibold bg-gradient-to-r from-sky-500 to-purple-600 hover:scale-105 transition-transform duration-300">
+            className="w-full max-w-xs h-14 text-lg font-semibold bg-gradient-to-r from-sky-500 to-purple-600 hover:scale-105 transition-transform duration-300 dark:text-gray-200">
             {form.formState.isSubmitting && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}

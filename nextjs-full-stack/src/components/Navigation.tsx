@@ -122,7 +122,9 @@ export default function Navigation() {
       <div className="container mx-auto px-4 lg:px-8 py-3 flex items-center justify-between md:justify-evenly">
         <div className="flex items-center gap-6">
           <Link href={"/"} className="flex items-center space-x-2">
-            <Image width={20} height={20} src="/favicon.ico" alt="App logo" />
+            <div className="bg-transparent dark:bg-gray-200 p-1 rounded-md flex items-center justify-center">
+              <Image width={20} height={20} src="/favicon.ico" alt="App logo" />
+            </div>
             <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
               Crawlitics
             </span>
@@ -135,11 +137,17 @@ export default function Navigation() {
                   Категории
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
+                  {categories.length === 0 && (
+                    <NavigationMenuItem className="text-center mt-4">
+                      {" "}
+                      Категориите не могат да бъдат заредени в момента
+                    </NavigationMenuItem>
+                  )}
                   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                     {categories.map((category) => (
                       <NavigationMenuItem key={category.name}>
                         <Link
-                          href={(category.href) as Route}
+                          href={category.href as Route}
                           className="block p-3 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground">
                           {category.name}
                         </Link>
@@ -152,7 +160,9 @@ export default function Navigation() {
               {navLinks.map((link) => (
                 <NavigationMenuItem key={link.label}>
                   <Link
-                    href={isSignedIn || !link.protected ? (link.href) as Route : "#"}
+                    href={
+                      isSignedIn || !link.protected ? (link.href as Route) : "#"
+                    }
                     onClick={(e) => {
                       if (link.protected && !isSignedIn) {
                         e.preventDefault();
@@ -276,7 +286,7 @@ export default function Navigation() {
                       {categories.map((cat) => (
                         <Link
                           key={cat.name}
-                          href={(cat.href) as Route}
+                          href={cat.href as Route}
                           className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800"
                           onClick={() => setIsMobileMenuOpen(false)}>
                           {cat.name}
@@ -288,7 +298,11 @@ export default function Navigation() {
                   {navLinks.map((link) => (
                     <Link
                       key={link.label}
-                      href={isSignedIn || !link.protected ? (link.href) as Route : "#"}
+                      href={
+                        isSignedIn || !link.protected
+                          ? (link.href as Route)
+                          : "#"
+                      }
                       onClick={(e) => {
                         if (link.protected && !isSignedIn) {
                           e.preventDefault();

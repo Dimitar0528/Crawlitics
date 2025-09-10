@@ -80,7 +80,7 @@ export default async function ProductPage(
           aria-labelledby="product-name"
           className="flex flex-col justify-center space-y-6">
           <header>
-            <p className="text-base font-extrabold text-purple-600 dark:text-purple-300 uppercase">
+            <p className="text-base font-extrabold text-purple-700 dark:text-purple-300 uppercase">
               {product.brand}
             </p>
             <h1
@@ -125,7 +125,7 @@ export default async function ProductPage(
 
           <div className="mb-4 flex items-start gap-4 rounded-lg bg-amber-100 p-4 text-sm dark:bg-amber-900/30">
             <Info className="w-5 h-5 text-amber-800 dark:text-amber-400" />
-            <p className="text-amber-800 dark:text-amber-400">
+            <p className="text-amber-900 dark:text-amber-400">
               За най-точна и подробна информация за съответния продукт, моля,
               посетете страницата на продукта, като използвате бутона{" "}
               <span className="font-bold">&quot;Към магазина&quot;</span>.

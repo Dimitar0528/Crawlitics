@@ -14,8 +14,7 @@ export function calculate_product_variant_prices(price: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price != Infinity ? price : 0);
-
-  const priceInEUR = price != Infinity ? price : 0 / EUR_TO_BGN_RATE;
+  const priceInEUR = (price != Infinity ? price : 0) / EUR_TO_BGN_RATE;
   const price_eur = new Intl.NumberFormat("de-DE", {
     // using German locale for standard Euro formatting
     style: "currency",

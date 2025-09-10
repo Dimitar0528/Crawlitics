@@ -209,7 +209,7 @@ export default function VariantCard({
                 {!isAvailable && (
                   <Button
                     onClick={(e) => handleNotifyClick(e, variant)}
-                    className="w-full bg-amber-600 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-amber-700">
+                    className="w-full bg-amber-800 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors duration-300 hover:bg-amber-700">
                     <BellRing className="w-5 h-5" />
                     <span>Уведоми при наличност</span>
                   </Button>

@@ -93,7 +93,7 @@ export default function HowItWorksPage() {
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-300 group-hover:text-red-700 dark:group-hover:text-red-400">
                       {problem.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300 group-hover:text-gray-800 dark:group-hover:text-gray-200">
+                    <p className="text-gray-700 dark:text-gray-300 transition-colors duration-300 group-hover:text-gray-800 dark:group-hover:text-gray-200">
                       {problem.description}
                     </p>
                   </CardContent>
@@ -111,7 +111,7 @@ export default function HowItWorksPage() {
               <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white">
                 Ето как Crawlitics решава проблемите ти
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
                 Нашата платформа прави онлайн пазаруването лесно, бързо и
                 изгодно
               </p>
@@ -151,7 +151,7 @@ export default function HowItWorksPage() {
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                       {solution.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300">
+                    <p className="text-gray-700 dark:text-gray-300">
                       {solution.description}
                     </p>
                   </div>
@@ -167,7 +167,7 @@ export default function HowItWorksPage() {
               <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white">
                 Защо да избереш Crawlitics?
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
                 Всичко, от което се нуждаеш за интелигентно онлайн пазаруване
               </p>
             </div>
@@ -222,7 +222,7 @@ export default function HowItWorksPage() {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white relative inline-block after:absolute after:left-0 after:-bottom-1 after:w-0 after:h-0.5 after:bg-blue-500 after:transition-all after:duration-300 group-hover:after:w-full">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    <p className="text-gray-700 dark:text-gray-300 text-sm">
                       {feature.description}
                     </p>
                   </CardContent>
@@ -238,7 +238,7 @@ export default function HowItWorksPage() {
               <h2 className="text-3xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white">
                 Какво казват нашите потребители
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-300">
+              <p className="text-xl text-gray-700 dark:text-gray-300">
                 Присъедини се към хилядите доволни потребители
               </p>
             </div>
@@ -346,7 +346,7 @@ export default function HowItWorksPage() {
                             <p className="font-semibold text-gray-900 dark:text-white">
                               {testimonial.name}
                             </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
                               {testimonial.role}
                             </p>
                           </div>
@@ -368,7 +368,7 @@ export default function HowItWorksPage() {
               <p className="text-4xl font-semibold text-gray-800 dark:text-white mb-4">
                 Доверени от водещи магазини в България
               </p>
-              <p className="text-lg text-gray-500 dark:text-gray-400">
+              <p className="text-lg text-gray-700 dark:text-gray-300">
                 Над 80,000+ продукта от водещите онлайн магазини в България
               </p>
             </div>
@@ -386,7 +386,7 @@ export default function HowItWorksPage() {
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {stat.number}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <div className="text-sm text-gray-700 dark:text-gray-300">
                     {stat.label}
                   </div>
                 </div>
@@ -618,7 +618,7 @@ export default function HowItWorksPage() {
               </div>
             </div>
 
-            <div className="mt-12 flex flex-wrap justify-center items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-12 flex flex-wrap justify-center items-center gap-6 text-sm text-gray-700 dark:text-gray-300">
               <div className="flex items-center space-x-2">
                 <Shield className="w-4 h-4 text-green-500" />
                 <span>Сигурни връзки</span>
@@ -639,7 +639,7 @@ export default function HowItWorksPage() {
           </div>
         </section>
 
-        <section className="py-20 bg-gradient-to-r from-blue-500 to-purple-500 text-white relative overflow-hidden">
+        <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-black/20"></div>
           <div className="container mx-auto px-4 text-center relative z-10">
             <div className="max-w-4xl mx-auto space-y-8">
@@ -660,7 +660,7 @@ export default function HowItWorksPage() {
                 </Button>
               </div>
 
-              <div className="flex justify-center items-center space-x-8 pt-8 text-sm opacity-80">
+              <div className="flex justify-center items-center space-x-8 pt-8 text-sm">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-4 h-4" />
                   <span>Безплатна регистрация</span>

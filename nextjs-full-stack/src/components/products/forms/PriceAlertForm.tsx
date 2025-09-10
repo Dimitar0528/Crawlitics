@@ -119,7 +119,7 @@ export default function PriceAlertForm() {
             <Button
               type="button"
               variant="link"
-              className="p-0 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-300"
+              className="p-0 text-sm text-blue-800 hover:text-blue-700 dark:text-blue-300"
               onClick={() => setShowTargetPrice(!showTargetPrice)}>
               {showTargetPrice
                 ? "- Премахни желаната цена"
