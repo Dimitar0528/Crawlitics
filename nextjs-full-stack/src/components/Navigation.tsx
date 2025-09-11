@@ -234,7 +234,9 @@ export default function Navigation() {
               <Button variant="ghost">Вход</Button>
             </SignInButton>
             <SignUpButton>
-              <Button className="bg-gradient-to-r from-sky-500 to-purple-600 text-white">
+              <Button
+                className="bg-gradient-to-r from-sky-800 to-purple-800 text-white 
+                   hover:shadow-lg hover:shadow-purple-500/50 dark:hover:shadow-purple-700/50 transition-all duration-300">
                 Регистрация
               </Button>
             </SignUpButton>

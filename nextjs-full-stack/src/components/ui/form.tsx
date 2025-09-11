@@ -97,11 +97,14 @@ function FormLabel({
     <Label
       data-slot="form-label"
       data-error={!!error}
-      className={cn("data-[error=true]:text-destructive", className)}
+      className={cn(
+        "data-[error=true]:text-red-800 dark:data-[error=true]:text-red-300",
+        className
+      )}
       htmlFor={formItemId}
       {...props}
     />
-  )
+  );
 }
 
 function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {

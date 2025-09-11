@@ -212,9 +212,7 @@ export default function SpecialSearch(){
             name="product_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="font-semibold text-slate-800 dark:text-slate-200">
-                  Име на продукта
-                </FormLabel>
+                <FormLabel>Име на продукта</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
@@ -222,7 +220,7 @@ export default function SpecialSearch(){
                     className=" text-lg w-full md:w-md"
                   />
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-800 dark:text-red-300" />
               </FormItem>
             )}
           />
@@ -245,7 +243,7 @@ export default function SpecialSearch(){
                     <SelectItem value="Лаптоп">Лаптоп</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage />
+                <FormMessage className="text-red-800 dark:text-red-300" />
               </FormItem>
             )}
           />
@@ -256,11 +254,11 @@ export default function SpecialSearch(){
               Допълнителни филтри (силно препоръчително)
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-2xl mx-auto">
-              За да добавите филтър, моля посочете име (напр.
-              &quot;RAM памет&quot;) и стойност (напр. &quot;16 GB&quot;).{" "}
-              <br /> <strong>
-                За филтър по цена, моля, въведете ценови диапазон във
-                формат: мин. цена - макс. цена (например: 1500 - 2500).
+              За да добавите филтър, моля посочете име (напр. &quot;RAM
+              памет&quot;) и стойност (напр. &quot;16 GB&quot;). <br />{" "}
+              <strong>
+                За филтър по цена, моля, въведете ценови диапазон във формат:
+                мин. цена - макс. цена (например: 1500 - 2500).
               </strong>
             </p>
           </div>
@@ -278,7 +276,7 @@ export default function SpecialSearch(){
                         placeholder="Име на филтър (напр. Цена)"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-800 dark:text-red-300" />
                   </FormItem>
                 )}
               />
@@ -293,7 +291,7 @@ export default function SpecialSearch(){
                         placeholder="Стойност (напр. 1669-2420)"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-red-800 dark:text-red-300"/>
                   </FormItem>
                 )}
               />

@@ -60,7 +60,6 @@ export default function InteractiveHero() {
               deleteSpeed={100}
               delaySpeed={1800}
               cursor
-              
               cursorColor="white"
               cursorStyle="|"
             />
@@ -109,6 +108,7 @@ export default function InteractiveHero() {
               className="
               h-14 w-14 flex-shrink-0 rounded-full
               bg-gradient-to-r from-sky-500 to-purple-600
+              dark:bg-gradient-to-r dark:from-sky-300 dark:to-purple-400
               transition-all duration-300 ease-in-out
               hover:scale-105
             ">

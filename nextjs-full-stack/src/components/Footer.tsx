@@ -12,7 +12,12 @@ export default function Footer() {
             <Link href="/">
               <div className="flex items-center justify-center md:justify-start space-x-2 mb-4">
                 <div className="bg-transparent dark:bg-gray-200 p-1 rounded-md flex items-center justify-center">
-                  <Image width={20} height={20} src="/favicon.ico" alt="App logo" />
+                  <Image
+                    width={20}
+                    height={20}
+                    src="/favicon.ico"
+                    alt="App logo"
+                  />
                 </div>
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent dark:bg-gradient-to-r dark:from-blue-400 dark:to-purple-400">
                   Crawlitics
@@ -35,18 +40,18 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a
-                  href="#"
+                <Link
+                  href="/why-choose-us"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                   Защо да избереш нас
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
+                <Link
+                  href="/testimonials"
                   className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                   Отзиви на клиенти
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
