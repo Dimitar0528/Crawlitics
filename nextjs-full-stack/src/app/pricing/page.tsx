@@ -55,7 +55,7 @@ export default function PricingPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-slate-700 dark:text-slate-300 text-base">
                   <strong>Да, абсолютно.</strong> Можете да надстроите, понижите
-                  или отмените плана си по всяко време от таблото за управление
+                  или отмените плана си по всяко време както оттук, така и от таблото за управление
                   на вашия акаунт. Пропорционални такси или кредити ще бъдат
                   приложени автоматично.
                 </AccordionContent>

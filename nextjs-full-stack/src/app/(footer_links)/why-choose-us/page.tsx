@@ -64,13 +64,13 @@ export default function WhyChooseUsPage() {
               <h2 className="text-3xl font-bold sm:text-4xl">
                 Спрете да губите време и пари
               </h2>
-              <p className="mt-4 text-lg text-slate-600 dark:text-slate-300">
+              <p className="mt-4 text-lg text-slate-700 dark:text-slate-300">
                 Сравнете ръчния метод срещу Crawlitics.
               </p>
             </div>
             <div className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
               <div className="rounded-3xl p-8 backdrop-blur-lg bg-white/70 dark:bg-slate-900/70 border border-slate-200/40 dark:border-slate-700/40 shadow-lg hover:shadow-2xl transition">
-                <h3 className="text-2xl font-semibold text-slate-800 dark:text-slate-400">
+                <h3 className="text-2xl font-semibold text-slate-800 dark:text-slate-300">
                   Старият начин
                 </h3>
                 <ul className="mt-6 space-y-4 text-slate-600 dark:text-slate-400">
@@ -115,7 +115,7 @@ export default function WhyChooseUsPage() {
             <div className="mx-auto grid max-w-4xl grid-cols-1 gap-12 lg:grid-cols-2 items-center">
               <div className="text-center lg:text-left">
                 <h2 className="text-3xl font-bold sm:text-4xl">
-                  Нашата философия: От данни към решения
+                  Нашата философия: <br /> От данни към решения
                 </h2>
                 <p className="mt-6 text-lg text-slate-600 dark:text-slate-400">
                   Crawlitics е създаден не просто като инструмент, а като
@@ -123,7 +123,7 @@ export default function WhyChooseUsPage() {
                   яснота, увереност и силата да вземете най-доброто решение.
                 </p>
               </div>
-              <div className="flex justify-center lg:justify-end">
+              <div className="flex justify-center">
                 <div className="p-12 bg-gradient-to-br from-sky-100 to-purple-200 dark:from-sky-900/40 dark:to-purple-900/40 rounded-full shadow-xl hover:scale-105 transition">
                   <ShieldCheck className="h-20 w-20 text-purple-600 dark:text-purple-400" />
                 </div>
@@ -147,7 +147,7 @@ export default function WhyChooseUsPage() {
                   bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/40 dark:to-purple-800/20 
                   rounded-2xl p-8 shadow-lg hover:shadow-purple-300/40 dark:hover:shadow-purple-800/40 
                   transition duration-300">
-              <div className="order-2 lg:order-1">
+              <div className="order-2 lg:order-1 ">
                 <h3 className="text-2xl font-bold tracking-tight">
                   Интелигентен анализ, а не просто списък
                 </h3>
@@ -159,7 +159,7 @@ export default function WhyChooseUsPage() {
                   представа за това, което наистина има значение.
                 </p>
               </div>
-              <div className="flex justify-center lg:justify-end order-1 lg:order-2">
+              <div className="flex justify-center order-1 lg:order-2">
                 <BrainCircuit className="h-48 w-48 text-purple-500/70 dark:text-purple-400/40" />
               </div>
             </div>
@@ -169,7 +169,7 @@ export default function WhyChooseUsPage() {
                   bg-gradient-to-r from-sky-50 to-sky-100 dark:from-sky-900/40 dark:to-sky-800/20 
                   rounded-2xl p-8 shadow-lg hover:shadow-sky-300/40 dark:hover:shadow-sky-800/40 
                   transition duration-300">
-              <div className="flex justify-center lg:justify-start">
+              <div className="flex justify-center">
                 <BarChart4 className="h-48 w-48 text-sky-500/70 dark:text-sky-400/40" />
               </div>
               <div>
@@ -203,7 +203,7 @@ export default function WhyChooseUsPage() {
                   необходима информация на едно място.
                 </p>
               </div>
-              <div className="flex justify-center lg:justify-end order-1 lg:order-2">
+              <div className="flex justify-center order-1 lg:order-2">
                 <Globe className="h-48 w-48 text-green-500/70 dark:text-green-400/40" />
               </div>
             </div>
@@ -226,13 +226,13 @@ export default function WhyChooseUsPage() {
                   icon: <Eye className="h-10 w-10 text-purple-600" />,
                 },
                 {
-                  title: "Поверителност на първо място",
-                  desc: "Вашите търсения са ваша работа. Ние не продаваме вашите данни и използваме водещи практики за сигурност, за да защитим вашата поверителност.",
+                  title: "Поверителност на 1-во място",
+                  desc: "Вашите търсения са ваша работа. Ние не продаваме вашите данни и използваме водещи практики за сигурност, за да защитим вас.",
                   icon: <Lock className="h-10 w-10 text-purple-600" />,
                 },
                 {
                   title: "Фокус върху потребителя",
-                  desc: "Crawlitics е създаден, за да решава вашите проблеми. Ние непрекъснато се вслушваме във вашите отзиви, за да подобряваме и развиваме платформата.",
+                  desc: "Crawlitics е създаден, за да решава вашите проблеми. Ние непрекъснато се вслушваме във вашите отзиви, за да подобряваме платформата.",
                   icon: <UserCheck className="h-10 w-10 text-purple-600" />,
                 },
               ].map((item, i) => (

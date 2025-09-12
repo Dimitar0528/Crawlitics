@@ -124,7 +124,7 @@ export default function VariantCard({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full w-8 h-8 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      className="rounded-full w-7 h-7 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-200 dark:hover:bg-slate-600"
                       onClick={(e) => handleShareVariant(e, variant.slug)}>
                       <LinkIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </Button>

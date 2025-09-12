@@ -1,5 +1,4 @@
 "use client";
-
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/products/cards/ProductCard";
@@ -21,14 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ProductCardSkeleton from "@/components/products/cards/ProductCardSkeleton";
 
 export default function SearchPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div>Loading...</div>}>
       <SearchPageComponent />
     </Suspense>
   );
 }
+
 function SearchPageComponent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -39,17 +40,27 @@ function SearchPageComponent() {
     parseInt(searchParams.get("page") || "1")
   );
 
-  const [results, setResults] = useState<ProductPreview[]>([]);
+  const [results, setResults] = useState<ProductPreview[] | null>(null);
   const [total, setTotal] = useState<number>(0);
   const limit = 12;
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!query) {
+      router.replace("/");
+    }
+  }, [query, router]);
+
+  useEffect(() => {
+    if (!query) return;
+
     fetchResults();
+
     const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (sort) params.set("sort", sort);
+    params.set("q", query);
+    params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
+
     router.replace(`/search?${params.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, sort, page]);
@@ -59,8 +70,8 @@ function SearchPageComponent() {
     try {
       const offset = (page - 1) * limit;
       const params = new URLSearchParams();
-      if (query) params.set("q", query);
-      if (sort) params.set("sort", sort);
+      params.set("q", query);
+      params.set("sort", sort);
       params.set("offset", String(offset));
       params.set("limit", String(limit));
 
@@ -73,7 +84,7 @@ function SearchPageComponent() {
       }
 
       setResults(res.data || []);
-      setTotal(res.data?.length ? res.data.length : 0);
+      setTotal(res.data?.length || 0);
     } catch (e) {
       console.error("Unexpected error fetching results:", e);
       setResults([]);
@@ -95,10 +106,7 @@ function SearchPageComponent() {
     }
 
     pages.push(1);
-
-    if (page - delta > 2) {
-      pages.push("ellipsis");
-    }
+    if (page - delta > 2) pages.push("ellipsis");
 
     for (
       let i = Math.max(2, page - delta);
@@ -108,10 +116,7 @@ function SearchPageComponent() {
       pages.push(i);
     }
 
-    if (page + delta < totalPages - 1) {
-      pages.push("ellipsis");
-    }
-
+    if (page + delta < totalPages - 1) pages.push("ellipsis");
     pages.push(totalPages);
     return pages;
   }
@@ -138,13 +143,34 @@ function SearchPageComponent() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {loading ? (
-          <div>Зареждане...</div>
+        {results === null || loading ? (
+          Array.from({ length: 8 }).map((_, idx) => (
+            <ProductCardSkeleton key={idx} />
+          ))
         ) : results.length > 0 ? (
-          results.map((p: ProductPreview) => <ProductCard key={p.id} {...p} />)
+          results.map((product: ProductPreview) => <ProductCard key={product.id} {...product} />)
         ) : (
-          <div className="col-span-full text-center text-slate-500">
-            Няма резултати
+          <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-16 w-16 text-slate-400 mb-4 animate-bounce"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 14l2-2 4 4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h3 className="text-2xl font-semibold text-slate-700 dark:text-slate-200 mb-2">
+              Няма резултати
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
+              За съжаление, не можахме да намерим продукти, съвпадащи с вашето
+              търсене. Опитайте с различни ключови думи или филтри.
+            </p>
           </div>
         )}
       </div>

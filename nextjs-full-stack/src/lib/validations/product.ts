@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const ID_SCHEMA = z.number().int().positive();
-const SLUG_SCHEMA = z.string().min(1, "Slug cannot be empty.");
+const SLUG_SCHEMA = z.string().min(1, "Слъгът е задължителен!");
 const REQUIRED_STRING_SCHEMA = z.string().min(1);
 const URL_SCHEMA = z.url({
   protocol: /^https?$/,
@@ -12,7 +12,7 @@ const CURRENCY_SCHEMA = z.string().length(3);
 export const PriceHistorySchema = z.object({
   id: ID_SCHEMA,
   variant_id: ID_SCHEMA,
-  price: z.number().positive("Price must be a positive number."),
+  price: z.number().positive("Цената трябва да бъде положително число."),
   currency: CURRENCY_SCHEMA,
   recorded_at: z.coerce.date(),
 });
