@@ -26,6 +26,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Hero from "@/components/how-it-works/Hero";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Как работи приложението",
@@ -35,7 +36,6 @@ export const metadata: Metadata = {
 export default function HowItWorksPage() {
     return (
       <div className={`min-h-screen transition-colors duration-500`}>
-
         <Hero />
 
         <section id="problems" className="py-20 bg-white dark:bg-gray-900">
@@ -656,7 +656,7 @@ export default function HowItWorksPage() {
                   size="lg"
                   className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
                   <CheckCircle className="mr-2 w-5 h-5" />
-                  Регистрирай се безплатно
+                  <Link href='/sign-up'> Регистрирай се безплатно</Link>
                 </Button>
               </div>
 

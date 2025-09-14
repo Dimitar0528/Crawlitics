@@ -188,7 +188,8 @@ const segmentLabels: Record<string, string> = {
   "sign-up": "Регистрация",
   "user-profile": "Профил",
   "pricing": "Цени и абонаменти",
-  "why-choose-us": "Защо да избереш нас"
+  "why-choose-us": "Защо да избереш нас",
+  "testimonials": "Отзиви на потребители"
 };
 
 export function generateBreadcrumbs(

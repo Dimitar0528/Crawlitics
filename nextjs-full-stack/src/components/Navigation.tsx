@@ -99,6 +99,8 @@ export default function Navigation() {
     if (searchQuery.trim()) {
       const params = new URLSearchParams({ q: searchQuery.trim() });
       router.push(`/search?${params.toString()}`);
+    } else{
+      toast.warning("Полето за търсене е празно. Попълнете го!");
     }
   };
 
