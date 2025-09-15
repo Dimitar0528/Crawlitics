@@ -1,5 +1,34 @@
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, ConfigDict
 from typing import  Annotated
+
+from typing import List, Optional
+
+class PriceHistorySchema(BaseModel):
+    price: Optional[float] = None
+    currency: Optional[str] = None
+
+    # this allows the Pydantic model to be created from an ORM object
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductVariantSchema(BaseModel):
+    id: int
+    product_id: int
+    image_url: Optional[str] = None
+    availability: str
+    latest_lowest_price_record: Optional[PriceHistorySchema] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductSchema(BaseModel):
+    id: int
+    name: str
+    slug: str
+    category: Optional[str] = None
+    variants: List[ProductVariantSchema] = []
+
+    model_config = ConfigDict(from_attributes=True)
 
 class Filter(BaseModel):
     name: Annotated[

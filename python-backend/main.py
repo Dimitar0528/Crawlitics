@@ -1,6 +1,7 @@
 import asyncio
 from fastapi import Body, FastAPI, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect,BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.encoders import jsonable_encoder
 from urllib.parse import unquote
 
 from configs.status_manager import TaskStatus, SubStatus, STATUS_MESSAGES
@@ -19,7 +20,7 @@ from db.crud import (
     search_products,
 )
 from db.helpers import get_db
-from configs.pydantic_models import SearchPayload
+from configs.pydantic_models import SearchPayload, ProductSchema
 from scraper import scrape_sites  
 
 @asynccontextmanager
@@ -144,10 +145,12 @@ async def update_task_status(task_id: str, status: TaskStatus, sub_status: SubSt
     
     payload = {"status": status.value, "message": message}
     if 'data' in kwargs:
-        payload['data'] = kwargs['data']
+        raw_data = kwargs['data']
+        # convert the raw SQLAlchemy objects to Pydantic models 
+        validated_data = [ProductSchema.model_validate(p) for p in raw_data]
+        payload['data'] = jsonable_encoder(validated_data)
         
     tasks[task_id] = payload
-    await manager.send_json_update(task_id, payload)
 
 async def run_crawleebot_task(task_id: str, payload: SearchPayload):
     """The main orchestrator for the background task."""

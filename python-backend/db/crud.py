@@ -260,12 +260,12 @@ def get_product_variant_by_url(session: Session, url: str) -> ProductVariant:
 def read_products_from_db(
     urls: list[str], 
     cache_duration_hours: int = 24
-) -> tuple[list[dict[str, any]], list[str]]:
+) -> tuple[list[Product], list[str]]:
     """
     Reads a list of product variants from the DB by URL, returning fresh data and a list of stale/missing URLs.
 
-    This function checks if a variant was scraped recently. If it's "fresh", it assembles a
-    complete product record. If it's "stale" or not found, it adds the URL to a list
+    This function checks if a variant was scraped recently. If it's "fresh", it returns the full
+    parent Product object. If it's "stale" or not found, it adds the URL to a list
     to be re-scraped.
     """
     if not urls:
@@ -274,14 +274,13 @@ def read_products_from_db(
     print(f"\n[DB Read] Checking cache for {len(urls)} URLs...")
     cache_duration = timedelta(hours=cache_duration_hours)
 
-    found_records: list[dict[str, any]] = []
+    fresh_parent_product_ids: set[int] = set()
     freshly_found_urls: set[str] = set()
     with SessionLocal() as session:
         stmt = (
             select(ProductVariant)
             .options(
-                selectinload(ProductVariant.parent_product), 
-                selectinload(ProductVariant.price_history)
+                selectinload(ProductVariant.parent_product).load_only(Product.id)
             )
             .where(ProductVariant.source_url.in_(urls))
         )
@@ -294,28 +293,44 @@ def read_products_from_db(
                 print(f"  - Stale URL: {variant.source_url}. (Queuing for re-scrape)")
                 continue
             
-            parent: Product = variant.parent_product
-            specs = {**(parent.common_specs or {}), **(variant.variant_specs or {})}
-            latest_price = variant.price_history[-1].price if variant.price_history else None
-
-            record = {
-                "name": parent.name,
-                "brand": parent.brand,
-                "category": parent.category,
-                "description": parent.description,
-                "price": float(latest_price),
-                "specs": specs,
-            }
-            found_records.append(record)
+            fresh_parent_product_ids.add(variant.parent_product.id)
             freshly_found_urls.add(variant.source_url)
+
+        found_products: list[Product] = []
+        if fresh_parent_product_ids:
+            # now fetch the full product objects with the desired structure
+            stmt_products = (
+                select(Product)
+                .where(Product.id.in_(list(fresh_parent_product_ids)))
+                .options(
+                    load_only(
+                        Product.id,
+                        Product.name,
+                        Product.slug,
+                        Product.category,
+                    ),
+                    selectinload(Product.variants).load_only(
+                        ProductVariant.id,
+                        ProductVariant.product_id,
+                        ProductVariant.image_url,
+                        ProductVariant.availability
+                    ),
+                    selectinload(Product.variants).selectinload(ProductVariant.latest_lowest_price_record).load_only(
+                        PriceHistory.price,
+                        PriceHistory.currency
+                    )
+                )
+            )
+            found_products = session.execute(stmt_products).scalars().all()
+
 
     all_input_urls = set(urls)
     urls_to_scrape = list(all_input_urls - freshly_found_urls)
     
-    print(f"[DB Read] Found {len(found_records)} fresh records.")
+    print(f"[DB Read] Found {len(found_products)} fresh product records.")
     print(f"[DB Read] Queuing {len(urls_to_scrape)} URLs for scraping.")
 
-    return found_records, urls_to_scrape
+    return found_products, urls_to_scrape
 
 def get_schema_by_product_category(session: Session, category: str) -> dict[str, any]:
     """Retrieves the current schema for a given product category."""

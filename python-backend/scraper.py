@@ -212,38 +212,38 @@ async def process_single_crawled_and_scraped_result(result: CrawlResult, session
     markdown = truncate_markdown(result.markdown.raw_markdown)
     
     existing_product_variant = await asyncio.to_thread(get_product_variant_by_url, session, url)
-    if existing_product_variant:
-        print(f"  Product variant exists. Checking for fresh new data. LLM data extraction skipped.")
-        new_price, new_availability = extract_dynamic_data_from_markdown(markdown)
-        await asyncio.to_thread(
-            update_product_variant, 
-            session, 
-            existing_product_variant, 
-            new_price, 
-            new_availability
-        )
-    else: 
-        _, availability = extract_dynamic_data_from_markdown(markdown, exlude_price=True)
-        parsed_data = None
-        try:
-            if is_called_from_schema_gen_mode_func:
-                parsed_data = schema_gen_mode_parsed_data
-            else:    
-                parsed_data = await extract_data_with_schema(markdown, schema_to_use)
+    # if existing_product_variant:
+    #     print(f"  Product variant exists. Checking for fresh new data. LLM data extraction skipped.")
+    #     new_price, new_availability = extract_dynamic_data_from_markdown(markdown)
+    #     await asyncio.to_thread(
+    #         update_product_variant, 
+    #         session, 
+    #         existing_product_variant, 
+    #         new_price, 
+    #         new_availability
+    #     )
+    # else: 
+    _, availability = extract_dynamic_data_from_markdown(markdown, exlude_price=True)
+    parsed_data = None
+    try:
+        if is_called_from_schema_gen_mode_func:
+            parsed_data = schema_gen_mode_parsed_data
+        else:    
+            parsed_data = await extract_data_with_schema(markdown, schema_to_use)
 
-            print("Validating extracted data...")
-            validate(instance=parsed_data, schema=schema_to_use)
-            
-            parsed_data['source_url'] = url
-            parsed_data['availability'] = availability
-            parsed_data["image_url"] = result.metadata.get('og:image')
+        print("Validating extracted data...")
+        validate(instance=parsed_data, schema=schema_to_use)
+        
+        parsed_data['source_url'] = url
+        parsed_data['availability'] = availability
+        parsed_data["image_url"] = result.metadata.get('og:image')
 
-            print(f" Success! Valid data for {url}.")
-            return parsed_data
-        except (json.JSONDecodeError, ValidationError) as e:
-            print(f" FAILED for {url}: Validation error or bad JSON.")
-            print(f"   Error: {e}")
-            return None
+        print(f" Success! Valid data for {url}.")
+        return parsed_data
+    except (json.JSONDecodeError, ValidationError) as e:
+        print(f" FAILED for {url}: Validation error or bad JSON.")
+        print(f"   Error: {e}")
+        return None
 
 async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatusCallable):
     start_time = time.perf_counter()
@@ -288,12 +288,19 @@ async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatus
     
     if not urls_to_process:
         print("No URLs to crawl. Exiting.")
+        await update_status(TaskStatus.COMPLETE, SubStatus.SUCCESS, data=[])
         return
     
-    found_products, urls_to_scrape = read_products_from_db(urls_to_process)
-    
+    cached_products, urls_to_scrape = read_products_from_db(urls_to_process)
+    if cached_products:
+        print(f"Sending {len(cached_products)} cached products to the client.")
+        await update_status(TaskStatus.SCRAPING, SubStatus.SENDING_CACHED_RESULTS, data=cached_products)
+
     if urls_to_scrape:
         print(f"Starting scraping for {len(urls_to_scrape)} URLs...")
+
+        await update_status(TaskStatus.SCRAPING, SubStatus.INITIALIZING)
+
         all_scraped_data: list[dict[str, any]] = []
         with SessionLocal() as db_check_session:
             print(f"Checking database for existing schema for category: '{user_selected_category}'...")
@@ -305,6 +312,9 @@ async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatus
             urls_for_concurrent_extraction = urls_to_scrape
         else:
             print(" No schema found. Entering 'Schema Generation' mode using the first URL.")
+
+            await update_status(TaskStatus.SCRAPING, SubStatus.GENERATING_SCHEMA)
+
             first_url = urls_to_scrape[0]
             urls_for_concurrent_extraction = urls_to_scrape[1:]
 
@@ -341,6 +351,9 @@ async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatus
             print("\nNo further URLs to process.")
         else:
             print(f"\n--- Starting CONCURRENT processing for remaining {len(urls_for_concurrent_extraction)} URLs ---")
+
+            await update_status(TaskStatus.SCRAPING, SubStatus.EXTRACTING_DATA, count=len(urls_for_concurrent_extraction))
+
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 async def scrape_site_task():
                     with SessionLocal() as session:
@@ -357,6 +370,9 @@ async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatus
         
         elapsed = time.perf_counter() - start_time
         print(f"\n All crawling + scraping + dynamic extraction done in: {elapsed:.2f} seconds")
+
+        await update_status(TaskStatus.SCRAPING, SubStatus.EXTRACTION_COMPLETE)
+
         
         # if all_scraped_data:
         #     print("\n--- Starting PASS 2: Aggregating and Storing Data ---")

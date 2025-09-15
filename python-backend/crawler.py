@@ -323,6 +323,7 @@ async def crawl_sites(user_criteria: SearchPayload, update_status: UpdateStatusC
             print(f"  - {name}: {value}")
     
     site_configs = get_site_configs(user_input, user_filters)
+
     await update_status(TaskStatus.CRAWLING, SubStatus.STARTING_SITES, count=len(site_configs))
 
     start_time = time.perf_counter()
@@ -343,10 +344,15 @@ async def crawl_sites(user_criteria: SearchPayload, update_status: UpdateStatusC
     
     print(f"\n\n{'='*20} CRAWL COMPLETE {'='*20}")
     print(f"Found {len(all_urls)} total URLs before final filtering.")
+
     await update_status(TaskStatus.CRAWLING, SubStatus.COLLECTING_URLS)
+
     filtered_urls = filter_urls_by_query_relaxed(all_urls, user_input)
+
     await update_status(TaskStatus.CRAWLING, SubStatus.FILTERING_URLS, count=len(filtered_urls))
+    
     print(f"Found {len(filtered_urls)} relevant product URLs.")
+
 
     for i, url in enumerate(filtered_urls, 1):
         print(f"{i:2d}. {url}")
