@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import TypedDict
+from typing import Optional, TypedDict
 from ollama import Client
 
 from jsonschema import validate, ValidationError
@@ -19,7 +19,7 @@ load_dotenv()
 from helpers.scraper_helpers import (
     extract_dynamic_data_from_markdown
 )
-from helpers.helpers import clean_output
+from helpers.utils import clean_output
 from db.helpers import SessionLocal
 from db.crud import (
     get_product_variant_by_url,
@@ -36,8 +36,11 @@ from configs.pydantic_models import SearchPayload
 from configs.pydantic_models import SearchPayload
 from typing import Callable, Coroutine
 from configs.status_manager import TaskStatus, SubStatus
-UpdateStatusCallable = Callable[[TaskStatus, SubStatus | None], Coroutine[None, None, None]]
 
+UpdateStatusCallable = Callable[
+    [TaskStatus, SubStatus | None, Optional[SearchPayload]], 
+    Coroutine[None, None, None]
+]
 
 AGENT_CONCURRENCY = 4
 agent_semaphore = asyncio.Semaphore(AGENT_CONCURRENCY)
@@ -294,7 +297,11 @@ async def scrape_sites(user_criteria: SearchPayload, update_status: UpdateStatus
     cached_products, urls_to_scrape = read_products_from_db(urls_to_process)
     if cached_products:
         print(f"Sending {len(cached_products)} cached products to the client.")
-        await update_status(TaskStatus.SCRAPING, SubStatus.SENDING_CACHED_RESULTS, data=cached_products)
+        await update_status(
+            TaskStatus.SCRAPING, 
+            SubStatus.SENDING_CACHED_RESULTS,
+            data=cached_products
+        )
 
     if urls_to_scrape:
         print(f"Starting scraping for {len(urls_to_scrape)} URLs...")

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { calculate_product_variant_prices } from "@/lib/utils";
-import { BadgeCheckIcon } from "lucide-react";
+import { BadgeCheckIcon, CircleCheckBig } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductPreview } from "@/lib/validations/product";
@@ -67,7 +67,7 @@ export default function ProductCard(product: ProductPreview) {
             Изчерпан
           </Badge>
         )}
-        <CardHeader className="p-0 relative border-b">
+        <CardHeader className="p-0 relative border-b relative">
           <div className="aspect-square w-full overflow-hidden">
             <Image
               src={heroImageUrl}
@@ -83,6 +83,18 @@ export default function ProductCard(product: ProductPreview) {
               priority
             />
           </div>
+          {product.matchingVariantCount && product.matchingVariantCount > 0 && (
+            <div className="absolute bottom-2 right-2">
+              <span className="inline-flex items-center gap-x-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800 dark:bg-green-800/40 dark:text-green-300">
+                <CircleCheckBig width={16} height={16} />
+                {product.matchingVariantCount}{" "}
+                {product.matchingVariantCount === 1
+                  ? "продукт съвпада"
+                  : "продукта съвпадат"} {" "}
+                 с критериите ви
+              </span>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="p-4 flex flex-col flex-grow">

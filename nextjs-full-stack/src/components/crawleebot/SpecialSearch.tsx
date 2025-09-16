@@ -32,6 +32,7 @@ import {
 } from "@/lib/validations/form";
 import { startCrawleeBot } from "@/lib/data";
 import { ProductPreview } from "@/lib/validations/product";
+import ProductCard from "../products/cards/ProductCard";
 
 type TaskUpdate = {
   status: string;
@@ -123,7 +124,7 @@ export default function SpecialSearch(){
           return prevHistory;
         });
 
-        if (update.status === "COMPLETE") {
+        if (update.status === "COMPLETE" || update.data) {
           setResults(update.data || []);
           setComponentState("results");
           ws.close();
@@ -190,14 +191,47 @@ export default function SpecialSearch(){
         </div>
         {results.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {results.map((product) => (
-              <div key={product.id}>
-                <div>{product.name}</div>
-              </div>
-            ))}
+            {results.map((product) => {
+              const variantURLS = product.matchingVariantUrls
+              console.log(variantURLS)
+              return (
+              <ProductCard key={product.id} {...product} />
+              )
+  })}
           </div>
         ) : (
-          <p>Няма намерени резултати за вашата заявка.</p>
+          <div className="flex flex-col items-center justify-center mt-12">
+            <div className="bg-white/70 dark:bg-gray-800/50 backdrop-blur-lg rounded-2xl shadow-lg p-8 text-center max-w-md w-full transform transition-all hover:scale-105">
+              <div className="flex justify-center mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-12 h-12 text-purple-500 animate-pulse"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"
+                  />
+                </svg>
+              </div>
+
+              {/* Main message */}
+              <p className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                Няма намерени резултати за вашата заявка.
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Опитайте с други параметри
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-purple-600 text-white font-medium shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300">
+                🔄 Опитай отново
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     );

@@ -9,6 +9,7 @@ from configs.status_manager import TaskStatus, SubStatus, STATUS_MESSAGES
 from sqlalchemy.orm import Session
 
 import uuid
+from typing import Optional
 
 from contextlib import asynccontextmanager
 from db.crud import (
@@ -20,6 +21,7 @@ from db.crud import (
     search_products,
 )
 from db.helpers import get_db
+from helpers.utils import calculate_matching_variants
 from configs.pydantic_models import SearchPayload, ProductSchema
 from scraper import scrape_sites  
 
@@ -135,7 +137,11 @@ manager = ConnectionManager()
 
 tasks = {}
 
-async def update_task_status(task_id: str, status: TaskStatus, sub_status: SubStatus | None, **kwargs):
+async def update_task_status(task_id: str, 
+status: TaskStatus, 
+sub_status: SubStatus | None,
+user_payload: Optional[SearchPayload] = None,
+ **kwargs):
     """Centralized function to update and send task status."""
     message = STATUS_MESSAGES.get((status, sub_status), "Неизвестен статус...")
     
@@ -145,17 +151,32 @@ async def update_task_status(task_id: str, status: TaskStatus, sub_status: SubSt
     
     payload = {"status": status.value, "message": message}
     if 'data' in kwargs:
-        raw_data = kwargs['data']
-        # convert the raw SQLAlchemy objects to Pydantic models 
-        validated_data = [ProductSchema.model_validate(p) for p in raw_data]
-        payload['data'] = jsonable_encoder(validated_data)
+        raw_products: dict[str,any] = kwargs['data']
+        validated_products = []
+        for product_model in raw_products:
+            # create a Pydantic model from the SQLAlchemy object
+            product_schema = ProductSchema.model_validate(product_model)
+            if user_payload and user_payload.filters:
+                user_filters: dict[str, str] = {f.name: f.value for f in user_payload.filters}
+                count, urls = calculate_matching_variants(
+                    product_model, user_filters
+                )
+                product_schema.matchingVariantCount = count
+                product_schema.matchingVariantUrls = urls
+            
+            validated_products.append(product_schema)
+        
+        payload['data'] = jsonable_encoder(validated_products)
         
     tasks[task_id] = payload
 
 async def run_crawleebot_task(task_id: str, payload: SearchPayload):
     """The main orchestrator for the background task."""
     try:
-        await scrape_sites(payload, lambda s, ss, **kwargs: update_task_status(task_id, s, ss, **kwargs))
+        await scrape_sites(
+            payload, 
+            lambda s, ss, **kwargs: update_task_status(task_id, s, ss, user_payload=payload, **kwargs)
+        )
     except Exception as e:
         print(f"FATAL ERROR in task {task_id}: {e}")
         await update_task_status(task_id, TaskStatus.ERROR, None)
@@ -163,7 +184,6 @@ async def run_crawleebot_task(task_id: str, payload: SearchPayload):
 @app.post("/api/start-analysis")
 async def start_analysis(payload: SearchPayload, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
-    print(payload)
     tasks[task_id] = {"status": "PENDING", "message": "Задачата е създадена..."}
     if not payload.product_name.strip():
         raise HTTPException(status_code=400, detail="Product name cannot be empty")

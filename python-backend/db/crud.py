@@ -308,12 +308,15 @@ def read_products_from_db(
                         Product.name,
                         Product.slug,
                         Product.category,
+                        Product.common_specs
                     ),
                     selectinload(Product.variants).load_only(
                         ProductVariant.id,
                         ProductVariant.product_id,
+                        ProductVariant.source_url,
                         ProductVariant.image_url,
-                        ProductVariant.availability
+                        ProductVariant.availability,
+                        ProductVariant.variant_specs,
                     ),
                     selectinload(Product.variants).selectinload(ProductVariant.latest_lowest_price_record).load_only(
                         PriceHistory.price,

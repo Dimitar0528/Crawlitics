@@ -61,10 +61,19 @@ const ProductPreviewCardVariantSchema = ProductVariantSchema.pick({
   availability: true,
 }).extend({
   latest_lowest_price_record: ProductPreviewCardPriceRecordSchema,
+  source_url: z.url({
+    protocol: /^https?$/,
+    hostname: z.regexes.domain,
+  }).optional()
 });
 
 export const ProductPreviewCardSchema = ProductBaseSchema.extend({
   variants: z.array(ProductPreviewCardVariantSchema),
+  matchingVariantCount: z.number().optional(),
+  matchingVariantUrls: z.array(z.url({
+    protocol: /^https?$/,
+    hostname: z.regexes.domain,
+  })).optional()
 });
 
 export const ProductPreviewsResponseSchema = z.array(ProductPreviewCardSchema);

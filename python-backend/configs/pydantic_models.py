@@ -14,6 +14,7 @@ class PriceHistorySchema(BaseModel):
 class ProductVariantSchema(BaseModel):
     id: int
     product_id: int
+    source_url: str
     image_url: Optional[str] = None
     availability: str
     latest_lowest_price_record: Optional[PriceHistorySchema] = None
@@ -27,6 +28,9 @@ class ProductSchema(BaseModel):
     slug: str
     category: Optional[str] = None
     variants: List[ProductVariantSchema] = []
+
+    matchingVariantCount: Optional[int] = None
+    matchingVariantUrls: Optional[List[str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 
