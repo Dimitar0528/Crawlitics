@@ -161,8 +161,8 @@ user_payload: Optional[SearchPayload] = None,
                 count, urls = calculate_matching_variants(
                     product_model, user_filters
                 )
-                product_schema.matchingVariantCount = count
-                product_schema.matchingVariantUrls = urls
+                product_schema.CRAWLEEBOT_matchingVariantCount = count
+                product_schema.CRAWLEEBOT_matchingVariantUrls = urls
             
             validated_products.append(product_schema)
         

@@ -20,7 +20,7 @@ def get_site_configs(user_input, user_filters):
             "base_url": "https://www.ozone.bg",
             "search_url": f"https://www.ozone.bg/instantsearchplus/result/?q={user_query}",
             "breadcrumb_selector": 'nav.breadcrumbs',
-            "search_product_card_selector": "a.isp_product_image_href",
+            "search_product_card_selector": "a.fs-product-main-image-wrapper",
             "category_product_card_selector": "a.product-box",
             "side_filter_selectors": {
                 "sections": "div.drop-down.multiselect",

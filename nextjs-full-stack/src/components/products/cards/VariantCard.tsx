@@ -18,6 +18,7 @@ import { calculate_product_variant_prices } from "@/lib/utils";
 import AvailabilityAlertModal from "../forms/AvailabilityAlertForm";
 import { useCompare } from "@/context/CompareContext";
 import { Route } from "next";
+
 export default function VariantCard({
   variants,
 }: {
@@ -29,6 +30,10 @@ export default function VariantCard({
   const [selectedVariantSlug, setSelectedVariantSlug] = useState<string | null>(
     null
   );
+  const [highlightedUrls, setHighlightedUrls] = useState<Set<string>>(
+    new Set()
+  );
+
   const variantRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const isInitialLoad = useRef(true);
 
@@ -38,6 +43,25 @@ export default function VariantCard({
 
   useEffect(() => {
     if (isInitialLoad.current) {
+      const matchingVariantUrls = searchParams.get("mV")?.split(",") ?? [];
+
+      if (matchingVariantUrls.length > 0) {
+        setHighlightedUrls(new Set(matchingVariantUrls));
+
+        const firstMatchUrl = variants.find((v) =>
+          matchingVariantUrls.includes(v.source_url)
+        )?.source_url;
+
+        if (firstMatchUrl) {
+          const node = variantRefs.current.get(firstMatchUrl);
+          setTimeout(() => {
+            if (node) {
+              node.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }, 100);
+        }
+      }
+
       const variantSlugFromUrl = searchParams.get("variant");
       if (
         variantSlugFromUrl &&
@@ -59,7 +83,7 @@ export default function VariantCard({
   }, [searchParams, variants]);
 
   const handleShareVariant = (e: React.MouseEvent, slug: string) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     setSelectedVariantSlug(slug);
 
     const newUrl = `${window.location.origin}${window.location.pathname}?variant=${slug}`;
@@ -87,35 +111,47 @@ export default function VariantCard({
     <TooltipProvider>
       <div className="space-y-4 ">
         {variants.map((variant) => {
-          const isSelected = selectedVariantSlug === variant.slug;
+          const isSelectedByShare = selectedVariantSlug === variant.slug;
           const isAvailable = variant.availability === "В наличност";
           const latestPriceRecord =
             variant.price_history[variant.price_history.length - 1];
           const { price_bgn, price_eur } = calculate_product_variant_prices(
             latestPriceRecord?.price
           );
+
           const compareItemIds = new Set(
             compareProducts.map((item) => item.id)
           );
           const isInCompareList = compareItemIds.has(variant.id);
+
+          const isHighlighted = highlightedUrls.has(variant.source_url);
+          const hasHighlights = highlightedUrls.size > 0;
+
           return (
             <div
               key={variant.id}
               ref={(node) => {
-                if (node) variantRefs.current.set(variant.slug, node);
-                else variantRefs.current.delete(variant.slug);
+                if (node) variantRefs.current.set(variant.source_url, node);
+                else variantRefs.current.delete(variant.source_url);
               }}
               className={`
                 relative grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-white dark:bg-slate-800 
                 border rounded-xl p-5 shadow-md 
                 transition-all duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors
                 ${
-                  isSelected && "border-blue-500 dark:border-blue-400 shadow-lg"
+                  isSelectedByShare && "border-blue-500 dark:border-blue-400 shadow-lg"
                 }
                 ${
-                  isInCompareList &&
-                  !isSelected &&
-                  "border-purple-500 dark:border-purple-400"
+                  isInCompareList && !isSelectedByShare
+                    ? "border-purple-500 dark:border-purple-400"
+                    : ""
+                }
+                ${
+                  hasHighlights
+                    ? isHighlighted
+                      ? "opacity-100 border-green-500 dark:border-green-400"
+                      : "opacity-75 hover:opacity-100"
+                    : ""
                 }
               `}>
               <div className="absolute top-0 left-0.5 z-10">

@@ -29,8 +29,8 @@ class ProductSchema(BaseModel):
     category: Optional[str] = None
     variants: List[ProductVariantSchema] = []
 
-    matchingVariantCount: Optional[int] = None
-    matchingVariantUrls: Optional[List[str]] = None
+    CRAWLEEBOT_matchingVariantCount: Optional[int] = None
+    CRAWLEEBOT_matchingVariantUrls: Optional[List[str]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

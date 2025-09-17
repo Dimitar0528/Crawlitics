@@ -193,7 +193,7 @@ async def navigate_to_product_category(page: Page, site_config: dict[str, any]) 
     print(f"\n Searching on {site_config['site_name']}: {site_config['search_url']}")
     await page.goto(site_config['search_url'])
     await page.wait_for_selector(site_config['search_product_card_selector'], timeout=8000)
-
+    if(site_config["site_name"] == "Ozone.bg"): await page.wait_for_timeout(1000)
     first_product = await page.query_selector(site_config['search_product_card_selector'])
     if not first_product:
         print(" No product found on initial search page.")

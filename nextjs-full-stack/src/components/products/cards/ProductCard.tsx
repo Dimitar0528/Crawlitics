@@ -15,6 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductPreview } from "@/lib/validations/product";
 import { slugifyString } from "@/lib/utils";
+import { Route } from "next";
 
 export default function ProductCard(product: ProductPreview) {
   const heroImageUrl = product.variants.find(
@@ -37,9 +38,16 @@ export default function ProductCard(product: ProductPreview) {
     ).length ?? 0;
   const percentage = totalCount > 0 ? (availableCount / totalCount) * 100 : 0;
   const isAvailable = availableCount > 0;
-  const slugCategory = slugifyString(product.category.toLowerCase());
+  const slug_category = slugifyString(product.category.toLowerCase());
+  const prooduct_href = product.CRAWLEEBOT_matchingVariantUrls
+    ? `/${slug_category}/${product.slug}?mV=${product.CRAWLEEBOT_matchingVariantUrls.map((url) =>
+        encodeURIComponent(url)).join(",")}`
+    : `/${slug_category}/${product.slug}`;
   return (
-    <Link className="block group" href={`/${slugCategory}/${product.slug}`}>
+    <Link
+      className="block group"
+      href={prooduct_href as Route}
+      target={`${product.CRAWLEEBOT_matchingVariantUrls && "_blank"}`}>
       <Card
         className="cursor-pointer w-72 max-w-xs
         max-w-xs rounded-2xl border border-gray-200 dark:border-gray-700 
@@ -77,24 +85,25 @@ export default function ProductCard(product: ProductPreview) {
               className="
                 h-full w-full object-contain p-4 
                 transition-transform duration-500 ease-in-out
-                group-hover:scale-105
+                group-hover:scale-103
               "
               draggable={false}
               priority
             />
           </div>
-          {product.matchingVariantCount && product.matchingVariantCount > 0 && (
-            <div className="absolute bottom-2 right-2">
-              <span className="inline-flex items-center gap-x-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800 dark:bg-green-800/40 dark:text-green-300">
-                <CircleCheckBig width={16} height={16} />
-                {product.matchingVariantCount}{" "}
-                {product.matchingVariantCount === 1
-                  ? "продукт съвпада"
-                  : "продукта съвпадат"} {" "}
-                 с критериите ви
-              </span>
-            </div>
-          )}
+          {product.CRAWLEEBOT_matchingVariantCount &&
+            product.CRAWLEEBOT_matchingVariantCount > 0 && (
+              <div className="absolute bottom-2 right-2">
+                <span className="inline-flex items-center gap-x-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800 dark:bg-green-800/40 dark:text-green-300">
+                  <CircleCheckBig width={16} height={16} />
+                  {product.CRAWLEEBOT_matchingVariantCount}{" "}
+                  {product.CRAWLEEBOT_matchingVariantCount === 1
+                    ? "продукт съвпада"
+                    : "продукта съвпадат"}{" "}
+                  с критериите ви
+                </span>
+              </div>
+            )}
         </CardHeader>
 
         <CardContent className="p-4 flex flex-col flex-grow">
