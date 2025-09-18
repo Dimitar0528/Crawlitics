@@ -47,7 +47,7 @@ export default function ProductCard(product: ProductPreview) {
     <Link
       className="block group"
       href={prooduct_href as Route}
-      target={`${product.CRAWLEEBOT_matchingVariantUrls && "_blank"}`}>
+      target={`${product.CRAWLEEBOT_matchingVariantUrls ? "_blank" : "_self"}`}>
       <Card
         className="cursor-pointer w-72 max-w-xs
         max-w-xs rounded-2xl border border-gray-200 dark:border-gray-700 

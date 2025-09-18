@@ -1,5 +1,5 @@
 from decimal import Decimal
-from sqlalchemy import or_
+from sqlalchemy import or_, asc, desc
 from sqlalchemy.orm import Session, selectinload, load_only, joinedload
 from sqlalchemy.sql import func, select
 from sqlalchemy.exc import IntegrityError
@@ -208,42 +208,54 @@ def search_products(
     query: str | None = None,
     offset: int = 0,
     limit: int = 20,
+    sort: str = "name-asc",
 ):
-    """Return paginated products.
     """
-    stmt = (
-        select(Product)
-        .order_by(Product.id.asc())
+    Returns paginated and sorted products, along with the total count.
+    """
+    stmt = select(Product)
+    if query:
+        q = f"%{query}%"
+        stmt = stmt.where(or_(Product.name.ilike(q), Product.brand.ilike(q)))
+
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_count = session.execute(count_stmt).scalar_one()
+
+    if sort == "price-asc" or sort == "price-desc":
+        # use subquery to find the minimum price for each product
+        subq = (
+            select(
+                ProductVariant.product_id,
+                func.min(PriceHistory.price).label("min_price"),
+            )
+            .join(PriceHistory)
+            .group_by(ProductVariant.product_id)
+            .subquery()
+        )
+        stmt = stmt.join(subq, Product.id == subq.c.product_id)
+        order_by_clause = asc(subq.c.min_price) if sort == "price-asc" else desc(subq.c.min_price)
+    elif sort == "created-desc":
+        order_by_clause = desc(Product.id)
+    elif sort == "created-asc":
+        order_by_clause = asc(Product.id)
+    elif sort == "name-desc":
+        order_by_clause = desc(Product.name)
+    else: 
+        order_by_clause = asc(Product.name)
+
+    final_stmt = (
+        stmt.order_by(order_by_clause)
         .offset(offset)
         .limit(limit)
         .options(
-            load_only(
-                Product.id,
-                Product.name,
-                Product.slug,
-                Product.category,
-            ),
-            selectinload(Product.variants).load_only(
-                ProductVariant.id,
-                ProductVariant.product_id,
-                ProductVariant.image_url,
-                ProductVariant.availability,
-            ),
-            selectinload(Product.variants).selectinload(ProductVariant.latest_lowest_price_record).load_only(
-                PriceHistory.price,
-                PriceHistory.currency,
-            ),
+            selectinload(Product.variants)
+            .selectinload(ProductVariant.latest_lowest_price_record)
         )
     )
-    if query:
-        q = f"%{query}%"
-        stmt = stmt.where(
-            or_(
-                Product.name.ilike(q),
-            )
-        )
-    result = session.execute(stmt)
-    return result.scalars().all()
+    
+    products = session.execute(final_stmt).scalars().unique().all()
+    
+    return {"data": products, "total": total_count}
 
 def get_parent_product_by_name(session: Session, name: str) -> Product:
     """Fetches a single parent product by its exact name."""
@@ -259,7 +271,7 @@ def get_product_variant_by_url(session: Session, url: str) -> ProductVariant:
 
 def read_products_from_db(
     urls: list[str], 
-    cache_duration_hours: int = 24
+    cache_duration_hours: int = 1080
 ) -> tuple[list[Product], list[str]]:
     """
     Reads a list of product variants from the DB by URL, returning fresh data and a list of stale/missing URLs.

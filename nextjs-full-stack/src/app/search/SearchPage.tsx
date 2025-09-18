@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ProductCardSkeleton from "@/components/products/cards/ProductCardSkeleton";
+import { Label } from "@/components/ui/label";
 
 export default function SearchPage() {
   return (
@@ -39,31 +40,31 @@ function SearchPageComponent() {
   const [page, setPage] = useState<number>(
     parseInt(searchParams.get("page") || "1")
   );
+  const [limit, setLimit] = useState<number>(
+    parseInt(searchParams.get("limit") || "12")
+  );
 
   const [results, setResults] = useState<ProductPreview[] | null>(null);
   const [total, setTotal] = useState<number>(0);
-  const limit = 12;
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!query) {
       router.replace("/");
+      return;
     }
-  }, [query, router]);
-
-  useEffect(() => {
-    if (!query) return;
 
     fetchResults();
 
     const params = new URLSearchParams();
     params.set("q", query);
     params.set("sort", sort);
+    params.set("limit", String(limit));
     if (page > 1) params.set("page", String(page));
 
     router.replace(`/search?${params.toString()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, sort, page]);
+  }, [query, sort, page, limit]);
 
   async function fetchResults() {
     setLoading(true);
@@ -84,7 +85,7 @@ function SearchPageComponent() {
       }
 
       setResults(res.data || []);
-      setTotal(res.data?.length || 0);
+      setTotal(res.total || 0);
     } catch (e) {
       console.error("Unexpected error fetching results:", e);
       setResults([]);
@@ -122,73 +123,110 @@ function SearchPageComponent() {
   }
 
   const pages = getPageNumbers();
+  const isInitialLoad = results === null;
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Controls */}
+    <div className="container mx-auto px-4 sm:px-6 lg:px-16 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Резултати от търсенето</h1>
-
-        <Select value={sort} onValueChange={(val) => setSort(val)}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Сортиране" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name-asc">Име (A→Z)</SelectItem>
-            <SelectItem value="name-desc">Име (Z→A)</SelectItem>
-            <SelectItem value="created-desc">Най-нови</SelectItem>
-            <SelectItem value="created-asc">Най-стари</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {results === null || loading ? (
-          Array.from({ length: 8 }).map((_, idx) => (
-            <ProductCardSkeleton key={idx} />
-          ))
-        ) : results.length > 0 ? (
-          results.map((product: ProductPreview) => <ProductCard key={product.id} {...product} />)
-        ) : (
-          <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-16 w-16 text-slate-400 mb-4 animate-bounce"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 14l2-2 4 4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <h3 className="text-2xl font-semibold text-slate-700 dark:text-slate-200 mb-2">
-              Няма резултати
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
-              За съжаление, не можахме да намерим продукти, съвпадащи с вашето
-              търсене. Опитайте с различни ключови думи или филтри.
-            </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="sort-select">Подреди:</Label>
+            <Select
+              value={sort}
+              onValueChange={(val) => {
+                setPage(1);
+                setSort(val);
+              }}>
+              <SelectTrigger id="sort-select" className="w-48">
+                <SelectValue placeholder="Сортиране" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Име (A→Z)</SelectItem>
+                <SelectItem value="name-desc">Име (Z→A)</SelectItem>
+                <SelectItem value="price-asc">Цена (ниска→висока)</SelectItem>
+                <SelectItem value="price-desc">Цена (висока→ниска)</SelectItem>
+                <SelectItem value="created-desc">Най-нови</SelectItem>
+                <SelectItem value="created-asc">Най-стари</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        )}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="limit-select">Продукти на страница:</Label>
+            <Select
+              value={String(limit)}
+              onValueChange={(val) => {
+                setPage(1);
+                setLimit(Number(val));
+              }}>
+              <SelectTrigger id="limit-select" className="w-24">
+                <SelectValue placeholder="Брой" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12">12</SelectItem>
+                <SelectItem value="24">24</SelectItem>
+                <SelectItem value="60">60</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
-      {totalPages > 1 && (
-        <Pagination className="mt-8">
+      <div
+        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 transition-opacity duration-300 ${
+          loading && !isInitialLoad ? "opacity-50 pointer-events-none" : ""
+        }`}>
+        {isInitialLoad
+          ? Array.from({ length: limit }).map((_, idx) => (
+              <ProductCardSkeleton key={idx} />
+            ))
+          : results.length > 0
+          ? results.map((product: ProductPreview) => (
+              <ProductCard key={product.id} {...product} />
+            ))
+          : !loading && (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-16 w-16 text-slate-400 mb-4 animate-bounce"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 14l2-2 4 4m5-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <h3 className="text-2xl font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                  Няма резултати
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
+                  За съжаление, не можахме да намерим продукти, съвпадащи с
+                  вашето търсене. Опитайте с различни ключови думи или филтри.
+                </p>
+              </div>
+            )}
+      </div>
+
+      {!isInitialLoad && totalPages > 1 && (
+        <Pagination
+          className={`mt-8 transition-opacity duration-300 ${
+            loading ? "opacity-50" : ""
+          }`}>
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
                 href="#"
-                aria-disabled={page === 1}
+                aria-disabled={page === 1 || loading}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (page > 1) setPage(page - 1);
+                  if (page > 1 && !loading) setPage(page - 1);
                 }}
               />
             </PaginationItem>
-
             {pages.map((p, idx) =>
               p === "ellipsis" ? (
                 <PaginationItem key={idx}>
@@ -199,6 +237,7 @@ function SearchPageComponent() {
                   <PaginationLink
                     href="#"
                     isActive={page === p}
+                    aria-disabled={loading}
                     onClick={(e) => {
                       e.preventDefault();
                       setPage(p);
@@ -208,14 +247,13 @@ function SearchPageComponent() {
                 </PaginationItem>
               )
             )}
-
             <PaginationItem>
               <PaginationNext
                 href="#"
-                aria-disabled={page === totalPages}
+                aria-disabled={page === totalPages || loading}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (page < totalPages) setPage(page + 1);
+                  if (page < totalPages && !loading) setPage(page + 1);
                 }}
               />
             </PaginationItem>

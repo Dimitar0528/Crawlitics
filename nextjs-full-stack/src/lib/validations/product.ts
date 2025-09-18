@@ -106,6 +106,11 @@ export const CategorySchema = z.object({
 });
 export const CategoriesResponseSchema = z.array(CategorySchema);
 
+export const SearchApiResponseSchema = z.object({
+  data: z.array(ProductPreviewCardSchema),
+  total: z.number(),
+});
+
 export type PriceHistory = z.infer<typeof PriceHistorySchema>;
 export type ProductVariant = z.infer<typeof ProductVariantSchema>;
 export type Product = z.infer<typeof ProductSchema>;

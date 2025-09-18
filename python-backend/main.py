@@ -102,18 +102,20 @@ def read_categories(session: Session = Depends(get_db)):
 def read_search_products(
     q: str | None = Query(None, alias="q"),
     offset: int = Query(0),
-    limit: int = Query(20),
+    limit: int = Query(12),
+    sort: str = Query("name-asc"),
     session: Session = Depends(get_db),
 ):
-    products = search_products(
+    result = search_products(
         session,
         query=q,
         offset=offset,
         limit=limit,
+        sort=sort,
     )
-    if not products:
-         raise HTTPException(status_code=404, detail="Search products not found")
-    return products
+    if not result:
+         return {"data": [], "total": 0}
+    return result
 
 class ConnectionManager:
     def __init__(self):

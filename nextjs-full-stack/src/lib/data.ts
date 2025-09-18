@@ -7,13 +7,14 @@ import {
   ComparisonProduct,
   CategoriesResponseSchema,
   Category,
+  SearchApiResponseSchema,
 } from "@/lib/validations/product";
 import { cache } from "react";
 import { SpecialSearchFormValues } from "./validations/form";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type DataResponse<T> =
-  | { success: true; data: T }
+  | { success: true; data: T; total?: number }
   | { success: false; error: string };
 
 export async function getLatestProducts(): Promise<
@@ -286,7 +287,9 @@ export async function getCategories(): Promise<DataResponse<Category[]>> {
   }
 }
 
-export async function getSearchProducts(params: URLSearchParams): Promise<DataResponse<ProductPreview[]>> {
+export async function getSearchProducts(
+  params: URLSearchParams
+): Promise<DataResponse<ProductPreview[]>> {
   try {
     const response = await fetch(
       `${API_BASE}/api/search-products?${params.toString()}`
@@ -302,7 +305,7 @@ export async function getSearchProducts(params: URLSearchParams): Promise<DataRe
     }
 
     const rawData: unknown = await response.json();
-    const result = ProductPreviewsResponseSchema.safeParse(rawData);
+    const result = SearchApiResponseSchema.safeParse(rawData);
     if (!result.success) {
       console.error(
         "Validation Error: Categories data is malformed.",
@@ -313,8 +316,8 @@ export async function getSearchProducts(params: URLSearchParams): Promise<DataRe
         error: "Получени са неправилно форматирани данни от сървъра.",
       };
     }
-
-    return { success: true, data: result.data };
+    const { data, total } = result.data;
+    return { success: true, data: data, total: total };
   } catch (err) {
     console.error(
       "Мрежова или неочаквана грешка при извличане на категориите.",
