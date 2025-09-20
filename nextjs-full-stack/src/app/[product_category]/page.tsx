@@ -96,7 +96,7 @@ export default async function CategoryPage(
       </div>
 
       <main className="relative container mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8">
-        <header className="text-center mb-6">
+        <header className="text-center mb-6 sm:mb-4">
           <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200/50 dark:border-blue-700/50 mb-2">
             <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
@@ -104,17 +104,10 @@ export default async function CategoryPage(
             </span>
           </div>
 
-          <h1 className="text-5xl font-black tracking-tighter bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent mb-4">
+          <h1 className="text-5xl font-black tracking-tighter bg-gradient-to-br from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
             {displayName}
           </h1>
 
-          <p className="max-w-3xl mx-auto text-xl text-slate-600 dark:text-slate-300 font-light leading-relaxed">
-            Всички продукти в категория{" "}
-            <span className="font-semibold text-slate-800 dark:text-white">
-              {displayName}
-            </span>
-            , анализирани от CrawleeBot
-          </p>
         </header>
 
         <div className="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6 ">

@@ -127,9 +127,16 @@ function SearchPageComponent() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-16 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Резултати от търсенето</h1>
-        <div className="flex items-center gap-4">
+      <div className="mb-6 flex flex-col gap-4 xl:flex-row items-center justify-between">
+        <h1 className="text-2xl text-gray-900 dark:text-white text-center sm:text-left animate-fade-in">
+          <span className="text-blue-600 dark:text-blue-400">{total}</span>{" "}
+          {total === 1 ? "резултат, открит" : "резултата, открити"} за:{" "}
+          <span className="text-2xl sm:text-3xl bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 text-transparent bg-clip-text font-bold">
+            &quot;{query}&quot;
+          </span>
+        </h1>
+
+        <div className="flex items-center flex-col sm:flex-row gap-4">
           <div className="flex items-center gap-2">
             <Label htmlFor="sort-select">Подреди:</Label>
             <Select
@@ -142,8 +149,8 @@ function SearchPageComponent() {
                 <SelectValue placeholder="Сортиране" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name-asc">Име (A→Z)</SelectItem>
-                <SelectItem value="name-desc">Име (Z→A)</SelectItem>
+                <SelectItem value="name-asc">Име (A→Я)</SelectItem>
+                <SelectItem value="name-desc">Име (Я→A)</SelectItem>
                 <SelectItem value="price-asc">Цена (ниска→висока)</SelectItem>
                 <SelectItem value="price-desc">Цена (висока→ниска)</SelectItem>
                 <SelectItem value="created-desc">Най-нови</SelectItem>

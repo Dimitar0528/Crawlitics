@@ -11,6 +11,7 @@ import {
   BadgeEuro,
   ChevronRight,
   Computer,
+  AlertTriangle,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -139,23 +140,49 @@ export default function Navigation() {
                   Категории
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  {categories.length === 0 && (
-                    <NavigationMenuItem className="text-center mt-4">
-                      {" "}
-                      Категориите не могат да бъдат заредени в момента
-                    </NavigationMenuItem>
-                  )}
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    {categories.map((category) => (
-                      <NavigationMenuItem key={category.name}>
-                        <Link
-                          href={category.href as Route}
-                          className="block p-3 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground">
-                          {category.name}
-                        </Link>
-                      </NavigationMenuItem>
-                    ))}
-                  </ul>
+                  <div
+                    className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg
+        data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
+        data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
+                    {categories.length === 0 ? (
+                      <div className="w-[400px] md:w-[500px] lg:w-[600px] p-8 flex flex-col items-center justify-center gap-4 text-center animate-in fade-in duration-500">
+                        <AlertTriangle className="h-12 w-12 text-yellow-500/80" />
+                        <div className="space-y-1">
+                          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">
+                            Грешка при зареждане
+                          </p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Категориите не могат да бъдат показани в момента.
+                            Моля, опитайте отново по-късно.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <ul className="grid w-[400px] gap-2 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] max-h-[400px] overflow-y-auto">
+                        {categories.map((category) => (
+                          <NavigationMenuItem
+                            key={category.name}
+                            className="list-none">
+                            <Link
+                              href={category.href as Route}
+                              className="group flex items-center justify-between p-3 rounded-md transition-all duration-300 ease-in-out
+                    hover:bg-gradient-to-br hover:from-slate-50 hover:to-slate-100 
+                    dark:hover:from-slate-800 dark:hover:to-slate-700">
+                              <span
+                                className="text-base font-medium text-slate-700 dark:text-slate-300 transition-colors
+                    group-hover:text-purple-600 dark:group-hover:text-purple-300">
+                                {category.name}
+                              </span>
+                              <ChevronRight
+                                className="h-5 w-5 text-slate-400 dark:text-slate-500 
+                    transition-transform duration-300 group-hover:translate-x-1 group-hover:text-purple-600 dark:group-hover:text-purple-400"
+                              />
+                            </Link>
+                          </NavigationMenuItem>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
@@ -203,10 +230,7 @@ export default function Navigation() {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                className="focus-visible:ring-0 "
-                variant="ghost"
-                size="icon">
+              <Button variant="ghost" size="icon">
                 <Sun className="text-purple-600 h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
                 <Moon className="text-purple-300 absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
                 <span className="sr-only">Toggle theme</span>
@@ -220,8 +244,10 @@ export default function Navigation() {
                   className={`group transition-colors cursor-pointer ${
                     theme === value ? "bg-accent text-accent-foreground" : ""
                   }`}>
-                  <Icon className="size-4 group-hover:text-white" />
-                  <span className="group-hover:text-white">{name}</span>
+                  <Icon className="size-4 group-hover:text-white group-focus-visible:text-white" />
+                  <span className="group-hover:text-white group-focus-visible:text-white">
+                    {name}
+                  </span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
