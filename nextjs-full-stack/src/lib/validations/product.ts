@@ -61,11 +61,12 @@ const ProductPreviewCardVariantSchema = ProductVariantSchema.pick({
   availability: true,
 }).extend({
   latest_lowest_price_record: ProductPreviewCardPriceRecordSchema,
-
+  variant_specs: z.record(z.string(), z.any()).optional(),
 });
 
 export const ProductPreviewCardSchema = ProductBaseSchema.extend({
   variants: z.array(ProductPreviewCardVariantSchema),
+  common_specs: z.record(z.string(), z.any()).optional(),
   CRAWLEEBOT_matchingVariantCount: z.number().optional(),
   CRAWLEEBOT_matchingVariantUrls: z
     .array(

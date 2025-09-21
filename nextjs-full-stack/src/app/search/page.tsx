@@ -7,7 +7,7 @@ export async function generateMetadata(
   const search_query = (await props.searchParams).q;
   return {
     title: search_query
-      ? `Резултати от търсенето за ${search_query}"`
+      ? `Резултати от търсенето за "${search_query}"`
       : "Резултати от търсенето на продукти",
     description:
       "Открий най-добрите оферти и продукти с Crawlitics. Използвай търсачката, за да намериш бързо това, което търсиш.",
