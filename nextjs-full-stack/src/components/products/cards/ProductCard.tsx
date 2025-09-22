@@ -45,12 +45,12 @@ export default function ProductCard(product: ProductPreview) {
     : `/${slug_category}/${product.slug}`;
   return (
     <Link
-      className="block group"
+      className="block group w-72 max-w-xs"
       href={prooduct_href as Route}
       target={`${product.CRAWLEEBOT_matchingVariantUrls ? "_blank" : "_self"}`}>
       <Card
-        className="cursor-pointer w-72 max-w-xs
-        max-w-xs rounded-2xl border border-gray-200 dark:border-gray-700 
+        className="cursor-pointer 
+        rounded-2xl border border-gray-200 dark:border-gray-700 
         overflow-hidden
         bg-white dark:bg-gray-900
         shadow-lg 
@@ -58,7 +58,7 @@ export default function ProductCard(product: ProductPreview) {
         hover:shadow-2xl
         hover:border-blue-500
         hover:dark:border-blue-500
-        group-hover:shadow-xl group-hover:border-primary group-hover:scale-[1.02]
+        group-hover:shadow-xl group-hover:border-primary group-hover:scale-[1.01]
         relative
       ">
         <Badge

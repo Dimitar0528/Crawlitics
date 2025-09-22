@@ -9,7 +9,7 @@ export default function Footer() {
       <div className="container mx-auto px-4 lg:px-18">
         <div className="grid text-center md:text-left justify-center sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <Link href="/">
+            <Link href="/" className="block w-fit">
               <div className="flex items-center justify-center md:justify-start space-x-2 mb-4">
                 <div className="bg-transparent dark:bg-gray-200 p-1 rounded-md flex items-center justify-center">
                   <Image

@@ -1,6 +1,6 @@
 
 import Link from "next/link";
-import Testimonials from "@/components/testimonials/testimonials";
+import Testimonials from "@/components/testimonials/Testimonials";
 import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Отзиви на потребители ",

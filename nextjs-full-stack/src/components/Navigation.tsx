@@ -121,7 +121,7 @@ export default function Navigation() {
   ];
 
   return (
-    <nav className="sticky top-0 w-full z-50 backdrop-blur-lg bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+    <nav className="sticky top-0 w-full z-50 backdrop-blur-sm bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
       <div className="container mx-auto px-4 lg:px-8 py-3 flex items-center justify-between md:justify-evenly">
         <div className="flex items-center gap-6">
           <Link href={"/"} className="flex items-center space-x-2">
@@ -215,7 +215,7 @@ export default function Navigation() {
               type="search"
               name="q"
               placeholder="Какво търсиш днес?"
-              className="pl-8 h-10 rounded-full"
+              className="pl-8 h-10 rounded-full border-gray-400 placeholder:text-slate-600 dark:placeholder:text-slate-300 "
             />
             <Button
               type="submit"

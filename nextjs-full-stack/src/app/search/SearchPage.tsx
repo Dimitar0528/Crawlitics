@@ -35,7 +35,7 @@ import {
   DrawerClose,
   DrawerDescription,
 } from "@/components/ui/drawer";
-
+import SideFilter from "@/components/search/SideFilter";
 export default function SearchPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -44,65 +44,6 @@ export default function SearchPage() {
   );
 }
 
-const FiltersSidebarContent = ({
-  availableSpecs,
-  selectedFilters,
-  toggleFilterValue,
-  clearAllFilters,
-}: {
-  availableSpecs: Record<string, string[]>;
-  selectedFilters: Record<string, string[]>;
-  toggleFilterValue: (key: string, value: string) => void;
-  clearAllFilters: () => void;
-}) => (
-  <>
-    <div className="flex items-center justify-between mb-3 px-4 pt-4">
-      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-        Филтри
-      </h3>
-      <button
-        onClick={clearAllFilters}
-        className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-        Изчисти
-      </button>
-    </div>
-    <div className="overflow-auto px-4">
-      {Object.keys(availableSpecs).length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400 py-4">
-          Няма налични филтри
-        </p>
-      ) : (
-        Object.entries(availableSpecs).map(([key, values]) => (
-          <div
-            key={key}
-            className="mb-4 border-b border-slate-200 dark:border-slate-700 pb-4 last:border-b-0 last:pb-0">
-            <h4 className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
-              {key}
-            </h4>
-            <div className="grid gap-2 max-h-60 overflow-y-auto pr-2">
-              {values.map((val) => {
-                const checked = (selectedFilters[key] || []).includes(val);
-                return (
-                  <label
-                    key={val}
-                    className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleFilterValue(key, val)}
-                      className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="truncate">{val}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  </>
-);
 
 function SearchPageComponent() {
   const searchParams = useSearchParams();
@@ -170,7 +111,7 @@ function SearchPageComponent() {
       (res.data || []).forEach((product) => {
         const specs = product.common_specs || {};
         Object.entries(specs).forEach(([key, value]) => {
-          if (value !== null && value !== undefined) {
+          if (value !== null && value !== undefined && key !== "features") {
             if (!specsMap[key]) specsMap[key] = new Set();
             specsMap[key].add(String(value));
           }
@@ -178,7 +119,8 @@ function SearchPageComponent() {
         product.variants?.forEach((variant) => {
           const vSpecs = variant.variant_specs || {};
           Object.entries(vSpecs).forEach(([k, v]) => {
-            const str = v == null ? "" : String(v);
+            const str = v == null ? "" : String(v).replace(/(\d+)([A-Za-z]+)/, "$1 $2"); 
+            console.log(str)
             specsMap[k] = specsMap[k] || new Set<string>();
             specsMap[k].add(str);
           });
@@ -215,14 +157,20 @@ function SearchPageComponent() {
         );
         const variantMatches = product.variants?.some((variant) => {
           const v = variant.variant_specs?.[key];
-          return selectedVals.some((sv) => String(v) === sv);
+          return selectedVals.some((sv) => String(v).replace(/(\d+)([A-Za-z]+)/, "$1 $2") === sv);
         });
         return commonMatches || Boolean(variantMatches);
       });
     });
   }, [results, selectedFilters]);
 
-  const displayedTotal = results === null ? total : filteredResults.length;
+  const filtersApplied = Object.keys(selectedFilters).some(
+    (k) => selectedFilters[k]?.length > 0
+  );
+
+  const displayedTotal =
+    results === null ? total : filtersApplied ? filteredResults.length : total;
+
   const totalPages = Math.max(1, Math.ceil(displayedTotal / limit));
 
   function getPageNumbers() {
@@ -273,8 +221,8 @@ function SearchPageComponent() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-16 py-8">
-      <div className="mb-6 flex flex-col gap-4">
+    <div className="container mx-auto px-4 sm:px-6 py-8">
+      <div className="mb-8 flex flex-col gap-4">
         <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
           <h1 className="text-2xl text-gray-900 dark:text-white text-center sm:text-left animate-fade-in">
             <div
@@ -346,21 +294,20 @@ function SearchPageComponent() {
                 Покажи филтри ({Object.values(selectedFilters).flat().length})
               </Button>
             </DrawerTrigger>
-            <DrawerContent className="h-[80vh]">
+            <DrawerContent className="h-[75vh] px-4">
               <div className="overflow-y-auto">
                 <DrawerHeader className="text-left">
-                  <DrawerTitle className="text-2xl">
-                    Пълни спецификации
-                  </DrawerTitle>
+                  <DrawerTitle className="text-2xl">Филтри</DrawerTitle>
                   <DrawerDescription className="text-lg">
-                    Всички характеристики на този специфичен продукт.
+                    Филтрирай продуктите, базирайки се на посочените критерии.
                   </DrawerDescription>
                 </DrawerHeader>
-                <FiltersSidebarContent
+                <SideFilter
                   availableSpecs={availableSpecs}
                   selectedFilters={selectedFilters}
                   toggleFilterValue={toggleFilterValue}
                   clearAllFilters={clearAllFilters}
+                  loading={loading}
                 />
               </div>
               <DrawerFooter className="pt-2">
@@ -373,28 +320,26 @@ function SearchPageComponent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <aside className="xl:col-span-3 hidden xl:block">
-          <div className="sticky top-24 space-y-4">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-md border border-slate-100 dark:border-slate-700">
-              <div className="max-h-[65vh] flex flex-col">
-                <FiltersSidebarContent
+      <div className="flex gap-6">
+        <aside className="hidden xl:block w-65 flex-shrink-0 sticky top-24">
+          <div className="space-y-4 sticky top-24 space-y-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-100 dark:border-slate-700">
+              <div className="max-h-[41.5rem] flex flex-col overflow-y-auto">
+                <SideFilter
                   availableSpecs={availableSpecs}
                   selectedFilters={selectedFilters}
                   toggleFilterValue={toggleFilterValue}
                   clearAllFilters={clearAllFilters}
+                  loading={loading}
                 />
               </div>
-            </div>
-            <div className="hidden md:block text-sm text-slate-500 dark:text-slate-400">
-              Подредете и филтрирайте за по-точни резултати.
             </div>
           </div>
         </aside>
 
-        <section className="xl:col-span-9">
+        <section className="flex-1">
           <div
-            className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 transition-opacity duration-300 ${
+            className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 justify-items-center transition-opacity duration-300 w-full ${
               loading && !isInitialLoad ? "opacity-50 pointer-events-none" : ""
             }`}>
             {isInitialLoad
@@ -402,11 +347,9 @@ function SearchPageComponent() {
                   <ProductCardSkeleton key={idx} />
                 ))
               : filteredResults.length > 0
-              ? filteredResults
-                  .slice((page - 1) * limit, page * limit)
-                  .map((product: ProductPreview) => (
-                    <ProductCard key={product.id} {...product} />
-                  ))
+              ? filteredResults.map((product: ProductPreview) => (
+                  <ProductCard key={product.id} {...product} />
+                ))
               : !loading && (
                   <div className="col-span-full flex flex-col items-center justify-center py-20 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-bottom-8 duration-700">
                     <svg
