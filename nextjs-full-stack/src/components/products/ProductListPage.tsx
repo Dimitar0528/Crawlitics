@@ -1,9 +1,9 @@
 "use client";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/products/cards/ProductCard";
 import type { ProductPreview } from "@/lib/validations/product";
-import { getSearchProducts } from "@/lib/data";
+import { getSearchProducts, getProductsByCategory, getCategories } from "@/lib/data";
 import {
   Pagination,
   PaginationContent,
@@ -22,9 +22,8 @@ import {
 } from "@/components/ui/select";
 import ProductCardSkeleton from "@/components/products/cards/ProductCardSkeleton";
 import { Label } from "@/components/ui/label";
-import { Filter } from "lucide-react"; 
-import { Button } from "@/components/ui/button"; 
-
+import { Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
@@ -36,20 +35,21 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import SideFilter from "@/components/search/SideFilter";
-export default function SearchPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <SearchPageComponent />
-    </Suspense>
-  );
-}
+import { Route } from "next";
 
+type ProductListPageProps = {
+  pageType: "search" | "category";
+  // the 'value' is either the search query or the category slug
+  pageValue: string;
+};
 
-function SearchPageComponent() {
+export default function ProductListPage({
+  pageType,
+  pageValue,
+}: ProductListPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const query = searchParams.get("q") || "";
   const [sort, setSort] = useState(searchParams.get("sort") || "name-asc");
   const [page, setPage] = useState<number>(
     parseInt(searchParams.get("page") || "1")
@@ -70,77 +70,96 @@ function SearchPageComponent() {
   >({});
 
   useEffect(() => {
-    if (!query) {
+    if (!pageValue) {
       router.replace("/");
       return;
     }
 
-    fetchResults();
-
-    const params = new URLSearchParams();
-    params.set("q", query);
-    params.set("sort", sort);
-    params.set("limit", String(limit));
-    if (page > 1) params.set("page", String(page));
-
-    router.replace(`/search?${params.toString()}`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, sort, page, limit]);
-
-  async function fetchResults() {
-    setLoading(true);
-    try {
-      const offset = (page - 1) * limit;
-      const params = new URLSearchParams();
-      params.set("q", query);
-      params.set("sort", sort);
-      params.set("offset", String(offset));
-      params.set("limit", String(limit));
-
-      const res = await getSearchProducts(params);
-      if (!res.success) {
-        console.error(res.error);
-        setResults([]);
-        setTotal(0);
-        return;
-      }
-
-      setResults(res.data || []);
-      setTotal(res.total || 0);
-      const specsMap: Record<string, Set<string>> = {};
-      (res.data || []).forEach((product) => {
-        const specs = product.common_specs || {};
-        Object.entries(specs).forEach(([key, value]) => {
-          if (value !== null && value !== undefined && key !== "features") {
-            if (!specsMap[key]) specsMap[key] = new Set();
-            specsMap[key].add(String(value));
-          }
+    const fetchResults = async () => {
+      setLoading(true);
+      try {
+        const offset = (page - 1) * limit;
+        const apiParams = new URLSearchParams({
+          sort,
+          offset: String(offset),
+          limit: String(limit),
         });
-        product.variants?.forEach((variant) => {
-          const vSpecs = variant.variant_specs || {};
-          Object.entries(vSpecs).forEach(([k, v]) => {
-            const str = v == null ? "" : String(v).replace(/(\d+)([A-Za-z]+)/, "$1 $2"); 
-            console.log(str)
-            specsMap[k] = specsMap[k] || new Set<string>();
-            specsMap[k].add(str);
+
+        let res;
+        if (pageType === "search") {
+          apiParams.set("q", pageValue);
+          res = await getSearchProducts(apiParams);
+        } else {
+          apiParams.set("category", pageValue);
+          const categories = await getCategories();
+          const categoryBG = categories.success
+            ? categories.data.find(
+                (c) => c.slug.toLowerCase() === pageValue.toLowerCase()
+              )?.name_bg || pageValue
+            : pageValue;
+
+         res = await getProductsByCategory(categoryBG);
+        }
+
+        if (!res.success) {
+          console.error(res.error);
+          setResults([]);
+          setTotal(0);
+          return;
+        }
+
+        const products: ProductPreview[] = res.data || [];
+        setResults(products);
+        setTotal(res.total || 0);
+
+        const specsMap: Record<string, Set<string>> = {};
+        products.forEach((product) => {
+          const specs = product.common_specs || {};
+          Object.entries(specs).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && key !== "features") {
+              if (!specsMap[key]) specsMap[key] = new Set();
+              specsMap[key].add(String(value));
+            }
+          });
+          product.variants?.forEach((variant) => {
+            const vSpecs = variant.variant_specs || {};
+            Object.entries(vSpecs).forEach(([k, v]) => {
+              const str =
+                v == null ? "" : String(v).replace(/(\d+)([A-Za-z]+)/, "$1 $2");
+              specsMap[k] = specsMap[k] || new Set<string>();
+              specsMap[k].add(str);
+            });
           });
         });
-      });
-      const normalized: Record<string, string[]> = {};
-      Object.entries(specsMap).forEach(([k, set]) => {
-        normalized[k] = Array.from(set)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-      });
-      setAvailableSpecs(normalized);
-    } catch (e) {
-      console.error("Unexpected error fetching results:", e);
-      setResults([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }
+        const normalized: Record<string, string[]> = {};
+        Object.entries(specsMap).forEach(([k, set]) => {
+          normalized[k] = Array.from(set)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+        });
+        setAvailableSpecs(normalized);
+      } catch (e) {
+        console.error("Unexpected error fetching results:", e);
+        setResults([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+
+    const urlParams = new URLSearchParams();
+    urlParams.set("sort", sort);
+    urlParams.set("limit", String(limit));
+    if (page > 1) urlParams.set("page", String(page));
+
+    const path =
+      pageType === "search"
+        ? `/search?q=${pageValue}`
+        : `/category/${pageValue}`;
+    router.replace(`${path}&${urlParams.toString()}` as Route);
+  }, [pageValue, sort, page, limit, pageType, router]);
 
   const filteredResults = useMemo(() => {
     if (!results) return [] as ProductPreview[];
@@ -157,7 +176,9 @@ function SearchPageComponent() {
         );
         const variantMatches = product.variants?.some((variant) => {
           const v = variant.variant_specs?.[key];
-          return selectedVals.some((sv) => String(v).replace(/(\d+)([A-Za-z]+)/, "$1 $2") === sv);
+          return selectedVals.some(
+            (sv) => String(v).replace(/(\d+)([A-Za-z]+)/, "$1 $2") === sv
+          );
         });
         return commonMatches || Boolean(variantMatches);
       });
@@ -220,6 +241,23 @@ function SearchPageComponent() {
     setSelectedFilters({});
   }
 
+  const pageTitle =
+    pageType === "search" ? (
+      <>
+        {total === 1 ? "резултат, открит" : "резултата, открити"} за:{" "}
+        <span className="text-2xl sm:text-3xl bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 text-transparent bg-clip-text font-bold">
+          &quot;{pageValue}&quot;
+        </span>
+      </>
+    ) : (
+      <>
+        продукти в категория:{" "}
+        <span className="text-2xl sm:text-3xl bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 text-transparent bg-clip-text font-bold">
+          &quot;{decodeURIComponent(pageValue)}&quot;
+        </span>
+      </>
+    );
+    
   return (
     <div className="container mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8 flex flex-col gap-4">
@@ -234,9 +272,7 @@ function SearchPageComponent() {
               <span className="absolute inset-0 bg-gradient-to-r from-sky-500/20 to-purple-600/20 rounded-full blur-md opacity-75 animate-in fade-in-0 zoom-in-50 duration-700" />
             </div>
             {total === 1 ? "резултат, открит" : "резултата, открити"} за:{" "}
-            <span className="text-2xl sm:text-3xl bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 text-transparent bg-clip-text font-bold">
-              &quot;{query}&quot;
-            </span>
+            {pageTitle}
           </h1>
           <div className="flex items-center flex-col sm:flex-row gap-4">
             <div className="flex items-center gap-2">

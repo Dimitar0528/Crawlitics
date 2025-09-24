@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import SearchPage from "./SearchPage";
+import ProductListPage from "../../components/products/ProductListPage";
 
 export async function generateMetadata(
   props: PageProps<"/search">
@@ -16,8 +16,7 @@ export async function generateMetadata(
 
 export const revalidate = 3600;
 
-export default function Page(){
-    return (
-        <SearchPage/>
-    )
+export default async function Page(props: PageProps<"/search">) {
+    const search_query = (await props.searchParams).q as string;
+    return <ProductListPage pageType="search" pageValue={search_query} />;
 }
