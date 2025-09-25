@@ -31,11 +31,11 @@ STATUS_MESSAGES = {
     (TaskStatus.CRAWLING, SubStatus.COLLECTING_URLS): "Приключи събирането на продуктови връзки.",
     (TaskStatus.CRAWLING, SubStatus.FILTERING_URLS): "Открити {count} релевантни продукта за анализ.",
     
+    (TaskStatus.SCRAPING, SubStatus.SENDING_CACHED_RESULTS): "Изпращане на намерени кеширани продукти...",
     (TaskStatus.SCRAPING, SubStatus.INITIALIZING): "Започва извличане на детайлна информация на продуктите...",
     (TaskStatus.SCRAPING, SubStatus.GENERATING_SCHEMA): "Няма съществуваща схема за извличане на данни за тази категория. Генериране на нова схема...",
     (TaskStatus.SCRAPING, SubStatus.EXTRACTING_DATA): "Извличане на данни от {count} продукта...",
     (TaskStatus.SCRAPING, SubStatus.EXTRACTION_COMPLETE): "Извличането на данни приключи.",
-    (TaskStatus.SCRAPING, SubStatus.SENDING_CACHED_RESULTS): "Изпращане на намерени кеширани продукти...",
 
     (TaskStatus.ANALYZING, SubStatus.GROUPING_PRODUCTS): "Започва групиране на намерените продукти по сходство...",
     (TaskStatus.ANALYZING, SubStatus.GROUPING_COMPLETE): "Открити {count} уникални продуктови групи.",

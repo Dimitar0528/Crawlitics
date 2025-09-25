@@ -41,11 +41,13 @@ type ProductListPageProps = {
   pageType: "search" | "category";
   // the 'value' is either the search query or the category slug
   pageValue: string;
+  category_display_name?: string;
 };
 
 export default function ProductListPage({
   pageType,
   pageValue,
+  category_display_name,
 }: ProductListPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -90,7 +92,6 @@ export default function ProductListPage({
           apiParams.set("q", pageValue);
           res = await getSearchProducts(apiParams);
         } else {
-          apiParams.set("category", pageValue);
           const categories = await getCategories();
           const categoryBG = categories.success
             ? categories.data.find(
@@ -98,7 +99,7 @@ export default function ProductListPage({
               )?.name_bg || pageValue
             : pageValue;
 
-         res = await getProductsByCategory(categoryBG);
+          res = await getProductsByCategory(categoryBG, apiParams);
         }
 
         if (!res.success) {
@@ -155,10 +156,12 @@ export default function ProductListPage({
     if (page > 1) urlParams.set("page", String(page));
 
     const path =
-      pageType === "search"
-        ? `/search?q=${pageValue}`
-        : `/category/${pageValue}`;
-    router.replace(`${path}&${urlParams.toString()}` as Route);
+      pageType === "search" ? `/search?q=${pageValue}` : `/${pageValue}`;
+    if (pageType === "search") {
+      router.replace(`${path}&${urlParams.toString()}` as Route);
+    } else {
+      router.replace(`${path}?${urlParams.toString()}` as Route);
+    }
   }, [pageValue, sort, page, limit, pageType, router]);
 
   const filteredResults = useMemo(() => {
@@ -251,18 +254,19 @@ export default function ProductListPage({
       </>
     ) : (
       <>
-        продукти в категория:{" "}
+        {total === 1 ? "продукт, намерен" : "продукта, намерени"} за категория:{" "}
         <span className="text-2xl sm:text-3xl bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 text-transparent bg-clip-text font-bold">
-          &quot;{decodeURIComponent(pageValue)}&quot;
+          &quot;{category_display_name}&quot;
         </span>
       </>
     );
-    
+
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-8">
+    <div
+      className={`container mx-auto px-4 sm:px-6 py-8`}>
       <div className="mb-8 flex flex-col gap-4">
         <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
-          <h1 className="text-2xl text-gray-900 dark:text-white text-center sm:text-left animate-fade-in">
+          <h1 className="text-2xl max-w-4xl text-gray-900 dark:text-white text-center sm:text-left animate-fade-in">
             <div
               key={total}
               className="relative inline-block mx-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full animate-in fade-in-0 slide-in-from-bottom-2 duration-500">
@@ -271,7 +275,6 @@ export default function ProductListPage({
               </span>
               <span className="absolute inset-0 bg-gradient-to-r from-sky-500/20 to-purple-600/20 rounded-full blur-md opacity-75 animate-in fade-in-0 zoom-in-50 duration-700" />
             </div>
-            {total === 1 ? "резултат, открит" : "резултата, открити"} за:{" "}
             {pageTitle}
           </h1>
           <div className="flex items-center flex-col sm:flex-row gap-4">

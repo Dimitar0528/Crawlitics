@@ -206,8 +206,9 @@ def get_product_variants_for_comparison(session: Session, variant_ids: list[int]
 def search_products(
     session: Session,
     query: str | None = None,
+    category: str | None = None,
     offset: int = 0,
-    limit: int = 20,
+    limit: int = 12,
     sort: str = "name-asc",
 ):
     """
@@ -217,7 +218,9 @@ def search_products(
     if query:
         q = f"%{query}%"
         stmt = stmt.where(or_(Product.name.ilike(q), Product.brand.ilike(q)))
-
+    if category:
+        stmt = stmt.where(Product.category == category)
+        
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_count = session.execute(count_stmt).scalar_one()
 

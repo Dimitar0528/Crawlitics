@@ -196,10 +196,11 @@ export async function startCrawleeBot(
 }
 
 export async function getProductsByCategory(
-  category: string
+  category: string,
+  params: URLSearchParams
 ): Promise<DataResponse<ProductPreview[]>> {
   try {
-    const response = await fetch(`${API_BASE}/api/category-products`, {
+    const response = await fetch(`${API_BASE}/api/category-products?${params.toString()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -222,7 +223,7 @@ export async function getProductsByCategory(
 
     const rawData: unknown = await response.json();
 
-    const result = ProductPreviewsResponseSchema.safeParse(rawData);
+    const result = SearchApiResponseSchema.safeParse(rawData);
 
     if (!result.success) {
       console.error(
@@ -235,7 +236,8 @@ export async function getProductsByCategory(
       };
     }
 
-    return { success: true, data: result.data };
+    const { data, total } = result.data;
+    return { success: true, data: data, total: total };
   } catch (err) {
     console.error(
       "Мрежова или неочаквана грешка при извличане на най-новите продукти.",

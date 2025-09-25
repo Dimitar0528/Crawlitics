@@ -217,7 +217,6 @@ export default function SpecialSearch(){
                 </svg>
               </div>
 
-              {/* Main message */}
               <p className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Няма намерени резултати за вашата заявка.
               </p>
@@ -227,7 +226,7 @@ export default function SpecialSearch(){
               <Button
                 onClick={() => window.location.reload()}
                 className="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-purple-600 text-white font-medium shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300">
-                🔄 Опитай отново
+                Опитай отново
               </Button>
             </div>
           </div>

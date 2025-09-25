@@ -77,25 +77,25 @@ def get_comparison_data(ids_str: str = Query(..., alias="ids"), session: Session
     return variants_to_compare
 
 @app.post("/api/category-products")
-async def read_products_by_category(
+def read_category_products(
     category: str = Body(..., embed=True),
-    session: Session = Depends(get_db)
+    offset: int = Query(0),
+    limit: int = Query(12),
+    sort: str = Query("name-asc"),
+    session: Session = Depends(get_db),
 ):
     decoded_category = unquote(category)
-    products = get_products_by_category(session, decoded_category)
-    if not products:
-        raise HTTPException(status_code=404, detail="Products not found for this category")
-
-    return products
-
-
-@app.get("/api/categories")
-def read_categories(session: Session = Depends(get_db)):
-    categories = get_all_categories(session)
-    if not categories:
-        raise HTTPException(status_code=404, detail="Products categories not found")
-
-    return categories
+    result = search_products(
+        session,
+        category=decoded_category,
+        offset=offset,
+        limit=limit,
+        sort=sort,
+    )
+    if not result:
+         return {"data": [], "total": 0}
+         
+    return result
 
 
 @app.get("/api/search-products")
@@ -115,7 +115,17 @@ def read_search_products(
     )
     if not result:
          return {"data": [], "total": 0}
+
     return result
+
+@app.get("/api/categories")
+def read_categories(session: Session = Depends(get_db)):
+    categories = get_all_categories(session)
+    if not categories:
+        raise HTTPException(status_code=404, detail="Products categories not found")
+
+    return categories
+
 
 class ConnectionManager:
     def __init__(self):
