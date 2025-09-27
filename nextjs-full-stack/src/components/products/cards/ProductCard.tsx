@@ -76,7 +76,7 @@ export default function ProductCard(product: ProductPreview) {
           </Badge>
         )}
         <CardHeader className="p-0 relative border-b relative">
-          <div className="aspect-square w-full overflow-hidden">
+          <div className="aspect-[7/6] w-full overflow-hidden">
             <Image
               src={heroImageUrl}
               width={300}
@@ -157,7 +157,7 @@ export default function ProductCard(product: ProductPreview) {
           </div>
         </CardContent>
 
-        <CardFooter className="p-5 pt-0">
+        <CardFooter>
           <CardAction className="w-full">
             <button
               className="cursor-pointer
@@ -165,7 +165,7 @@ export default function ProductCard(product: ProductPreview) {
               bg-gradient-to-r from-blue-800 to-purple-800 
               hover:from-purple-600 hover:to-pink-700
               text-white font-semibold 
-              py-3 rounded-xl 
+              py-2 rounded-xl 
               shadow-lg
               transform transition-all duration-400
               hover:scale-102 hover:shadow-2xl

@@ -65,9 +65,13 @@ export function SpecList({ specs, initial_limit = 10 }: SpecListProps) {
         <DrawerTrigger asChild>
           <Button
             variant="link"
-            className="px-0 text-sm underline"
+            className="group inline-flex items-center gap-1 px-0 text-sm font-medium text-purple-600 dark:text-purple-400 transition-colors  hover:text-purple-700 dark:hover:text-purple-300"
             onClick={(e) => e.stopPropagation()}>
-            Виж всички {specEntries.length} характеристики...
+            Виж всички {specEntries.length} характеристики
+            <span
+              className=" transition-transform duration-300 ease-in-out group-hover:translate-x-1">
+              →
+            </span>
           </Button>
         </DrawerTrigger>
       </div>

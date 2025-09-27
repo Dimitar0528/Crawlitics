@@ -1,6 +1,13 @@
 import { SignIn } from "@clerk/nextjs";
 import { ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Вход в профила",
+  description:
+    "Влезте в профила си, за да управлявате поръчки, предпочитания и лични настройки. Бърз и сигурен достъп до вашия акаунт.",
+};
+
 
 export default function Page() {
   return (

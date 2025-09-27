@@ -65,9 +65,9 @@ export default function Navigation() {
   >([]);
 
   const themes = [
-    { name: "Light", value: "light", Icon: Sun },
-    { name: "Dark", value: "dark", Icon: Moon },
-    { name: "System", value: "system", Icon: Computer },
+    { name: "Светла", value: "light", Icon: Sun },
+    { name: "Тъмна", value: "dark", Icon: Moon },
+    { name: "Системна", value: "system", Icon: Computer },
   ] as const;
 
   useEffect(() => {

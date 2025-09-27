@@ -139,7 +139,8 @@ export default function VariantCard({
                 border rounded-xl p-5 shadow-md 
                 transition-all duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors
                 ${
-                  isSelectedByShare && "border-blue-500 dark:border-blue-400 shadow-lg"
+                  isSelectedByShare &&
+                  "border-blue-500 dark:border-blue-400 shadow-lg"
                 }
                 ${
                   isInCompareList && !isSelectedByShare
@@ -160,7 +161,7 @@ export default function VariantCard({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full w-7 h-7 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      className="rounded-full w-7 h-7 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-400 dark:hover:bg-slate-800"
                       onClick={(e) => handleShareVariant(e, variant.slug)}>
                       <LinkIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </Button>
@@ -180,7 +181,8 @@ export default function VariantCard({
                       className="w-25 h-8 bg-slate-300 dark:bg-slate-400/50 hover:bg-slate-400 dark:hover:bg-slate-800"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isInCompareList) return removeFromCompare(variant.id);
+                        if (isInCompareList)
+                          return removeFromCompare(variant.id);
                         addToCompare(variant);
                       }}>
                       {isInCompareList ? (
@@ -195,7 +197,9 @@ export default function VariantCard({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {isInCompareList ? "Премахни от списъка за сравнение" : "Сравни продукта"}
+                    {isInCompareList
+                      ? "Премахни от списъка за сравнение"
+                      : "Сравни продукта"}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -232,7 +236,7 @@ export default function VariantCard({
 
               <div className="md:col-span-1 flex flex-col gap-4 justify-center">
                 <Link
-                  href={(variant.source_url) as Route || "#"}
+                  href={(variant.source_url as Route) || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full md:w-auto"

@@ -1,6 +1,12 @@
 import { SignUp } from "@clerk/nextjs";
 import { ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Регистрация",
+  description:
+    "Създайте нов акаунт, за да се възползвате от всички функции на сайта – поръчки, персонализирани препоръки и управление на профила.",
+};
 
 export default function Page() {
   return (

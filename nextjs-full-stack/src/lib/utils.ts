@@ -181,7 +181,6 @@ export function slugifyString(category: string) {
 
 const segmentLabels: Record<string, string> = {
   "compare": "Сравнение",
-  "crawleebot": "CrawleeBot",
   "search": "Търсене",
   "how-it-works": "Как работи",
   "sign-in": "Вход",

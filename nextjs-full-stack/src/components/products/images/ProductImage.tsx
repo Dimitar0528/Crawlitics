@@ -32,7 +32,7 @@ export default function ProductImage({name, variants}: {name: string, variants: 
           priority
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        <span className="absolute top-0 left-0 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
+        <span className="absolute -top-2 left-0 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
           Кликни, за да видиш галерията с изображения
         </span>
       </div>

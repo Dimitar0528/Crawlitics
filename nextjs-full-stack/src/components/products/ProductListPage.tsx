@@ -363,7 +363,7 @@ export default function ProductListPage({
         <aside className="hidden xl:block w-65 flex-shrink-0 sticky top-24">
           <div className="space-y-4 sticky top-24 space-y-4">
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-slate-100 dark:border-slate-700">
-              <div className="max-h-[41.5rem] flex flex-col overflow-y-auto">
+              <div className="max-h-[37rem] flex flex-col overflow-y-auto">
                 <SideFilter
                   availableSpecs={availableSpecs}
                   selectedFilters={selectedFilters}
