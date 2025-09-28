@@ -13,9 +13,9 @@ export default function ProductCardSkeleton() {
         <BadgeCheckIcon />
       </Badge>
       <CardHeader className="p-0 relative border-b">
-        <div className="aspect-square mx-4 mt-2 bg-gray-200 dark:bg-gray-700" />
+        <div className="aspect-[7/6] w-[260px] mx-auto overflow-hidden bg-gray-200 dark:bg-gray-700" />
       </CardHeader>
-      <CardContent className="p-4 flex flex-col flex-grow space-y-3">
+      <CardContent className="p-4 flex flex-col flex-grow space-y-2">
         <div className="h-6 w-7/8 bg-gray-300 dark:bg-gray-600 rounded" />
         <div className="h-6 w-2/3 bg-gray-300 dark:bg-gray-600 rounded mt-2" />
         <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded" />
@@ -23,8 +23,8 @@ export default function ProductCardSkeleton() {
         <div className="h-3 w-1/2 bg-gray-200 dark:bg-gray-700 rounded mt-2" />
         <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded" />
       </CardContent>
-      <CardFooter className="p-5 pt-0">
-        <div className="h-12 w-full bg-gray-300 dark:bg-gray-600 rounded-xl" />
+      <CardFooter>
+        <div className="h-8 w-full bg-gray-300 dark:bg-gray-600 rounded-xl" />
       </CardFooter>
     </Card>
   );

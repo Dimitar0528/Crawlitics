@@ -10,14 +10,19 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { calculate_product_variant_prices } from "@/lib/utils";
-import { BadgeCheckIcon, CircleCheckBig } from "lucide-react";
+import { BadgeCheckIcon, CircleCheckBig, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductPreview } from "@/lib/validations/product";
 import { slugifyString } from "@/lib/utils";
 import { Route } from "next";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function ProductCard(product: ProductPreview) {
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
   const heroImageUrl = product.variants.find(
     (variant) => variant.image_url
   )!.image_url;
@@ -28,9 +33,11 @@ export default function ProductCard(product: ProductPreview) {
       const priceNum = variant.latest_lowest_price_record.price;
       return priceNum < min ? priceNum : min;
     }, Infinity);
+
   const { price_bgn, price_eur } = calculate_product_variant_prices(
     latest_lowest_available_price
   );
+
   const totalCount = product.variants?.length ?? 0;
   const availableCount =
     product.variants?.filter(
@@ -40,9 +47,21 @@ export default function ProductCard(product: ProductPreview) {
   const isAvailable = availableCount > 0;
   const slug_category = slugifyString(product.category.toLowerCase());
   const prooduct_href = product.CRAWLEEBOT_matchingVariantUrls
-    ? `/${slug_category}/${product.slug}?mV=${product.CRAWLEEBOT_matchingVariantUrls.map((url) =>
-        encodeURIComponent(url)).join(",")}`
+    ? `/${slug_category}/${
+        product.slug
+      }?mV=${product.CRAWLEEBOT_matchingVariantUrls.map((url) =>
+        encodeURIComponent(url)
+      ).join(",")}`
     : `/${slug_category}/${product.slug}`;
+
+  const handleWishlistClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    toast.success(
+      `Успешно ${isWishlisted ? "премахнато от" : "добавено в"} списъка с любими!`
+    );
+    setIsWishlisted(!isWishlisted);
+  };
+
   return (
     <Link
       className="block group w-72 max-w-xs"
@@ -50,7 +69,7 @@ export default function ProductCard(product: ProductPreview) {
       target={`${product.CRAWLEEBOT_matchingVariantUrls ? "_blank" : "_self"}`}>
       <Card
         className="cursor-pointer 
-        rounded-2xl border border-gray-200 dark:border-gray-700 
+        rounded-2xl border border-gray-200 dark:border-gray-700
         overflow-hidden
         bg-white dark:bg-gray-900
         shadow-lg 
@@ -75,7 +94,7 @@ export default function ProductCard(product: ProductPreview) {
             Изчерпан
           </Badge>
         )}
-        <CardHeader className="p-0 relative border-b relative">
+        <CardHeader className="p-0 relative border-b">
           <div className="aspect-[7/6] w-full overflow-hidden">
             <Image
               src={heroImageUrl}
@@ -91,6 +110,18 @@ export default function ProductCard(product: ProductPreview) {
               priority
             />
           </div>
+          <Button
+            onClick={handleWishlistClick}
+            aria-label="Add to wishlist"
+            className="absolute bottom-1 right-1 z-10 p-3 bg-gray-100 dark:bg-gray-800 rounded-full transition-all duration-300 ease-in-out hover:bg-red-100 dark:hover:bg-red-900/50 hover:scale-105">
+            <Heart
+              className={`w-6 h-6 transition-colors duration-300 ${
+                isWishlisted
+                  ? "text-red-500 fill-current"
+                  : "text-gray-600 dark:text-gray-300"
+              }`}
+            />
+          </Button>
           {product.CRAWLEEBOT_matchingVariantCount &&
             product.CRAWLEEBOT_matchingVariantCount > 0 && (
               <div className="absolute bottom-2 right-2">
@@ -161,8 +192,8 @@ export default function ProductCard(product: ProductPreview) {
           <CardAction className="w-full">
             <button
               className="cursor-pointer
-              inline-block w-full text-center 
-              bg-gradient-to-r from-blue-800 to-purple-800 
+              inline-block w-full text-center
+              bg-gradient-to-r from-blue-800 to-purple-800
               hover:from-purple-600 hover:to-pink-700
               text-white font-semibold 
               py-2 rounded-xl 

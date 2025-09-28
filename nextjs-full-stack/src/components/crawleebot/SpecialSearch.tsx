@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DOMPurify from "dompurify";
-import { Loader2, Plus, X, CheckCircle, Bot } from "lucide-react";
+import { Loader2, Plus, X, CheckCircle, Bot, AlertTriangle } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
@@ -30,8 +30,8 @@ import {
   SpecialSearchFormValues,
   SpecialSearchFormSchema,
 } from "@/lib/validations/form";
-import { startCrawleeBot } from "@/lib/data";
-import { ProductPreview } from "@/lib/validations/product";
+import { getCategories, startCrawleeBot } from "@/lib/data";
+import { Category, ProductPreview } from "@/lib/validations/product";
 import ProductCard from "../products/cards/ProductCard";
 
 type TaskUpdate = {
@@ -49,6 +49,7 @@ export default function SpecialSearch(){
  function SpecialSearchComponent() {
   const searchParams = useSearchParams();
   const [isMounted, setIsMounted] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const [componentState, setComponentState] = useState<
     "form" | "analyzing" | "results"
@@ -73,6 +74,16 @@ export default function SpecialSearch(){
 
   useEffect(() => {
     setIsMounted(true);
+    const fetchCategories = async () => {
+      try {        const result = await getCategories();
+        if (result.success) {
+          setCategories(result.data);
+        }
+      } catch(err) {
+        console.error(err);
+      }
+    };
+    fetchCategories();
   }, []);
 
   useEffect(() => {
@@ -271,8 +282,30 @@ export default function SpecialSearch(){
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Смартфон">Смартфон</SelectItem>
-                    <SelectItem value="Лаптоп">Лаптоп</SelectItem>
+                    {categories.length === 0 ? (
+                      <div className="w-[320px] md:w-[500px] lg:w-[440px] p-4 flex flex-col items-center justify-center gap-4 text-center animate-in fade-in duration-500">
+                        <AlertTriangle className="h-12 w-12 text-yellow-500/80" />
+                        <div className="space-y-1">
+                          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">
+                            Грешка при зареждане
+                          </p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Категориите не могат да бъдат показани в момента.
+                            Моля, опитайте отново по-късно.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {categories.map((category) => (
+                          <SelectItem
+                            key={category.slug}
+                            value={category.name_bg}>
+                            {category.name_bg}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage className="text-red-800 dark:text-red-300" />
@@ -323,7 +356,7 @@ export default function SpecialSearch(){
                         placeholder="Стойност (напр. 1669-2420)"
                       />
                     </FormControl>
-                    <FormMessage className="text-red-800 dark:text-red-300"/>
+                    <FormMessage className="text-red-800 dark:text-red-300" />
                   </FormItem>
                 )}
               />

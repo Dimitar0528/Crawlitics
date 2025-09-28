@@ -27,7 +27,7 @@ export default function SideFilter({
       <div className="overflow-auto px-4">
         {loading ? (
           <div className="space-y-4 animate-pulse">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
                 className="space-y-3 border-b border-slate-200 dark:border-slate-700 pb-4 last:border-b-0">
